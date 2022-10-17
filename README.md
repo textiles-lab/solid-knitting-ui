@@ -11,4 +11,5 @@ Some code was sourced from stemkoski[https://github.com/stemkoski/three.js/]'s T
 ### TODO:
 - Improve camera + zoom. 
 - Fix "face.normal" null error. 
+- Make blocks jiggly.
 - Implement logic to identify information between neighbor cubes. 
