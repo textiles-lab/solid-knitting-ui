@@ -1,0 +1,48 @@
+//file is array of block definitions
+// file format is json-but-with-comments
+[
+
+//x is course direction (yarns enter/exit on +/- x sides)
+//y is wale direction (within-layer loops enter/exit on +/- y sides)
+//z is layer direction (between-layer loops enter on -z, exit on +z)
+
+//what does one block look like?
+{
+	"name":"knit", //base name. Full name is name + face types.
+	//vertices in lexicographic order
+	"vertices":[
+		[-1,-1,-1], //0
+		[ 1,-1,-1], //1
+		[-1, 1,-1], //2
+		[ 1, 1,-1], //3
+		[-1,-1, 1], //4
+		[ 1,-1, 1], //5
+		[-1, 1, 1], //6
+		[ 1, 1, 1]  //7
+	],
+	//faces with indices in ccw winding order starting at lowest index.
+	//faces in lexicographic order w.r.t. indices
+	"faces":[
+		{ "type":"-l1", "indices":[0, 1, 5, 4], "color":"#aa1111" },
+		{ "type":"-L1", "indices":[0, 2, 3, 1], "color":"#aa0000" },
+		{ "type":"-y1", "indices":[0, 4, 6, 2], "color":"#aa2222" },
+		{ "type":"+y1", "indices":[1, 3, 7, 5], "color":"#bb2222" },
+		{ "type":"+l1", "indices":[2, 6, 7, 3], "color":"#bb1111" },
+		{ "type":"+L1", "indices":[4, 5, 7, 6], "color":"#bb0000" }
+	],
+	//yarns defined as cubic splines between faces:
+	"yarns":[
+		{
+			"begin":2, //beginning face index
+			"end":4, //ending face index
+			"cps":[ //control points for cubic bezier segments, 3*n+1
+				[-1,0,0], [0,0,0], [0,0,0], [-0.5,1,0]
+			]
+		},
+		//... more yarns ...
+	],
+	//eventually:
+	"machine":{}, //some sort of machine code info
+	"human":{}, //some sort of human instruction info
+}
+]
