@@ -44,5 +44,6 @@
 	//eventually:
 	"machine":{}, //some sort of machine code info
 	"human":{}, //some sort of human instruction info
-}
+},
+//...more blocks follow...
 ]
