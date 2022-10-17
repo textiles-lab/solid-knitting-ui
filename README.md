@@ -1,7 +1,7 @@
 # SolidKnitting-Software
 Software and UI Implementation for Solid Knitting machine.  
 
-Some code was sourced from stemkoski[https://github.com/stemkoski/three.js/]'s Three.JS example code files, specifically Voxel painter. 
+Some code was sourced from (stemkoski's Three.JS example code files)[https://github.com/stemkoski/three.js/], specifically Voxel painter. 
 
 ### Currently, we have:
 - Ability to set and delete cubes. 
