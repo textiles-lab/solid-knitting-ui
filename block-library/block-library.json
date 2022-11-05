@@ -1,0 +1,88 @@
+[
+{
+	"name":"knit",
+	"vertices":[
+		[-1,-1,-1],
+		[ 1,-1,-1],
+		[-1, 1,-1],
+		[ 1, 1,-1],
+		[-1,-1, 1],
+		[ 1,-1, 1],
+		[-1, 1, 1],
+		[ 1, 1, 1]
+	],
+	"faces":[
+		{ "type":"-l1", "indices":[0, 1, 5, 4], "color":"#aa1111" },
+		{ "type":"-L1", "indices":[0, 2, 3, 1], "color":"#aa0000" },
+		{ "type":"-y1", "indices":[0, 4, 6, 2], "color":"#aa2222" },
+		{ "type":"+y1", "indices":[1, 3, 7, 5], "color":"#bb2222" },
+		{ "type":"+l1", "indices":[2, 6, 7, 3], "color":"#bb1111" },
+		{ "type":"+L1", "indices":[4, 5, 7, 6], "color":"#bb0000" }
+	],
+	"yarns":[
+		{
+			"begin":2,
+			"end":4,
+			"cps":[
+				[-1,0,0], [0,0,0], [0,0,0], [-0.5,1,0]
+			]
+		}
+	],
+	"machine":{},
+	"human":{}
+}, 
+{
+	"name":"knit",
+	"vertices":[
+		[-1,-1,-1],
+		[ 1,-1,-1],
+		[-1, 1,-1],
+		[ 1, 1,-1],
+		[-1,-1, 1],
+		[ 1,-1, 1],
+		[-1, 1, 1],
+		[ 1, 1, 1]
+	],
+	"faces":[
+		// Same one as the first knit, but yarn directions are reversed.
+		{ "type":"-l1", "indices":[0, 1, 5, 4], "color":"#aa1111" },
+		{ "type":"-L1", "indices":[0, 2, 3, 1], "color":"#aa0000" },
+		{ "type":"+y1", "indices":[0, 4, 6, 2], "color":"#aa2222" }, // **
+		{ "type":"-y1", "indices":[1, 3, 7, 5], "color":"#bb2222" }, // **
+		{ "type":"+l1", "indices":[2, 6, 7, 3], "color":"#bb1111" },
+		{ "type":"+L1", "indices":[4, 5, 7, 6], "color":"#bb0000" }
+	],
+	"yarns":[
+		// Unsure of how to represent the yarns. 
+	],
+	"machine":{},
+	"human":{}
+},
+{
+	"name":"knit",
+	"vertices":[
+		[-1,-1,-1],
+		[ 1,-1,-1],
+		[-1, 1,-1],
+		[ 1, 1,-1],
+		[-1,-1, 1],
+		[ 1,-1, 1],
+		[-1, 1, 1],
+		[ 1, 1, 1]
+	],
+	"faces":[
+		// Same one as the first knit, but reflected.
+		{ "type":"+l1", "indices":[0, 1, 5, 4], "color":"#aa1111" },
+		{ "type":"+L1", "indices":[0, 2, 3, 1], "color":"#aa0000" },
+		{ "type":"+y1", "indices":[0, 4, 6, 2], "color":"#aa2222" }, 
+		{ "type":"-y1", "indices":[1, 3, 7, 5], "color":"#bb2222" }, 
+		{ "type":"-l1", "indices":[2, 6, 7, 3], "color":"#bb1111" },
+		{ "type":"-L1", "indices":[4, 5, 7, 6], "color":"#bb0000" }
+	],
+	"yarns":[
+		// Unsure of how to represent the yarns. 
+	],
+	"machine":{},
+	"human":{}
+}
+]
