@@ -6,7 +6,8 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 			var mouse2D, mouse3D, raycaster,
 			rollOveredFace, isShiftDown = false,
 			theta = 45 * 0.5, isCtrlDown = false,
-            omega = 45 * 0.5;
+            omega = 45 * 0.5, isAltDown = false,
+			phi = 45 * 0.5;
             var typepicked = 0; 
 
 			var rollOverMesh, rollOverMaterial;
@@ -27,7 +28,7 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 				info.style.top = '10px';
                 info.style.left = '10px';
 				info.style.width = '100%';
-				info.innerHTML = '<strong>Solid Knitting Web UI</strong><br><strong>click</strong>: add block<br><strong>control + click</strong>: remove block<br> <strong>shift + click</strong>: rotate<br> <strong> 0 - 9 </strong>: change block type';
+				info.innerHTML = '<strong>Solid Knitting Web UI</strong><br><strong>click</strong>: add block<br><strong>control + click</strong>: remove block<br> <strong>shift + click</strong>: camera up/down<br> <strong>alt + click</strong>: camera left/right<br><strong> 0 - 9 </strong>: change block type';
 				container.appendChild( info );
 
 				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 10000 );
@@ -196,7 +197,7 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 			function onDocumentKeyDown( event ) {
 
 				switch( event.keyCode ) {
-
+					case 18: isAltDown = true; break;
 					case 16: isShiftDown = true; break;
 					case 17: isCtrlDown = true; break;
                     case 48: typepicked = 0; break;
@@ -218,6 +219,7 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 				switch ( event.keyCode ) {
 
+					case 18: isAltDown = false; break;
 					case 16: isShiftDown = false; break;
 					case 17: isCtrlDown = false; break;
 
@@ -245,6 +247,11 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
                     omega += mouse2D.y * 1.5;
 
 				}
+
+				if ( isAltDown ) {
+					theta += mouse2D.x * 1.5;
+                    phi += mouse2D.y * 1.5;
+				}
 				var vector = mouse2D.clone().unproject( camera );
 				raycaster.set( camera.position, vector.sub( camera.position ).normalize() );
 				var intersects = raycaster.intersectObjects( scene.children , true);
@@ -262,7 +269,8 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 				}
 
 				camera.position.x = 1400 * Math.sin( THREE.MathUtils.degToRad( theta ) );
-				camera.position.z = 1400 * Math.cos( THREE.MathUtils.degToRad( omega ) );
+				camera.position.z = 1400 * Math.sin( THREE.MathUtils.degToRad( phi ) );
+				camera.position.y = 1400 * Math.cos( THREE.MathUtils.degToRad( omega ) );
 
 				camera.lookAt( scene.position );
 
