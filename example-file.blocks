@@ -1,0 +1,41 @@
+//file is array of block instances:
+[
+	//block instances:
+	{
+		//name of the block from the library:
+		"type":"knit +l1 -L1 -y1 +y1 +l1 +L1",
+			//^^ converted into reference into library when loading
+		//array of current vertex positions in model:
+		// (same order as vertices in the library)
+		"vertices":[
+			[0,0,0],
+			[2,0,0],
+			[0,2,0],
+			[2,2,0],
+			[0,0,2],
+			[2,0,2],
+			[0,2,2],
+			[2,2,2]
+		],
+		//array of face connections:
+		"connections":[
+			null, //non-connected face
+			{ //connected face:
+				block:2, //index of block the face connects to
+					//^^ (maybe) converted into reference into block list when loading
+				face:5, //index of face in blocks[block]
+				offset:2 //index of first vertex
+				//in other words:
+				// the ith vertex of this face
+				//  i.e. this.vertices[this.type.faces[1].indices[i]]
+				// connects to the (-i + offset)th vertex of the connected face
+				//  i.e., let ci = (block.type.faces[face].indices.length - i + offset) % (...).length
+				//    then the connection is to block.vertices[block.type.faces[face].indices[ci]]
+			},
+			null,
+			null,
+			null,
+			null
+		]
+	}
+]
