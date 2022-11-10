@@ -9,7 +9,7 @@
 //what does one block look like?
 {
 	"name":"knit", //base name. Full name is name + face types.
-	//vertices in lexicographic order
+	//vertices (ordered by z,y,x)
 	"vertices":[
 		[-1,-1,-1], //0
 		[ 1,-1,-1], //1
