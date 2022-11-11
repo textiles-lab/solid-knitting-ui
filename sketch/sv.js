@@ -3,10 +3,12 @@
 
 const sv = (typeof(module) === 'undefined' ? (window.sv = {}) : module.exports);
 
-class Blocks {
+class Body {
 	constructor() {
-		this.blocks = [];
+		this.cells = [];
 	}
+	relax() { } //update positions based on connections between blocks + construction plane position
+	check() { } //consistency check (connections point both directions)
 	static fromArrayBuffer(buffer) {
 		const text = new TextDecoder("utf-8").decode(buffer);
 
@@ -17,9 +19,9 @@ class Blocks {
 }
 sv.Blocks = Blocks;
 
-class Block {
+class Body.Cell {
 	constructor({
-		type,
+		template,
 		vertices,
 		connections
 	}) {
@@ -29,14 +31,17 @@ class Block {
 
 		this.type = type;
 		this.vertices = vertices;
-		this.connections = connections;
+		this.connections = connections; //connections have "block" (reference) and "face" (index)
+
+		//should be the case that:
+		//this.connections[0].block.connections[ this.connections[0].face ] === this
 
 	}
 };
 
 class Library {
 	constructor() {
-		this.types = {};
+		this.template = {};
 	}
 	//convert from/to data suitable from JSON.stringify()/.parse():
 	static fromData(data) {
@@ -63,7 +68,7 @@ class Library {
 }
 sv.Library = Library;
 
-class LibraryBlock {
+class Library.Template {
 	constructor({
 		name = "",
 		vertices = [],

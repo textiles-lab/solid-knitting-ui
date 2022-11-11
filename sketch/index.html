@@ -122,7 +122,7 @@ body {
 <script>
 
 window.library = new sv.Library();
-window.blocks = new sv.Blocks();
+window.body = new sv.Body();
 
 //--------------------------------------
 //File loading code
@@ -207,8 +207,7 @@ file.addEventListener('click', function(evt){
 import {Geometry, Program} from './gl.mjs';
 
 //--------------------------------------
-//Adapted from yarn visualizer code
-
+//Adapted from yarn visualizer code (from smobj)
 //NOTE: based largely on the MDN WebGL tutorials at:
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Getting_started_with_WebGL
 
@@ -585,7 +584,8 @@ class VisBlocks extends Geometry {
 		const data = new DataView(arrayBuffer);
 		let dataOffset = 0;
 		
-		function triange(a,b,c, color) {
+		function triangle(va,vb,vc, color) {
+			//TODO!
 		}
 		for (const block of blocks.blocks) {
 			for (const face of block.type.faces) {
