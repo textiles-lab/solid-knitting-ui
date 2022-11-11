@@ -17,6 +17,23 @@ class Blocks {
 }
 sv.Blocks = Blocks;
 
+class Block {
+	constructor({
+		type,
+		vertices,
+		connections
+	}) {
+		if (!(type instanceof LibraryBlock)) throw new Error("Block's type must be a LibraryBlock");
+		if (!(type.vertices.length === vertices.length)) throw new Error("Should have same length vertices as type.");
+		if (!(type.faces.length === connections.length)) throw new Error("Should have same connections as type.faces .");
+
+		this.type = type;
+		this.vertices = vertices;
+		this.connections = connections;
+
+	}
+};
+
 class Library {
 	constructor() {
 		this.types = {};
