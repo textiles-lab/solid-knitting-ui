@@ -2,7 +2,90 @@ export class Body {
 	constructor() {
 		this.cells = [];
 	}
-	relax() { } //update positions based on connections between blocks + construction plane position
+	//update positions based on connections between blocks + construction plane position
+	relax() {
+		let vertices = [];
+		let merged = [];
+		for (const cell of this.cells) {
+			cell.viBase = vertices.length;
+			for (const vertex of cell.vertices) {
+				merged.push(vertices.length);
+				vertices.push({x:vertex.x, y:vertex.y, z:vertex.z, a:1});
+			}
+		}
+		//basic union-find for making sets of vertices:
+		function find(a) {
+			if (merged[a] !== a) {
+				merged[a] = find(merged[a]);
+			}
+			return merged[a];
+		}
+		function union(a, b) {
+			const u = Math.max(find(a), find(b)); //so that representative element for set is last visited in a for loop
+			merged[a] = merged[b] = u;
+		}
+		//make sets of vertices based on connections:
+		for (const cell of this.cells) {
+			for (let fi = 0; fi < cell.connections.length; ++fi) {
+				const face = cell.template.faces[fi];
+				const connection = cell.connections[fi];
+				if (connection === null) continue;
+				const cell2 = connection.cell;
+				const face2 = cell2.template.faces[connection.face];
+				const L = face.indices.length;
+				console.assert(L === face2.indices.length);
+				for (let i = 0; i < face.indices.length; ++i) {
+					union(cell.viBase + face.indices[i], cell2.viBase + face2.indices[(L + 1 - i) % L]);
+				}
+			}
+		}
+		//TODO: also connections to construction grid?
+
+		//average vertex sets:
+		for (let v = 0; v < vertices.length; ++v) {
+			const s = find(v);
+			if (s === v) {
+				//last in set; divide
+				vertices[v].x /= vertices[v].a;
+				vertices[v].y /= vertices[v].a;
+				vertices[v].z /= vertices[v].a;
+				delete vertices[v].a; //mark division as already done
+			} else {
+				//accumulate
+				console.assert('a' in vertices[s]);
+				console.assert('a' in vertices[v]);
+				vertices[s].x += vertices[v].x;
+				vertices[s].y += vertices[v].y;
+				vertices[s].z += vertices[v].z;
+				vertices[s].a += vertices[v].a;
+			}
+		}
+
+		//fit new cell locations (+ TODO: rotations) to averaged points:
+		for (const cell of this.cells) {
+			//copy vertices:
+			for (let vi = 0; vi < cell.vertices.length; ++vi) {
+				const target = vertices[find(cell.viBase + vi)];
+				cell.vertices[vi] = {x:target.x, y:target.y, z:target.z};
+			}
+			//fit template to positions (translation part):
+			let T = {x:0, y:0, z:0};
+			for (let vi = 0; vi < cell.vertices.length; ++vi) {
+				T.x += cell.vertices[vi].x - cell.template.vertices[vi].x;
+				T.y += cell.vertices[vi].y - cell.template.vertices[vi].y;
+				T.z += cell.vertices[vi].z - cell.template.vertices[vi].z;
+			}
+			T.x /= cell.vertices.length;
+			T.y /= cell.vertices.length;
+			T.z /= cell.vertices.length;
+			for (let vi = 0; vi < cell.vertices.length; ++vi) {
+				cell.vertices[vi].x = cell.template.vertices[vi].x + T.x;
+				cell.vertices[vi].y = cell.template.vertices[vi].y + T.y;
+				cell.vertices[vi].z = cell.template.vertices[vi].z + T.z;
+			}
+			//TODO: fit rotation part (needs SVD implementation)
+		}
+	}
 	check() { } //consistency check (connections point both directions)
 	static fromArrayBuffer(buffer, library) {
 		const text = new TextDecoder("utf-8").decode(buffer);
