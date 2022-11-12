@@ -1,13 +1,23 @@
-# SolidKnitting-Software
-Software and UI Implementation for Solid Knitting machine.  
+# Solid Knitting UI
+Build patterns for solid knitting with interactive preview.
 
-Some code was sourced from [stemkoski's Three.JS example code files](https://github.com/stemkoski/three.js/), specifically Voxel painter. 
+Must be accessed via a web server so it can `fetch()` data files. To do this locally you can use python's built-in web server:
+```
+$ python3 -m http.server 8080
+$ firefox http://localhost:8080/index.html
+```
+
 
 ### Currently, we have:
-- Ability to set and delete cubes. 
-- Ability to select various colors representing different cubes.
-- Ability to move camera view up/down and right/left. 
+- Data formats with linked cubes
+- Basic (position) relaxation
+- Camera movement
+- Helpers for webgl
 
 ### TODO:
-- Make blocks jiggly.
-- Implement logic to identify information between neighbor cubes. 
+- Block/face selection raycasts.
+- Block library display.
+- Code to delete blocks.
+- Code to add/attach blocks.
+- Fancy (rotation) relaxation.
+- Yarn drawing.
