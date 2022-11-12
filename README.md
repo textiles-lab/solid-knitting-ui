@@ -14,11 +14,12 @@ Based, loosely, on https://github.com/textiles-lab/smobj/tree/master/web which i
 - Basic (position) relaxation
 - Camera movement
 - Helpers for webgl
+- Block/face selection raycasts.
 
 ### TODO:
-- Block/face selection raycasts.
-- Block library display.
 - Code to delete blocks.
 - Code to add/attach blocks.
+- Block library display.
 - Fancy (rotation) relaxation.
 - Yarn drawing.
+- (Low priority) Actually write decent vector math library instead of this ad-hoc thing.

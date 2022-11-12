@@ -214,6 +214,7 @@ import {Geometry, Program} from './code/gl.mjs';
 
 const canvas = document.getElementById("canvas");
 const gl = canvas.getContext('webgl');
+window.gl = gl; //DEBUG
 
 //------- camera -------
 const camera = {
@@ -259,12 +260,13 @@ camera.computeAt = function camera_computeAt() {
 };
 
 function resetCamera() {
-	//compute yarns bounding box:
 	let min = {x:Infinity, y:Infinity, z:Infinity};
 	let max = {x:-Infinity, y:-Infinity, z:-Infinity};
 
+	//TOOD: compute bounding box
+
 	if (min.x > max.x) {
-		//no yarn geometry
+		//for now, just some default:
 		min.x = -10.0; min.y = -10.0; min.z = -10.0;
 		max.x =  10.0; max.y =  10.0; max.z =  10.0;
 	}
@@ -282,15 +284,96 @@ function resetCamera() {
 	requestRedraw();
 }
 
-const oldMouse = {x:NaN, y:NaN};
-let camFlipX = false;
+//--- controls ---
 
+const MOUSE = {x:NaN, y:NaN, over:null};
+window.MOUSE = MOUSE; //DEBUG
+
+let camFlipX = false; //used for camera rotation control
+
+function mouseRay() {
+	const origin = camera.computeAt();
+	const direction = {};
+
+	//compute ray direction through mouse:
+	const o = camera.computeOut();
+	const r = camera.computeRight();
+	const u = camera.computeUp();
+	const rh = Math.tan(0.5 * camera.fovy / 180.0 * Math.PI); //half of the image plane height
+	const rw = rh * camera.aspect; //half of the image plane width
+	direction.x = -o.x + rw * r.x * MOUSE.x + rh * u.x * MOUSE.y;
+	direction.y = -o.y + rw * r.y * MOUSE.x + rh * u.y * MOUSE.y;
+	direction.z = -o.z + rw * r.z * MOUSE.x + rh * u.z * MOUSE.y;
+
+	return {origin, direction};
+}
+
+function setMouseOver() {
+	MOUSE.over = null;
+	if (MOUSE.x !== MOUSE.x) return;
+	const ray = mouseRay();
+
+	let close = Infinity;
+
+	function isect(a,b,c, cell,face) {
+		const perp = cross(sub(b, a), sub(c, a));
+
+		//offset of the start of the ray from the plane of the triangle:
+		const ofs = dot(perp, sub(ray.origin, a));
+
+		//change in offset when moving along direction:
+		const step = dot(perp, ray.direction);
+
+		//if can't get to plane of triangle, can't intersect:
+		if (step === 0) return;
+		if (ofs <= 0 && step <= 0) return;
+		if (ofs >= 0 && step >= 0) return;
+
+		//if can't get to plane in time, can't intersect:
+		const t = -ofs / step;
+		if (t >= close) return;
+
+		//move point to plane of triangle:
+		const p = {
+			x:ray.origin.x + ray.direction.x * t,
+			y:ray.origin.y + ray.direction.y * t,
+			z:ray.origin.z + ray.direction.z * t
+		};
+
+		//console.log(`Close to zero(?): ${dot(perp, sub(p,a))}`); //DEBUG
+
+		//barycentric coords:
+		const wa = dot(perp, cross(sub(c,b), sub(p,b)));
+		const wb = dot(perp, cross(sub(a,c), sub(p,c)));
+		const wc = dot(perp, cross(sub(b,a), sub(p,a)));
+
+		//outside the triangle:
+		if (wa < 0 || wb < 0 || wc < 0) return;
+
+		close = t;
+		MOUSE.over = {cell, face};
+	}
+
+	for (const cell of body.cells) {
+		for (let fi = 0; fi < cell.template.faces.length; ++fi) {
+			const face = cell.template.faces[fi];
+			for (let i = 2; i < face.indices.length; ++i) {
+				const a = cell.vertices[face.indices[0]];
+				const b = cell.vertices[face.indices[i-1]];
+				const c = cell.vertices[face.indices[i]];
+				isect(a,b,c, cell,fi);
+			}
+		}
+	}
+}
+
+//mouse in elt-is-[-1,1]x[-1,1] space:
 function relativeMouse(evt, elt) {
 	//based on: https://developer.mozilla.org/en-US/docs/Web/API/Element/mousemove_event
 	const rect = elt.getBoundingClientRect();
 	return {
-		x:evt.clientX - rect.left,
-		y:evt.clientY - rect.top
+		x:2.0 * (evt.clientX - rect.left) / rect.width - 1.0,
+		y:-2.0 * (evt.clientY - rect.top) / rect.height + 1.0
 	};
 }
 
@@ -308,8 +391,8 @@ canvas.addEventListener('wheel', function(evt){
 
 canvas.addEventListener('mousedown', function(evt){
 	const mouse = relativeMouse(evt, canvas);
-	oldMouse.x = mouse.x;
-	oldMouse.y = mouse.y;
+	MOUSE.x = mouse.x;
+	MOUSE.y = mouse.y;
 	camFlipX = (camera.computeUp().z < 0.0);
 	evt.preventDefault();
 	return false;
@@ -317,35 +400,37 @@ canvas.addEventListener('mousedown', function(evt){
 
 canvas.addEventListener('mousemove', function(evt){
 	const mouse = relativeMouse(evt, canvas);
-	if (oldMouse.x === oldMouse.x) {
+	if (MOUSE.x === MOUSE.x) {
 		if (evt.buttons & 1) {
 			if (evt.shiftKey) {
 				const up = camera.computeUp();
 				const right = camera.computeRight();
 
-				const x = camera.radius * (mouse.x - oldMouse.x) / canvas.height;
-				const y = camera.radius *-(mouse.y - oldMouse.y) / canvas.height;
+				const x = camera.radius * (mouse.x - MOUSE.x) * Math.tan(0.5 * camera.fovy / 180.0 * Math.PI) * camera.aspect;
+				const y = camera.radius * (mouse.y - MOUSE.y) * Math.tan(0.5 * camera.fovy / 180.0 * Math.PI);
 
 				camera.target.x -= right.x * x + up.x * y;
 				camera.target.y -= right.y * x + up.y * y;
 				camera.target.z -= right.z * x + up.z * y;
 			} else {
-				const pxToAngle = Math.PI / canvas.height;
-				camera.azimuth += (camFlipX ? -1.0 : 1.0) * -(mouse.x - oldMouse.x) * pxToAngle;
-				camera.elevation += (mouse.y - oldMouse.y) * pxToAngle;
+				const deltaToAngle = 2.0 * camera.fovy / 180.0 * Math.PI;
+				camera.azimuth += (camFlipX ? -1.0 : 1.0) * -(mouse.x - MOUSE.x) * camera.aspect * deltaToAngle;
+				camera.elevation -= (mouse.y - MOUSE.y) * deltaToAngle;
 			}
 			requestRedraw();
 		}
 	}
-	oldMouse.x = mouse.x;
-	oldMouse.y = mouse.y;
+	MOUSE.x = mouse.x;
+	MOUSE.y = mouse.y;
+	setMouseOver();
+	requestRedraw(); //needed if we want to draw mouse cursor, maybe not generally needed
 	evt.preventDefault();
 	return false;
 });
 
 canvas.addEventListener('mouseup', function(evt){
-	oldMouse.x = NaN;
-	oldMouse.y = NaN;
+	MOUSE.x = NaN;
+	MOUSE.y = NaN;
 	evt.preventDefault();
 	return false;
 });
@@ -359,6 +444,7 @@ window.addEventListener('keydown', function(evt){
 });
 
 //--- vector math library ---
+//TODO: clean this up and move to its own module
 
 function add(a,b) {
 	return {x:a.x+b.x, y:a.y+b.y, z:a.z+b.z};
@@ -672,13 +758,93 @@ class VisBody extends Geometry {
 const visBody = new VisBody();
 window.visBody = visBody; //DEBUG
 
+class VisDebug extends Geometry {
+	static BYTES_PER_ATTRIB = 4*3 + 1*4; //Position, Color
+	constructor() {
+		const BYTES_PER_ATTRIB = VisDebug.BYTES_PER_ATTRIB;
+
+		const buffer = gl.createBuffer();
+
+		const attribs = {
+			Position:{buffer:buffer, size:3, type:gl.FLOAT, normalize:false, stride:BYTES_PER_ATTRIB, offset:0},
+			Normal:[0,0,1],
+			Color:{buffer:buffer, size:4, type:gl.UNSIGNED_BYTE, normalize:true, stride:BYTES_PER_ATTRIB, offset:4*3},
+		};
+
+		super(gl, attribs, gl.LINES, 0);
+
+		this.buffer = buffer;
+	}
+	update() {
+		const BYTES_PER_ATTRIB = VisDebug.BYTES_PER_ATTRIB;
+
+		let attribs = []; //x,y,z,color
+
+		function line(a,b,color) {
+			attribs.push(a.x,a.y,a.z,color);
+			attribs.push(b.x,b.y,b.z,color);
+		}
+
+		//----- make debug lines ----
+
+		//axes:
+		line({x:0,y:0,z:0},{x:5,y:0,z:0}, 0xff0000ff);
+		line({x:0,y:0,z:0},{x:0,y:5,z:0}, 0x00ff00ff);
+		line({x:0,y:0,z:0},{x:0,y:0,z:5}, 0x0000ffff);
+
+		//mouse cursor:
+		if (MOUSE.x === MOUSE.x) {
+			const ray = mouseRay();
+			const r = camera.computeRight();
+			const u = camera.computeUp();
+			r.x *= 0.01; r.y *= 0.01; r.z *= 0.01;
+			u.x *= 0.01; u.y *= 0.01; u.z *= 0.01;
+			const c = add(ray.origin, ray.direction);
+			line(add(c,r), sub(c,r), 0xffff0000);
+			line(add(c,u), sub(c,u), 0xffff0000);
+		}
+
+		//currently hovered face:
+		if (MOUSE.over !== null) {
+			const cell = MOUSE.over.cell;
+			const face = cell.template.faces[MOUSE.over.face];
+			for (let i = 0; i < face.indices.length; ++i) {
+				line(cell.vertices[face.indices[(i == 0 ? face.indices.length : i) - 1]], cell.vertices[face.indices[i]], 0xffff0088);
+			}
+		}
+
+
+		//---- copy debug lines to buffer for drawing ----
+
+		//copy attribs to a formatted buffer:
+		const arrayBuffer = new ArrayBuffer(BYTES_PER_ATTRIB * (attribs.length / 4));
+		const data = new DataView(arrayBuffer);
+		let dataOffset = 0;
+		for (let i = 0; i < attribs.length; i += 4) {
+			data.setFloat32(dataOffset, attribs[i+0], FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, attribs[i+1], FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, attribs[i+2], FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setUint32(dataOffset, attribs[i+3], false); dataOffset += 4;
+		}
+
+		console.assert(dataOffset === arrayBuffer.byteLength, `Bytes of attributes (${dataOffset}) matches allocated data size (${data.byteLength}).`);
+
+		this.count = arrayBuffer.byteLength / BYTES_PER_ATTRIB;
+
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+		gl.bufferData(gl.ARRAY_BUFFER, arrayBuffer, gl.STREAM_DRAW);
+	}
+}
+const visDebug = new VisDebug();
+
 function redraw() {
+	const pixelRatio = window.devicePixelRatio;
+
 	//make sure canvas size matches element size:
 	(function resize() {
 		const style = getComputedStyle(canvas);
 		window.style = style;
 
-		const pixelRatio = window.devicePixelRatio;
 		const width = Math.round(parseFloat(style.width) * pixelRatio);
 		const height = Math.round(parseFloat(style.height) * pixelRatio);
 		canvas.width = width;
@@ -686,6 +852,8 @@ function redraw() {
 		gl.viewport(0,0,width,height);
 		camera.aspect = width / height;
 	})();
+
+	visDebug.update();
 
 	gl.clearColor(0.1, 0.1, 0.1, 1.0);
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -706,6 +874,10 @@ function redraw() {
 		lightDir.x, lightDir.y, lightDir.z
 	);
 
+	gl.lineWidth(2.0 * pixelRatio);
+	visDebug.draw(colorProgram);
+
+	gl.lineWidth(1.0 * pixelRatio);
 	grid.draw(colorProgram);
 
 	visBody.draw(colorProgram);
