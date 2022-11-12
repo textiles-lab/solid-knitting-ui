@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Solid Knitting UI - Sketch</title>
+<title>Solid Knitting UI</title>
 <style>
 body {
 	padding:0;
@@ -200,12 +200,12 @@ file.addEventListener('click', function(evt){
 <script type="module">
 'use strict';
 
-import * as sv from './sv.mjs';
+import * as sv from './code/sv.mjs';
 
 window.library = new sv.Library();
 window.body = new sv.Body();
 
-import {Geometry, Program} from './gl.mjs';
+import {Geometry, Program} from './code/gl.mjs';
 
 //--------------------------------------
 //Adapted from yarn visualizer code (from smobj)
@@ -728,7 +728,7 @@ window.addEventListener('resize', requestRedraw);
 async function init() {
 	{
 		console.log(`Fetching library...`);
-		const request = await fetch('../solid-knitting.library');
+		const request = await fetch('solid-knitting.library');
 		const arrayBuffer = await request.arrayBuffer();
 		console.log(`  got ${arrayBuffer.byteLength} bytes.`);
 
@@ -737,7 +737,7 @@ async function init() {
 
 	{
 		console.log(`Fetching body...`);
-		const request = await fetch('../example.body');
+		const request = await fetch('example.body');
 		const arrayBuffer = await request.arrayBuffer();
 		console.log(`  got ${arrayBuffer.byteLength} bytes.`);
 
