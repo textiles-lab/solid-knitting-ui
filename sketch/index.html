@@ -118,11 +118,7 @@ body {
 <!-- full-window drop target --!>
 <div id="dropTarget"></div>
 
-<script src="sv.js"></script>
 <script>
-
-window.library = new sv.Library();
-window.body = new sv.Body();
 
 //--------------------------------------
 //File loading code
@@ -203,6 +199,11 @@ file.addEventListener('click', function(evt){
 
 <script type="module">
 'use strict';
+
+import * as sv from './sv.mjs';
+
+window.library = new sv.Library();
+window.body = new sv.Body();
 
 import {Geometry, Program} from './gl.mjs';
 
@@ -649,12 +650,23 @@ requestRedraw();
 window.addEventListener('resize', requestRedraw);
 
 async function init() {
-	console.log(`Fetching blocks library...`);
-	const request = await fetch('../block-library/block-library.json');
-	const arrayBuffer = await request.arrayBuffer();
-	console.log(`  got ${arrayBuffer.byteLength} bytes.`);
+	{
+		console.log(`Fetching library...`);
+		const request = await fetch('../solid-knitting.library');
+		const arrayBuffer = await request.arrayBuffer();
+		console.log(`  got ${arrayBuffer.byteLength} bytes.`);
 
-	window.library = sv.Library.fromArrayBuffer(arrayBuffer);
+		window.library = sv.Library.fromArrayBuffer(arrayBuffer);
+	}
+
+	{
+		console.log(`Fetching body...`);
+		const request = await fetch('../example.body');
+		const arrayBuffer = await request.arrayBuffer();
+		console.log(`  got ${arrayBuffer.byteLength} bytes.`);
+
+		window.body = sv.Body.fromArrayBuffer(arrayBuffer, library);
+	}
 
 	resetCamera();
 	requestRedraw();

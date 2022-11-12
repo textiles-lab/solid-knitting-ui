@@ -1,40 +1,48 @@
 //body is array of cells:
+//in json-but-with-comments format
 [
 	//cells:
 	{
 		//template for the cell (name from the library):
-		"template":"knit +l1 -L1 -y1 +y1 +l1 +L1",
+		"template":"knit -l1 +L1 -y1 -L1 +y1 +l1",
 			//^^ converted into reference into library when loading
 		//array of current vertex positions in model:
 		// (same order as vertices in the library)
 		// (converted to {x:, y:, z:} when loading)
 		"vertices":[
-			[0,0,0],
-			[0,0,2],
-			[0,2,0],
-			[0,2,2],
-			[2,0,0],
-			[2,0,2],
-			[2,2,0],
-			[2,2,2]
+			[0,0,0], [0,0,2], [0,2,0], [0,2,2],
+			[2,0,0], [2,0,2], [2,2,0], [2,2,2]
 		],
 		//array of face connections: (same length as template.faces)
 		"connections":[
 			null, //non-connected face
+			null,
+			null,
+			null,
 			{ //connected face:
-				cell:2, //index of cell the face connects to
+				"cell":1, //index of cell the face connects to
 					//^^ converted into reference into cell list when loading
-				face:5, //index of face in cells[cell].template.faces
+				"face":2 //index of face in cells[cell].template.faces
 				//NOTE:
 				// connections align the "first" edge.
 				// in other words:
 				// face.indices[i] <-> otherFace.indices[(L + 1 - i) % L]
 				//  (L === length of face.indices)
 			},
-			null,
-			null,
-			null,
 			null
 		]
+	},
+	{
+		"template":"knit -l1 +L1 -y1 -L1 +y1 +l1",
+		"vertices":[
+			[2.5,0,0], [2.5,0,2], [2.5,2,0], [2.5,2,2],
+			[4.5,0,0], [4.5,0,2], [4.5,2,0], [4.5,2,2]
+		],
+		"connections":[
+			null, null,
+			{ "cell":0, "face":4 },
+			null, null, null
+		]
 	}
+
 ]

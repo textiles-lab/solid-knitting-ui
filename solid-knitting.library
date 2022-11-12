@@ -21,17 +21,17 @@
 		[ 1, 1,-1], //6
 		[ 1, 1, 1]  //7
 	],
+
 	//faces with indices in ccw winding order starting with "first edge" (determines face connection orientation)
 	//faces in lexicographic order w.r.t. indices
 	//"first edge" is canonically the "bottom edge" or "earliest edge" for the connection
 	"faces":[
-		{ "type":"-y1", "indices":[2, 0, 1, 3], "color":"#aa2222" },
-		{ "type":"+y1", "indices":[4, 6, 7, 8], "color":"#bb2222" },
 		{ "type":"-l1", "indices":[0, 4, 5, 1], "color":"#aa1111" },
-		{ "type":"+l1", "indices":[6, 2, 3, 7], "color":"#aa1111" },
-		//hmm, what should the first edge +/- faces be? probably not this, at least:
-		{ "type":"-L1", "indices":[2, 0, 4, 6], "color":"#aa0000" },
-		{ "type":"+L1", "indices":[1, 3, 7, 5], "color":"#bb0000" }
+		{ "type":"+L1", "indices":[1, 5, 7, 3], "color":"#bb0000" },
+		{ "type":"-y1", "indices":[2, 0, 1, 3], "color":"#aa2222" },
+		{ "type":"-L1", "indices":[4, 0, 2, 6], "color":"#aa0000" },
+		{ "type":"+y1", "indices":[4, 6, 7, 5], "color":"#bb2222" },
+		{ "type":"+l1", "indices":[6, 2, 3, 7], "color":"#aa1111" }
 	],
 	//yarns defined as cubic splines between faces:
 	"yarns":[
@@ -41,12 +41,12 @@
 			"cps":[ //control points for cubic bezier segments, 3*n+1
 				[-1,0,0], [0,0,0], [0,0,0], [-0.5,1,0]
 			]
-		},
+		}
 		//... more yarns ...
 	],
 	//eventually:
 	"machine":{}, //some sort of machine code info
-	"human":{}, //some sort of human instruction info
-},
+	"human":{} //some sort of human instruction info
+}
 //...more blocks follow...
 ]
