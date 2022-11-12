@@ -350,6 +350,12 @@ canvas.addEventListener('mouseup', function(evt){
 	return false;
 });
 
+function add(a,b) {
+	return {x:a.x+b.x, y:a.y+b.y, z:a.z+b.z};
+}
+function sub(a,b) {
+	return {x:a.x-b.x, y:a.y-b.y, z:a.z-b.z};
+}
 function dot(a, b) {
 	return a.x * b.x + a.y * b.y + a.z * b.z;
 }
@@ -480,12 +486,13 @@ const colorProgram = new Program(gl,
 		normal = Normal;
 	}
 `,`
+	uniform highp vec3 HEMI_DIRECTION;
 	varying lowp vec4 color;
 	varying highp vec3 normal;
 	void main() {
 		highp vec3 n = normalize(normal);
 		//upper dome light:
-		highp vec3 light = mix(vec3(0.1), vec3(1.0), 0.5*n.y+0.5);
+		highp vec3 light = mix(vec3(0.1), vec3(1.0), 0.5*dot(n, HEMI_DIRECTION)+0.5);
 		gl_FragColor = vec4(color.rgb * light, color.a);
 	}
 `);
@@ -552,11 +559,41 @@ class Grid extends Geometry {
 const grid = new Grid();
 window.grid = grid; //DEBUG
 
+//helper for color conversion from '#rrggbb', '#rrggbbaa', '#rgb', and '#rgba' to 0xrrggbbaa
+function css2Uint32(color) {
+	let val;
+	if        (color.length === 9) {
+		val = parseInt('0x' + color.substr(1));
+	} else if (color.length === 7) {
+		val = parseInt('0x' + color.substr(1)) * 256 + 255;
+	} else if (color.length === 5) {
+		val = parseInt('0x' + color.substr(1));
+		const r = (val & 0xf000);
+		const g = (val & 0x0f00);
+		const b = (val & 0x00f0);
+		const a = (val & 0x000f);
+		//why are these not bit-shifts? because those coerce numbers to *signed* int32s integers (vs remaining float64's, which have 50-ish bits of integer precision)
+		val = (r * 16 + r);
+		val = val * 256 + (g * 16 + g);
+		val = val * 256 + (b * 16 + b);
+		val = val * 256 + (a * 16 + a);
+	} else if (color.length === 4) {
+		val = parseInt('0x' + color.substr(1));
+		const r = (val & 0xf000);
+		const g = (val & 0x0f00);
+		const b = (val & 0x00f0);
+		val = (r * 16 + r);
+		val = val * 256 + (g * 16 + g);
+		val = val * 256 + (b * 16 + b);
+		val = val * 256 + 255;
+	}
+	return val;
+}
 
-class VisBlocks extends Geometry {
+class VisBody extends Geometry {
 	static BYTES_PER_ATTRIB = 4*3 + 4*3 + 1*4; //Position, Normal, Color
 	constructor() {
-		const BYTES_PER_ATTRIB = VisBlocks.BYTES_PER_ATTRIB;
+		const BYTES_PER_ATTRIB = VisBody.BYTES_PER_ATTRIB;
 
 		const buffer = gl.createBuffer();
 
@@ -571,12 +608,12 @@ class VisBlocks extends Geometry {
 		this.buffer = buffer; //needed for set()
 	}
 	set(blocks) {
-		const BYTES_PER_ATTRIB = VisBlocks.BYTES_PER_ATTRIB;
+		const BYTES_PER_ATTRIB = VisBody.BYTES_PER_ATTRIB;
 
 		//figure out how much space to allocate for attributes:
 		let totalAttribs = 0;
-		for (const block of blocks.blocks) {
-			for (const face of block.type.faces) {
+		for (const cell of body.cells) {
+			for (const face of cell.template.faces) {
 				totalAttribs += 3 * (face.indices.length - 2);
 			}
 		}
@@ -584,25 +621,46 @@ class VisBlocks extends Geometry {
 		const arrayBuffer = new ArrayBuffer(BYTES_PER_ATTRIB * totalAttribs);
 		const data = new DataView(arrayBuffer);
 		let dataOffset = 0;
+		function attrib(x,y,z, nx,ny,nz, rgba) {
+			data.setFloat32(dataOffset, x, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, y, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, z, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+
+			data.setFloat32(dataOffset, nx, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, ny, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, nz, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+
+			data.setUint32(dataOffset, rgba, false); dataOffset += 4;
+		}
 		
 		function triangle(va,vb,vc, color) {
-			//TODO!
+			let n = normalize(cross(sub(vb, va), sub(vc, va)));
+			attrib(va.x,va.y,va.z, n.x,n.y,n.z, color);
+			attrib(vb.x,vb.y,vb.z, n.x,n.y,n.z, color);
+			attrib(vc.x,vc.y,vc.z, n.x,n.y,n.z, color);
 		}
-		for (const block of blocks.blocks) {
-			for (const face of block.type.faces) {
+		for (const cell of body.cells) {
+			for (const face of cell.template.faces) {
 				//TODO: compute normals in some smooth way
 				for (let i = 2; i < face.indices.length; ++i) {
 					triangle(
-						block.vertices[face.indices[0]], block.vertices[face.indices[i-1]], block.vertices[face.indices[i]],
-						face.color);
+						cell.vertices[face.indices[0]], cell.vertices[face.indices[i-1]], cell.vertices[face.indices[i]],
+						css2Uint32(face.color));
 					
 				}
 			}
 		}
+
+		console.assert(dataOffset === arrayBuffer.byteLength, `Bytes of attributes (${dataOffset}) matches allocated data size (${data.byteLength}).`);
+
+		this.count = arrayBuffer.byteLength / BYTES_PER_ATTRIB;
+
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+		gl.bufferData(gl.ARRAY_BUFFER, arrayBuffer, gl.STATIC_DRAW);
 	}
 }
-const visBlocks = new VisBlocks();
-window.visBlocks = visBlocks; //DEBUG
+const visBody = new VisBody();
+window.visBody = visBody; //DEBUG
 
 function redraw() {
 	//make sure canvas size matches element size:
@@ -632,7 +690,15 @@ function redraw() {
 		computeMVP()
 	);
 
+	const lightDir = normalize(add(camera.computeUp(),camera.computeOut()));
+	gl.uniform3f(
+		colorProgram.uniformLocations.HEMI_DIRECTION,
+		lightDir.x, lightDir.y, lightDir.z
+	);
+
 	grid.draw(colorProgram);
+
+	visBody.draw(colorProgram);
 }
 
 function requestRedraw() {
@@ -667,6 +733,8 @@ async function init() {
 
 		window.body = sv.Body.fromArrayBuffer(arrayBuffer, library);
 	}
+
+	visBody.set(window.body);
 
 	resetCamera();
 	requestRedraw();

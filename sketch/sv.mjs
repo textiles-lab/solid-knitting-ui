@@ -131,6 +131,7 @@ export class Template {
 
 		//vertices should be 3D, lexicographic [by x,y,z] order:
 		if (!Array.isArray(vertices)) throw new Error("LibraryBlock.vertices should be an array.");
+		this.vertices = [];
 		function isFloat3(x) {
 			if (!Array.isArray(x)) return false;
 			if (x.length !== 3) return false;
@@ -138,20 +139,19 @@ export class Template {
 			return true;
 		}
 		for (let i = 0; i < vertices.length; ++i) {
-			if (!isFloat3(vertices[i])) throw new Error(`LibraryBlock.vertices[${i}] should be an array of 3 numbers.`)
+			this.vertices.push(toVec3(`Template.vertices[${i}]`, vertices[i]));
 		}
-		for (let i = 1; i < vertices.length; ++i) {
-			const a = vertices[i-1];
-			const b = vertices[i];
-			if (a[0] < b[0]
-			 || (a[0] === b[0] && a[1] < b[1])
-			 || (a[0] === b[0] && a[1] === b[1] && a[2] < b[2])) {
+		for (let i = 1; i < this.vertices.length; ++i) {
+			const a = this.vertices[i-1];
+			const b = this.vertices[i];
+			if (a.x < b.x
+			 || (a.x === b.x && a.y < b.y)
+			 || (a.x === b.x && a.y === b.y && a.z < b.z)) {
 				//great, a < b
 			} else {
-				throw new Error(`Vertices ${a} and ${b} are not ordered by z,y,x.`);
+				throw new Error(`Vertices ${a} and ${b} are not ordered by x,y,z.`);
 			}
 		}
-		this.vertices = vertices;
 
 		//faces should be objects with a 'type', 'indices', and 'color':
 		if (!Array.isArray(faces)) throw new Error("LibraryBlock.faces should be an array.");
@@ -213,7 +213,7 @@ function toVec3(what, val) {
 	if (!Array.isArray(val)
 	 || val.length !== 3
 	 || !val.every( (v) => typeof v === 'number' ) ) throw new Error(`${what} is not an array of 3 numbers.`);
-	return {x:val[0], y:val[1], y:val[2]};
+	return {x:val[0], y:val[1], z:val[2]};
 }
 
 
