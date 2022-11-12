@@ -440,8 +440,37 @@ window.addEventListener('keydown', function(evt){
 		body.relax();
 		visBody.set(body);
 		requestRedraw();
+	} else if (evt.code == 'KeyA') {
+		addCell();
+	} else if (evt.code == 'KeyX') {
+		deleteCell();
 	}
 });
+
+function addCell() {
+	console.log("TODO: add cell adjacent to MOUSE.over.cell, if it exists.");
+
+	//make sure to not connect if hovered face is already connected
+
+	//for now: maybe just use first block in the library
+	//later: add a notion of the "current block type" and have some keys or UI to change it
+
+	//figure out how to connect based on face types
+
+	//update UI and redraw:
+	setMouseOver();
+	visBody.set(body);
+	requestRedraw();
+}
+
+function deleteCell() {
+	console.log("TODO: delete MOUSE.over.cell, if it exists.");
+
+	//update UI and redraw:
+	setMouseOver();
+	visBody.set(body);
+	requestRedraw();
+}
 
 //--- vector math library ---
 //TODO: clean this up and move to its own module
