@@ -200,6 +200,9 @@ file.addEventListener('click', function(evt){
 <script type="module">
 'use strict';
 
+import * as gm from './code/gm.mjs';
+window.gm = gm; //DEBUG
+
 import * as sv from './code/sv.mjs';
 
 window.library = new sv.Library();
