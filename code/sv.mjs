@@ -1,3 +1,5 @@
+import * as gm from './gm.mjs';
+
 export class Body {
 	constructor() {
 		this.cells = [];
