@@ -98,7 +98,7 @@ body {
 <input id="file" type="file" />
 <label id="fileLabel" for="file"><span>Choose a .blocks file</span> or drag one into the window to load it.</label>
 <!-- <button id="benchmark">benchmark</button>
-<span id="benchmark-result"></span> --!>
+<span id="benchmark-result"></span> -->
 </div>
 
 <!-- 3d view -->
@@ -115,13 +115,15 @@ body {
 
 </div>
 
-<!-- full-window drop target --!>
+<!-- full-window drop target -->
 <div id="dropTarget"></div>
 
+<!-- File loading code -->
 <script>
-
-//--------------------------------------
-//File loading code
+// TODO: Consider moving each script into its own module for the sake of code
+// clarity. 
+//-----------------------------------------------------------------------------
+// File loading code
 
 window.currentFile = null;
 
@@ -197,6 +199,7 @@ file.addEventListener('click', function(evt){
 });
 </script>
 
+<!-- Solid Knitting UI code -->
 <script type="module">
 'use strict';
 
@@ -210,9 +213,9 @@ window.body = new sv.Body();
 
 import {Geometry, Program} from './code/gl.mjs';
 
-//--------------------------------------
-//Adapted from yarn visualizer code (from smobj)
-//NOTE: based largely on the MDN WebGL tutorials at:
+//-----------------------------------------------------------------------------
+// Adapted from yarn visualizer code (from smobj)
+// NOTE: based largely on the MDN WebGL tutorials at:
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Getting_started_with_WebGL
 
 const canvas = document.getElementById("canvas");
@@ -450,15 +453,70 @@ window.addEventListener('keydown', function(evt){
 	}
 });
 
+// TODO: Consider moving each script into its own module for the sake of code
+// clarity. 
+
+// Solid knitting interface code. 
+
+// Very buggy, please don't mind my debug notes: 
+/**
+ * addCell (): 
+ * Adds cell adjacent to selected face. */
 function addCell() {
-	console.log("TODO: add cell adjacent to MOUSE.over.cell, if it exists.");
+	const cell = MOUSE.over.cell;
+	const face = MOUSE.over.face; 
 
-	//make sure to not connect if hovered face is already connected
+	// Only connect if hovered face is not connected. 
+	if (!cell.connections[face]) {
+		// TODO: Delete this, this is just for debugging face connections. 
+		//const faceRep = cell.template.face[face];
+		
+		console.log("Valid face connection!");
+		console.log("face: " + face);
+		// Create new block vertices. 
+		// For now using the same block type as current selected block.
+		
 
-	//for now: maybe just use first block in the library
-	//later: add a notion of the "current block type" and have some keys or UI to change it
+		console.log(face.indices);
 
-	//figure out how to connect based on face types
+		const newVertices = [
+			[2.5,0,2], [2.5,0,4], [2.5,2,2], [2.5,2,4],
+			[4.5,0,2], [4.5,0,4], [4.5,2,2], [4.5,2,4]
+		]
+		
+		// TODO: Update cell template based on selected block type.
+		// For now we are using the same template as the neighboring block. This will change in the future. 
+		const newCellTemplate = structuredClone(cell.template);
+
+		// Update connections to highlight new neighbors.		
+		const newCell = { 
+			template: newCellTemplate, 
+			vertices: newVertices,
+			connections: [{
+					cell: cell, 
+					face: face
+				}, null, null, null, null, null]
+		}
+
+		// Update current selected face to be connected.
+		// TODO: Figure out how to connect based on specific face types. 
+
+		cell.connections[face] =
+				{
+					cell: newCell, 
+					face: 0
+				}; // updating logic. 
+
+		// Push block onto Body. 
+		body.cells.push(newCell); 
+		console.log(body.cells);
+	} else {
+		// TODO: Delete this, this is just for debugging face connections. 
+		console.log("Face connection is not valid!");
+	}
+
+	// TODO: Add some "current block type" and have some keys or UI to change it
+	// for we are just using the first block in the library.
 
 	//update UI and redraw:
 	setMouseOver();
@@ -466,10 +524,35 @@ function addCell() {
 	requestRedraw();
 }
 
-function deleteCell() {
-	console.log("TODO: delete MOUSE.over.cell, if it exists.");
 
-	//update UI and redraw:
+/**
+ * deleteCell (): 
+ * Deletes currently selected cell, regardless of face type. 
+ * Consider: When cell is selected to delete a box, instead of highlighting
+ * selected face, we should highlight selected cell. */
+function deleteCell() {
+	if (!MOUSE.over) {
+		return;
+	}
+
+	const cell = MOUSE.over.cell;
+
+	const cellIndex =  body.cells.indexOf(cell);
+	const cellConnections = body.cells[cellIndex].connections;
+
+	// Update all connections referencing current cell.
+	for (let i = 0; i < cellConnections.length; i++) {
+		if(cellConnections[i] != null){
+			const currCell = cellConnections[i].cell;
+			const currFace = cellConnections[i].face;
+			currCell.connections[currFace] = null;
+		}
+	}
+
+	// Remove current cell from body. 
+	body.cells.splice(cellIndex, 1);
+
+	// Update UI and redraw:
 	setMouseOver();
 	visBody.set(body);
 	requestRedraw();
