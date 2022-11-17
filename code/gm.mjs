@@ -102,6 +102,8 @@ export class Vec4 extends Vec {
 }
 addAliases(Vec4, 4);
 
+const VEC = [undefined, undefined, Vec2, Vec3, Vec4]; //for promoting after multiplication
+
 //---- matrix types ----
 
 //matrices follow glsl in being stored in column-major order
@@ -303,6 +305,14 @@ export class Mat4x4 extends Mat {
 }
 export const Mat4 = Mat4x4;
 
+const MAT = [
+	[], //0x
+	[], //1x
+	[undefined, undefined, Mat2, Mat2x3, Mat2x4],
+	[undefined, undefined, Mat3x2, Mat3, Mat3x4],
+	[undefined, undefined, Mat4x2, Mat4x3, Mat4]
+];
+
 //matrix-specific functions:
 function transpose(m) {
 	if (!(m instanceof Mat)) throw new Error(`The transpose() function only works on matrices.`);
@@ -314,7 +324,7 @@ function transpose(m) {
 		}
 	}
 	//build new matrix with transposed data:
-	return new Mat(m.rows,m.columns,...data);
+	return new MAT[m.rows][m.columns](...data);
 }
 
 //---- quaternion types ----
@@ -382,8 +392,9 @@ export function add(a,b) {
 		if (a.length !== b.length) throw new Error(`Can't add vectors of length ${a.length} != ${b.length}.`);
 		const c = new a.constructor(a);
 		for (let i = 0; i < c.length; ++i) {
-			c[i] -= b[i];
+			c[i] += b[i];
 		}
+		return c;
 	} else {
 		throw new Error(`Don't know how to add ${a.constructor.name} and ${b.constructor.name}.`);
 	}
@@ -396,6 +407,7 @@ export function sub(a,b) {
 		for (let i = 0; i < c.length; ++i) {
 			c[i] -= b[i];
 		}
+		return c;
 	} else {
 		throw new Error(`Don't know how to subtract ${a.constructor.name} and ${b.constructor.name}.`);
 	}
@@ -415,8 +427,20 @@ export function mul(a,b) {
 				data.push(val);
 			}
 		}
-		//(TODO: could promote to a MatNxM class here)
-		return new Mat(b.columns, a.rows, ...data);
+		return new MAT[b.columns][a.rows](...data);
+	// mat * vec
+	} else if (a instanceof Mat && b instanceof Vec) {
+		if (a.columns !== b.length) throw new Error(`Can't multiply ${a.constructor.name} (${a.columns} columns) by ${b.constructor.name} (${b.length} elements).`);
+		let data = [];
+		for (let row = 0; row < a.rows; ++row) {
+			let val = 0;
+			for (let k = 0; k < a.columns; ++k) {
+				val += a[k * a.rows + row] * b[k];
+			}
+			data.push(val);
+		}
+		//(TODO: could promote to a VecN class here)
+		return new VEC[data.length](...data);
 	// quat * quat
 	} else if (a instanceof Quat && b instanceof Quat) {
 		//as per GLM: https://github.com/g-truc/glm/blob/b3f87720261d623986f164b2a7f6a0a938430271/glm/detail/type_quat.inl#L282-L292
@@ -526,9 +550,9 @@ export function svd(A_) {
 	}
 
 	//Iteratively reduce off-diagonals: (determines V)
-	for (let iter = 0; iter < 20; ++iter) {
+	for (let iter = 0; iter < 10; ++iter) {
 		const remain = mul( transpose(V.toMat3()), mul(S, V.toMat3()) );
-		console.log(`remain:\n${remain.toString()}`); //DEBUG
+		//console.log(`remain:\n${remain.toString()}`); //DEBUG
 		const r01 = Math.abs(remain[0 * 3 + 1])
 		const r02 = Math.abs(remain[0 * 3 + 2])
 		const r12 = Math.abs(remain[1 * 3 + 2])
@@ -559,8 +583,8 @@ export function svd(A_) {
 		V = normalize(mul(V, Q.toQuat()));
 		//console.log("remain:\n" + mul(transpose(V.toMat3()), mul(S, V.toMat3())).toString()); //DEBUG
 	}
-	console.log(A.toString())
-	console.log(mul(A, V.toMat3()).toString());
+	//console.log(A.toString())
+	//console.log(mul(A, V.toMat3()).toString());
 
 	{ //Sort the singular values:
 		let B = mul(A, V.toMat3());
@@ -609,11 +633,9 @@ export function svd(A_) {
 		*/
 	}
 
-
-
 	//figure out U factor:
 	let B = mul(A, V.toMat3());
-	console.log(`before:\n${B}`);
+	//console.log(`before:\n${B}`);
 	function qr_cs(app, apq, aqq) {
 		const den2 = aqq*aqq + apq*apq;
 		if (den2 < tol2) {
@@ -660,8 +682,69 @@ export function svd(A_) {
 	const U = normalize(Q.toQuat());
 	const Sigma = new Mat3(B[0*3+0],0,0, 0,B[1*3+1],0, 0,0,B[2*3+2]);
 
-	console.log(`A:\n${A}`);
-	console.log(`U S Vt:\n${mul(mul(U.toMat3(), Sigma), transpose(V.toMat3()))}`);
-	console.log(`U:\n${U.toMat3()}\nS:\n${Sigma}\nV:\n${V.toMat3()}`);
+	//console.log(`A:\n${A}`);
+	//console.log(`U S Vt:\n${mul(mul(U.toMat3(), Sigma), transpose(V.toMat3()))}`);
+	//console.log(`U:\n${U.toMat3()}\nS:\n${Sigma}\nV:\n${V.toMat3()}`);
 
+	return {U, Sigma, V};
+}
+
+//rigid transform X such that minimizes ( X * [A[i],1] - B[i] ) ^ 2
+// that is, the translation + rotation that get points in A as close as possible to their corresponding points in B
+// return is a Mat4x3
+export function rigidTransform(A,B) {
+	if (A.length !== B.length) throw new Error("Point lists should be the same length.");
+
+	//no points? return identity:
+	if (A.length === 0) return new Mat4x3(1);
+
+	//As per summary in:
+	// https://igl.ethz.ch/projects/ARAP/svd_rot.pdf
+
+	const L = A.length;
+
+	let A_mean = A[0];
+	let B_mean = B[0];
+	for (let i = 1; i < L; ++i) {
+		A_mean = add(A_mean, A[i]);
+		B_mean = add(B_mean, B[i]);
+	}
+	A_mean = mul(1.0 / L, A_mean);
+	B_mean = mul(1.0 / L, B_mean);
+
+	//NOTE: for < 3 pts, could do some gentle regularization
+
+	let S = new Mat3(0);
+	for (let i = 0; i < L; ++i) {
+		const a = sub(A[i],A_mean);
+		const b = sub(B[i],B_mean);
+		S[0*3+0] += a[0] * b[0];
+		S[0*3+1] += a[1] * b[0];
+		S[0*3+2] += a[2] * b[0];
+		S[1*3+0] += a[0] * b[1];
+		S[1*3+1] += a[1] * b[1];
+		S[1*3+2] += a[2] * b[1];
+		S[2*3+0] += a[0] * b[2];
+		S[2*3+1] += a[1] * b[2];
+		S[2*3+2] += a[2] * b[2];
+	}
+
+	const {U, Sigma, V} = svd(S);
+
+	//NOTE: this multiplication would be more efficient betwixt U and V as quaternions:
+	//const rot = mul(V.toMat3(), transpose(U.toMat3()));
+
+	//HACK: actually ignore rotation:
+	const rot = new Mat3(1);
+
+	const translation = sub(B_mean, mul(rot, A_mean));
+
+	//assemble the final transformation:
+	const xform = new Mat4x3(rot); //rotation part
+	//translation part:
+	xform[3*3+0] = translation[0];
+	xform[3*3+1] = translation[1];
+	xform[3*3+2] = translation[2];
+
+	return xform;
 }

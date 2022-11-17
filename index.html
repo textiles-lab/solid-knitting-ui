@@ -207,8 +207,10 @@ import * as gm from './code/gm.mjs';
 window.gm = gm; //DEBUG
 
 import * as sv from './code/sv.mjs';
+window.sv = sv; //DEBUG
 
 window.library = new sv.Library();
+window.template = null;
 window.body = new sv.Body();
 
 import {Geometry, Program} from './code/gl.mjs';
@@ -224,7 +226,7 @@ window.gl = gl; //DEBUG
 
 //------- camera -------
 const camera = {
-	target:{x:0.0, y:0.0, z:0.0},
+	target:new gm.Vec3(0),
 	radius:2.5,
 	azimuth:0.0,
 	elevation:0.0,
@@ -232,42 +234,39 @@ const camera = {
 	aspect:1.0
 };
 
+window.camera = camera; //DEBUG
+
 camera.computeUp = function camera_computeUp() {
-	return {
-		x:Math.cos(this.azimuth)*-Math.sin(this.elevation),
-		y:Math.sin(this.azimuth)*-Math.sin(this.elevation),
-		z:Math.cos(this.elevation)
-	};
+	return new gm.Vec3(
+		Math.cos(this.azimuth)*-Math.sin(this.elevation),
+		Math.sin(this.azimuth)*-Math.sin(this.elevation),
+		Math.cos(this.elevation)
+	);
 };
 
 camera.computeRight = function camera_computeRight() {
-	return {
-		x:-Math.sin(this.azimuth),
-		y:Math.cos(this.azimuth),
-		z:0.0
-	};
+	return new gm.Vec3(
+		-Math.sin(this.azimuth),
+		Math.cos(this.azimuth),
+		0.0
+	);
 };
 
 camera.computeOut = function camera_computeOut() {
-	return {
-		x:Math.cos(this.azimuth)*Math.cos(this.elevation),
-		y:Math.sin(this.azimuth)*Math.cos(this.elevation),
-		z:Math.sin(this.elevation)
-	};
+	return new gm.Vec3(
+		Math.cos(this.azimuth)*Math.cos(this.elevation),
+		Math.sin(this.azimuth)*Math.cos(this.elevation),
+		Math.sin(this.elevation)
+	);
 };
 
 camera.computeAt = function camera_computeAt() {
-	const out = this.computeOut();
-	return {
-		x:this.target.x+this.radius*out.x,
-		y:this.target.y+this.radius*out.y,
-		z:this.target.z+this.radius*out.z
-	};
+	return gm.add(this.target, gm.mul(this.radius, this.computeOut()));
 };
 
 function resetCamera() {
-	let min = {x:Infinity, y:Infinity, z:Infinity};
-	let max = {x:-Infinity, y:-Infinity, z:-Infinity};
+	let min = new gm.Vec3(Infinity);
+	let max = new gm.Vec3(-Infinity);
 
 	//TOOD: compute bounding box
 
@@ -299,7 +298,6 @@ let camFlipX = false; //used for camera rotation control
 
 function mouseRay() {
 	const origin = camera.computeAt();
-	const direction = {};
 
 	//compute ray direction through mouse:
 	const o = camera.computeOut();
@@ -307,9 +305,8 @@ function mouseRay() {
 	const u = camera.computeUp();
 	const rh = Math.tan(0.5 * camera.fovy / 180.0 * Math.PI); //half of the image plane height
 	const rw = rh * camera.aspect; //half of the image plane width
-	direction.x = -o.x + rw * r.x * MOUSE.x + rh * u.x * MOUSE.y;
-	direction.y = -o.y + rw * r.y * MOUSE.x + rh * u.y * MOUSE.y;
-	direction.z = -o.z + rw * r.z * MOUSE.x + rh * u.z * MOUSE.y;
+
+	const direction = gm.sub( gm.add( gm.mul(rw * MOUSE.x, r), gm.mul(rh * MOUSE.y, u)), o);
 
 	return {origin, direction};
 }
@@ -321,34 +318,17 @@ function setMouseOver() {
 	const ray = mouseRay();
 
 	let close = Infinity;
-
-	{ //grid (at z = 0):
-		const ofs = ray.origin.z;
-		const step = ray.direction.z;
-		if ((ofs < 0 && step > 0) || (ofs > 0 && step < 0)) {
-			const t = -ofs / step;
-			if (t < close) {
-				close = t;
-				MOUSE.over = null;
-				MOUSE.grid = {
-					x:ray.origin.x + ray.direction.x * t,
-					y:ray.origin.y + ray.direction.y * t,
-					z:ray.origin.z + ray.direction.z * t
-				};
-			}
-		}
-	}
 	
 
 	//faces of cells:
 	function isect(a,b,c, cell,face) {
-		const perp = cross(sub(b, a), sub(c, a));
+		const perp = gm.cross(gm.sub(b, a), gm.sub(c, a));
 
 		//offset of the start of the ray from the plane of the triangle:
-		const ofs = dot(perp, sub(ray.origin, a));
+		const ofs = gm.dot(perp, gm.sub(ray.origin, a));
 
 		//change in offset when moving along direction:
-		const step = dot(perp, ray.direction);
+		const step = gm.dot(perp, ray.direction);
 
 		//if can't get to plane of triangle, can't intersect:
 		if (step === 0) return;
@@ -360,18 +340,14 @@ function setMouseOver() {
 		if (t >= close) return;
 
 		//move point to plane of triangle:
-		const p = {
-			x:ray.origin.x + ray.direction.x * t,
-			y:ray.origin.y + ray.direction.y * t,
-			z:ray.origin.z + ray.direction.z * t
-		};
+		const p = gm.add(ray.origin, gm.mul(t, ray.direction));
 
 		//console.log(`Close to zero(?): ${dot(perp, sub(p,a))}`); //DEBUG
 
 		//barycentric coords:
-		const wa = dot(perp, cross(sub(c,b), sub(p,b)));
-		const wb = dot(perp, cross(sub(a,c), sub(p,c)));
-		const wc = dot(perp, cross(sub(b,a), sub(p,a)));
+		const wa = gm.dot(perp, gm.cross(gm.sub(c,b), gm.sub(p,b)));
+		const wb = gm.dot(perp, gm.cross(gm.sub(a,c), gm.sub(p,c)));
+		const wc = gm.dot(perp, gm.cross(gm.sub(b,a), gm.sub(p,a)));
 
 		//outside the triangle:
 		if (wa < 0 || wb < 0 || wc < 0) return;
@@ -392,6 +368,25 @@ function setMouseOver() {
 			}
 		}
 	}
+
+	//also check grid (at z = 0) [but only if not over a face]:
+	if (MOUSE.over === null) {
+		const ofs = ray.origin.z;
+		const step = ray.direction.z;
+		if ((ofs < 0 && step > 0) || (ofs > 0 && step < 0)) {
+			const t = -ofs / step;
+			if (t < close) {
+				close = t;
+				MOUSE.over = null;
+				MOUSE.grid = {
+					x:ray.origin.x + ray.direction.x * t,
+					y:ray.origin.y + ray.direction.y * t,
+					z:ray.origin.z + ray.direction.z * t
+				};
+			}
+		}
+	}
+
 }
 
 //mouse in elt-is-[-1,1]x[-1,1] space:
@@ -471,7 +466,14 @@ window.addEventListener('keydown', function(evt){
 		addCell();
 	} else if (evt.code == 'KeyX') {
 		deleteCell();
+	} else if (evt.code == 'ArrowUp') {
+		prevTemplate();
+		requestRedraw();
+	} else if (evt.code == 'ArrowDown') {
+		nextTemplate();
+		requestRedraw();
 	}
+	//console.log(evt); //when you want more keys
 });
 
 // TODO: Consider moving each script into its own module for the sake of code
@@ -479,65 +481,126 @@ window.addEventListener('keydown', function(evt){
 
 // Solid knitting interface code. 
 
-// Very buggy, please don't mind my debug notes: 
+//select next template from library:
+// (uses global 'library' and 'template' variables)
+function nextTemplate() {
+	let selected = null;
+	for (const t of Object.values(library.templates)) {
+		//only consider templates with larger signature than current:
+		if (template !== null && t.signature() <= template.signature()) continue;
+		//of these, select the smallest:
+		if (selected !== null && selected.signature() < t.signature()) continue;
+		console.assert(selected === null || selected.signature() != t.signature(), "All templates should have unique signatures.");
+		selected = t;
+	}
+	template = selected;
+}
+
+//select previous template from library:
+// (uses global 'library' and 'template' variables)
+function prevTemplate() {
+	let selected = null;
+	for (const t of Object.values(library.templates)) {
+		//only consider templates with smaller signature than current:
+		if (template !== null && t.signature() >= template.signature()) continue;
+		//of these, select the largest:
+		if (selected !== null && selected.signature() > t.signature()) continue;
+		console.assert(selected === null || selected.signature() != t.signature(), "All templates should have unique signatures.");
+		selected = t;
+	}
+	template = selected;
+}
+
+//return a cell built as if by pressing 'addCell' at this very location:
+// (or 'null' if that wouldn't happen)
+function previewCell() {
+	//can't add a cell if current template is no template:
+	if (template === null) return null;
+
+	if (MOUSE.grid !== null) {
+		//transform that puts center of cell at mouse position on the grid:
+		const xform = new gm.Mat4x3(
+			1,0,0,
+			0,1,0,
+			0,0,1,
+			MOUSE.grid.x, MOUSE.grid.y, 0
+		);
+		return sv.Cell.fromTemplate(template, xform);
+	}
+
+	if (MOUSE.over !== null) {
+		const cell = MOUSE.over.cell;
+		const face = MOUSE.over.face; 
+
+		// Only connect if hovered face is not connected. 
+		if (!cell.connections[face]) {
+
+			// find face on template with compatible type:
+			function compatible(a,b) {
+				if (a[0] === '-' && b[0] === '+') return a.substr(1) === b.substr(1);
+				if (a[0] === '+' && b[0] === '-') return a.substr(1) === b.substr(1);
+				return false;
+			}
+			let compat = [];
+			for (let f = 0; f < template.faces.length; ++f) {
+				if (compatible(cell.template.faces[face].type, template.faces[f].type)) {
+					compat.push(f);
+				}
+			}
+			if (!compatible.length) {
+				//console.log(" (no compatible faces)");
+			} else {
+				const tf = compat[0];
+
+				console.assert(cell.template.faces[face].indices.length === template.faces[tf].indices.length, "Cell and connecting template face have same count of vertices.");
+
+				//vertex lists that should connect:
+				const cellVerts = [];
+				const templateVerts = [];
+				const L = cell.template.faces[face].indices.length;
+				for (let i = 0; i < L; ++i) {
+					const cv = cell.template.faces[face].indices[i];
+					const tv = template.faces[tf].indices[(L+1-i)%L];
+					cellVerts.push(cell.vertices[cv]);
+					templateVerts.push(template.vertices[tv]);
+				}
+
+				const xform = gm.rigidTransform(templateVerts, cellVerts);
+
+				const preview = sv.Cell.fromTemplate(template, xform);
+
+				//record the fact that the connection exists:
+				preview.connections[tf] = {cell:cell, face:face};
+
+				return preview;
+			}
+		}
+
+	}
+
+	return null;
+}
+window.previewCell = previewCell; //DEBUG
+
 /**
  * addCell (): 
  * Adds cell adjacent to selected face. */
 function addCell() {
-	const cell = MOUSE.over.cell;
-	const face = MOUSE.over.face; 
+	//is there a cell that could exist here? Ask the preview function:
+	const preview = previewCell();
 
-	// Only connect if hovered face is not connected. 
-	if (!cell.connections[face]) {
-		// TODO: Delete this, this is just for debugging face connections. 
-		//const faceRep = cell.template.face[face];
-		
-		console.log("Valid face connection!");
-		console.log("face: " + face);
-		// Create new block vertices. 
-		// For now using the same block type as current selected block.
-		
+	//if doesn't exist, don't create anything:
+	if (preview === null) return;
 
-		console.log(face.indices);
-
-		const newVertices = [
-			[2.5,0,2], [2.5,0,4], [2.5,2,2], [2.5,2,4],
-			[4.5,0,2], [4.5,0,4], [4.5,2,2], [4.5,2,4]
-		]
-		
-		// TODO: Update cell template based on selected block type.
-		// For now we are using the same template as the neighboring block. This will change in the future. 
-		const newCellTemplate = structuredClone(cell.template);
-
-		// Update connections to highlight new neighbors.		
-		const newCell = { 
-			template: newCellTemplate, 
-			vertices: newVertices,
-			connections: [{
-					cell: cell, 
-					face: face
-				}, null, null, null, null, null]
-		}
-
-		// Update current selected face to be connected.
-		// TODO: Figure out how to connect based on specific face types. 
-
-		cell.connections[face] =
-				{
-					cell: newCell, 
-					face: 0
-				}; // updating logic. 
-
-		// Push block onto Body. 
-		body.cells.push(newCell); 
-		console.log(body.cells);
-	} else {
-		// TODO: Delete this, this is just for debugging face connections. 
-		console.log("Face connection is not valid!");
+	//if the cell *does* exist, hook up the other side of any connections it has:
+	for (let f = 0; f < preview.connections.length; ++f) {
+		const con = preview.connections[f];
+		if (con === null) continue;
+		console.assert(con.cell.connections[con.face] === null, "Shouldn't be over-writing connections.");
+		con.cell.connections[con.face] = {cell:preview, face:f};
 	}
 
-	// TODO: Add some "current block type" and have some keys or UI to change it
-	// for we are just using the first block in the library.
+	body.cells.push(preview);
 
 	//update UI and redraw:
 	setMouseOver();
@@ -582,34 +645,14 @@ function deleteCell() {
 //--- vector math library ---
 //TODO: clean this up and move to its own module
 
-function add(a,b) {
-	return {x:a.x+b.x, y:a.y+b.y, z:a.z+b.z};
-}
-function sub(a,b) {
-	return {x:a.x-b.x, y:a.y-b.y, z:a.z-b.z};
-}
-function dot(a, b) {
-	return a.x * b.x + a.y * b.y + a.z * b.z;
-}
-function cross(a, b) {
-	return {
-		x: a.y * b.z - a.z * b.y,
-		y: a.z * b.x - a.x * b.z,
-		z: a.x * b.y - a.y * b.x
-	};
-}
-function normalize(vec) {
-	var len = Math.sqrt(dot(vec, vec));
-	return { x:vec.x / len, y:vec.y / len, z:vec.z / len };
-}
 function lookAt(eye, target, up) {
-	var out = normalize({ x:eye.x - target.x, y:eye.y - target.y, z:eye.z - target.z });
-	var proj = dot(up, out);
-	up = normalize({ x:up.x - proj * out.x, y:up.y - proj * out.y, z:up.z - proj * out.z });
+	var out = gm.normalize(gm.sub(eye, target));
+	var proj = gm.dot(up, out);
+	up = gm.normalize( gm.sub(up, gm.mul(proj, out) ) );
 
-	var right = cross(up, out);
+	var right = gm.cross(up, out);
 
-	var offset = { x: -dot(eye, right), y: -dot(eye, up), z: -dot(eye, out) };
+	var offset = new gm.Vec3(-gm.dot(eye, right), -gm.dot(eye, up), -gm.dot(eye, out));
 
 	return new Float32Array([
 		right.x, up.x, out.x, 0.0,
@@ -866,7 +909,7 @@ class VisBody extends Geometry {
 		}
 		
 		function triangle(va,vb,vc, color) {
-			let n = normalize(cross(sub(vb, va), sub(vc, va)));
+			let n = gm.normalize(gm.cross(gm.sub(vb, va), gm.sub(vc, va)));
 			attrib(va.x,va.y,va.z, n.x,n.y,n.z, color);
 			attrib(vb.x,vb.y,vb.z, n.x,n.y,n.z, color);
 			attrib(vc.x,vc.y,vc.z, n.x,n.y,n.z, color);
@@ -935,9 +978,9 @@ class VisDebug extends Geometry {
 			const u = camera.computeUp();
 			r.x *= 0.01; r.y *= 0.01; r.z *= 0.01;
 			u.x *= 0.01; u.y *= 0.01; u.z *= 0.01;
-			const c = add(ray.origin, ray.direction);
-			line(add(c,r), sub(c,r), 0xffff00ff);
-			line(add(c,u), sub(c,u), 0xffff00ff);
+			const c = gm.add(ray.origin, ray.direction);
+			line(gm.add(c,r), gm.sub(c,r), 0xffff00ff);
+			line(gm.add(c,u), gm.sub(c,u), 0xffff00ff);
 		}
 
 		//currently hovered face:
@@ -958,6 +1001,15 @@ class VisDebug extends Geometry {
 			line({x:x+1, y:y, z:0}, {x:x+1,y:y+1, z:0}, 0xff00ffff);
 			line({x:x+1, y:y+1, z:0}, {x:x,y:y+1, z:0}, 0xff00ffff);
 			line({x:x, y:y+1, z:0}, {x:x,y:y, z:0}, 0xff00ffff);
+		}
+
+		const cell = previewCell();
+		if (cell !== null) { //preview cell addition:
+			for (let face of cell.template.faces) {
+				for (let i = 0; i < face.indices.length; ++i) {
+					line(cell.vertices[face.indices[i]], cell.vertices[face.indices[(i+1)%face.indices.length]], 0x888800ff);
+				}
+			}
 		}
 
 
@@ -1015,7 +1067,7 @@ function redraw() {
 		computeMVP()
 	);
 
-	const lightDir = normalize(add(camera.computeUp(),camera.computeOut()));
+	const lightDir = gm.normalize(gm.add(camera.computeUp(),camera.computeOut()));
 	gl.uniform3f(
 		colorProgram.uniformLocations.HEMI_DIRECTION,
 		lightDir.x, lightDir.y, lightDir.z
@@ -1052,6 +1104,9 @@ async function init() {
 		console.log(`  got ${arrayBuffer.byteLength} bytes.`);
 
 		window.library = sv.Library.fromArrayBuffer(arrayBuffer);
+		//hack-y way of selecting first template:
+		window.template = null;
+		nextTemplate();
 	}
 
 	{

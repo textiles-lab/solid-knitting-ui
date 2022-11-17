@@ -12,7 +12,7 @@ export class Body {
 			cell.viBase = vertices.length;
 			for (const vertex of cell.vertices) {
 				merged.push(vertices.length);
-				vertices.push({x:vertex.x, y:vertex.y, z:vertex.z, a:1});
+				vertices.push(new gm.Vec4(vertex, 1));
 			}
 		}
 		//basic union-find for making sets of vertices:
@@ -68,24 +68,12 @@ export class Body {
 			//copy vertices:
 			for (let vi = 0; vi < cell.vertices.length; ++vi) {
 				const target = vertices[find(cell.viBase + vi)];
-				cell.vertices[vi] = {x:target.x, y:target.y, z:target.z};
+				cell.vertices[vi] = new gm.Vec3(target);
 			}
-			//fit template to positions (translation part):
-			let T = {x:0, y:0, z:0};
+			const xf = gm.rigidTransform(cell.template.vertices, cell.vertices);
 			for (let vi = 0; vi < cell.vertices.length; ++vi) {
-				T.x += cell.vertices[vi].x - cell.template.vertices[vi].x;
-				T.y += cell.vertices[vi].y - cell.template.vertices[vi].y;
-				T.z += cell.vertices[vi].z - cell.template.vertices[vi].z;
+				cell.vertices[vi] = gm.mul(xf, new gm.Vec4(cell.template.vertices[vi], 1));
 			}
-			T.x /= cell.vertices.length;
-			T.y /= cell.vertices.length;
-			T.z /= cell.vertices.length;
-			for (let vi = 0; vi < cell.vertices.length; ++vi) {
-				cell.vertices[vi].x = cell.template.vertices[vi].x + T.x;
-				cell.vertices[vi].y = cell.template.vertices[vi].y + T.y;
-				cell.vertices[vi].z = cell.template.vertices[vi].z + T.z;
-			}
-			//TODO: fit rotation part (needs SVD implementation)
 		}
 	}
 	check() { } //consistency check (connections point both directions)
@@ -173,6 +161,23 @@ export class Cell {
 		//this.connections[0].block.connections[ this.connections[0].face ] === this
 
 	}
+	//generate from a template given some transform:
+	static fromTemplate(template, xform = new gm.Mat4x3(1)) {
+
+		//vertices are a transformed copy of the template's vertices:
+		let vertices = [];
+		for (let vertex of template.vertices) {
+			vertices.push(gm.mul(xform, new gm.Vec4(vertex,1)));
+		}
+
+		//connections are a list of blank connections:
+		let connections = [];
+		for (let face of template.faces) {
+			connections.push(null);
+		}
+
+		return new Cell({template, vertices, connections});
+	}
 };
 
 export class Library {
@@ -192,8 +197,6 @@ export class Library {
 			lib.templates[key] = template;
 		}
 		return lib;
-	}
-	toData() {
 	}
 	static fromArrayBuffer(buffer) {
 		const text = new TextDecoder("utf-8").decode(buffer);
@@ -217,12 +220,6 @@ export class Template {
 		//vertices should be 3D, lexicographic [by x,y,z] order:
 		if (!Array.isArray(vertices)) throw new Error("LibraryBlock.vertices should be an array.");
 		this.vertices = [];
-		function isFloat3(x) {
-			if (!Array.isArray(x)) return false;
-			if (x.length !== 3) return false;
-			if (!x.every( (v) => typeof v === 'number' )) return false;
-			return true;
-		}
 		for (let i = 0; i < vertices.length; ++i) {
 			this.vertices.push(toVec3(`Template.vertices[${i}]`, vertices[i]));
 		}
@@ -298,7 +295,7 @@ function toVec3(what, val) {
 	if (!Array.isArray(val)
 	 || val.length !== 3
 	 || !val.every( (v) => typeof v === 'number' ) ) throw new Error(`${what} is not an array of 3 numbers.`);
-	return {x:val[0], y:val[1], z:val[2]};
+	return new gm.Vec3(val[0], val[1], val[2]);
 }
 
 
