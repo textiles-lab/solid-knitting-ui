@@ -15,10 +15,10 @@ Based, loosely, on https://github.com/textiles-lab/smobj/tree/master/web which i
 - Camera movement
 - Helpers for webgl
 - Block/face selection raycasts.
+- Code to delete blocks. 
+- Code to add/detach blocks. 
 
 ### TODO:
-- Code to delete blocks.
-- Code to add/attach blocks.
 - Block library display.
 - Fancy (rotation) relaxation.
 - Yarn drawing.
