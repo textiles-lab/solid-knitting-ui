@@ -599,8 +599,16 @@ function addCell() {
 		console.assert(con.cell.connections[con.face] === null, "Shouldn't be over-writing connections.");
 		con.cell.connections[con.face] = {cell:preview, face:f};
 	}
-
 	body.cells.push(preview);
+
+	// Check correctness from preview cell. 
+	checkLocalCellCorrectness(preview);
+	/**
+	 * // Check global correctness accross all cells, i.e. simulate addition. 
+	 * // Note: Potentially expensive operation so perhaps it might not be a good idea to call
+	 * // it every time a funct 
+	 * checkGlobalCellCorrectness();
+	**/
 
 	//update UI and redraw:
 	setMouseOver();
@@ -608,6 +616,40 @@ function addCell() {
 	requestRedraw();
 }
 
+// Checks that connections between two cells are appropriate. 
+function checkLocalCellCorrectness(preview) {
+	let connectionsLen = preview.connections.length();
+	for (let j = 0; j < connectionsLen; j++){
+		// check that face connections have corresponding block directions. 
+
+		// Possible valid connections:
+		// +l joins -l
+		// -l joins +l
+		// +L joins -L
+		// -L joins +L
+		// +y joins -y 
+		// -y joins +y
+
+		// To respect the interface, it might be best for this to go in sv.mjs? 
+		// I need to look into it.
+	}
+}
+
+/** checkGlobalCellCorrectness: 
+ *  Checks that cells are appropriately connected globally. 
+ *  Consider: Do BFS and make sure that graph is acyclic. */
+function checkGlobalCellCorrectness() {
+	let bodyLen = body.cells.length(); 
+	// Iterate accross all cell connections.
+	// Make sure that no path leads back to original cell body. 
+	for (let i = 0; i < bodyLen; i++){
+		let cell = body.cells[i];
+		let connectionsLen = cell.connections.length();
+		for (let j = 0; j < connectionsLen; j++){
+
+		}
+	}
+}
 
 /**
  * deleteCell (): 
