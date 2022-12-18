@@ -1099,7 +1099,8 @@ window.addEventListener('resize', requestRedraw);
 async function init() {
 	{
 		console.log(`Fetching library...`);
-		const request = await fetch('solid-knitting.library');
+		//const request = await fetch('solid-knitting.library');
+		const request = await fetch('block-library/blocks.json');
 		const arrayBuffer = await request.arrayBuffer();
 		console.log(`  got ${arrayBuffer.byteLength} bytes.`);
 
