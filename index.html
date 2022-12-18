@@ -311,6 +311,13 @@ function mouseRay() {
 	return {origin, direction};
 }
 
+function mouseDirty() {
+	MOUSE.over = null;
+	MOUSE.grid = null;
+
+	MOUSE.dirty = true;
+	requestRedraw(); //mouse will be updated as part of redraw
+}
 function setMouseOver() {
 	MOUSE.over = null;
 	MOUSE.grid = null;
@@ -358,6 +365,36 @@ function setMouseOver() {
 	}
 
 	for (const cell of body.cells) {
+		{ //ray vs bounding box of cell:
+			let min = new gm.Vec3(Infinity);
+			let max = new gm.Vec3(-Infinity);
+			for (let v of cell.vertices) {
+				min = gm.min(min, v);
+				max = gm.max(max, v);
+			}
+			let t0 = 0;
+			let t1 = Infinity;
+			function reduce(low, high, origin, direction) {
+				//when is low <= origin + t * direction <= high?
+				if (direction > 0) {
+					t0 = Math.max(t0, (low - origin) / direction);
+					t1 = Math.min(t1, (high - origin) / direction);
+				} else if (direction < 0) {
+					t1 = Math.min(t1, (low - origin) / direction);
+					t0 = Math.max(t0, (high - origin) / direction);
+				} else {
+					if (origin < low || origin > high) {
+						t0 = 1;
+						t1 = 0;
+					}
+				}
+			}
+			reduce(min.x, max.x, ray.origin.x, ray.direction.x)
+			reduce(min.y, max.y, ray.origin.y, ray.direction.y)
+			reduce(min.z, max.z, ray.origin.z, ray.direction.z)
+			if (t0 > t1) continue; //if doesn't intersect bounding box
+		}
+
 		for (let fi = 0; fi < cell.template.faces.length; ++fi) {
 			const face = cell.template.faces[fi];
 			for (let i = 2; i < face.indices.length; ++i) {
@@ -444,8 +481,7 @@ canvas.addEventListener('mousemove', function(evt){
 	}
 	MOUSE.x = mouse.x;
 	MOUSE.y = mouse.y;
-	setMouseOver();
-	requestRedraw(); //needed if we want to draw mouse cursor, maybe not generally needed
+	mouseDirty();
 	evt.preventDefault();
 	return false;
 });
@@ -453,6 +489,7 @@ canvas.addEventListener('mousemove', function(evt){
 canvas.addEventListener('mouseup', function(evt){
 	MOUSE.x = NaN;
 	MOUSE.y = NaN;
+	mouseDirty();
 	evt.preventDefault();
 	return false;
 });
@@ -586,6 +623,8 @@ window.previewCell = previewCell; //DEBUG
  * addCell (): 
  * Adds cell adjacent to selected face. */
 function addCell() {
+	if (MOUSE.dirty) setMouseOver();
+
 	//is there a cell that could exist here? Ask the preview function:
 	const preview = previewCell();
 
@@ -603,7 +642,7 @@ function addCell() {
 	body.cells.push(preview);
 
 	//update UI and redraw:
-	setMouseOver();
+	mouseDirty();
 	visBody.set(body);
 	requestRedraw();
 }
@@ -637,7 +676,7 @@ function deleteCell() {
 	body.cells.splice(cellIndex, 1);
 
 	// Update UI and redraw:
-	setMouseOver();
+	mouseDirty();
 	visBody.set(body);
 	requestRedraw();
 }
@@ -1051,6 +1090,9 @@ function redraw() {
 		gl.viewport(0,0,width,height);
 		camera.aspect = width / height;
 	})();
+
+	//update mouse info:
+	if (MOUSE.dirty) setMouseOver();
 
 	visDebug.update();
 

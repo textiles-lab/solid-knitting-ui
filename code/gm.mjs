@@ -387,6 +387,32 @@ export class Quat extends Array {
 
 
 //---- math functions ----
+export function min(a,b) {
+	if (a instanceof Vec && b instanceof Vec) {
+		if (a.length !== b.length) throw new Error(`Can't min vectors of length ${a.length} != ${b.length}.`);
+		const c = new a.constructor(a);
+		for (let i = 0; i < c.length; ++i) {
+			c[i] = Math.min(c[i], b[i]);
+		}
+		return c;
+	} else {
+		throw new Error(`Don't know how to min ${a.constructor.name} and ${b.constructor.name}.`);
+	}
+}
+
+export function max(a,b) {
+	if (a instanceof Vec && b instanceof Vec) {
+		if (a.length !== b.length) throw new Error(`Can't max vectors of length ${a.length} != ${b.length}.`);
+		const c = new a.constructor(a);
+		for (let i = 0; i < c.length; ++i) {
+			c[i] = Math.max(c[i], b[i]);
+		}
+		return c;
+	} else {
+		throw new Error(`Don't know how to max ${a.constructor.name} and ${b.constructor.name}.`);
+	}
+}
+
 export function add(a,b) {
 	if (a instanceof Vec && b instanceof Vec) {
 		if (a.length !== b.length) throw new Error(`Can't add vectors of length ${a.length} != ${b.length}.`);
