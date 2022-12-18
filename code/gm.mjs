@@ -510,6 +510,20 @@ export function mul(a,b) {
 	}
 }
 
+export function mix(a,b,amt) {
+	if (a instanceof Vec && b instanceof Vec) {
+		if (a.length !== b.length) throw new Error(`Can't min vectors of length ${a.length} != ${b.length}.`);
+		const c = new a.constructor(a);
+		for (let i = 0; i < c.length; ++i) {
+			c[i] += (b[i] - c[i]) * amt;
+		}
+		return c;
+	} else {
+		throw new Error(`Don't know how to mix ${a.constructor.name} and ${b.constructor.name}.`);
+	}
+}
+
+
 export function dot(a,b) {
 	if (a instanceof Vec && b instanceof Vec) {
 		if (a.length !== b.length) throw new Error(`Can't dot vectors of length ${a.length} != ${b.length}.`);

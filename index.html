@@ -498,6 +498,7 @@ window.addEventListener('keydown', function(evt){
 	if (evt.code === 'Space') {
 		body.relax();
 		visBody.set(body);
+		visWire.set(body);
 		requestRedraw();
 	} else if (evt.code == 'KeyA') {
 		addCell();
@@ -644,6 +645,7 @@ function addCell() {
 	//update UI and redraw:
 	mouseDirty();
 	visBody.set(body);
+	visWire.set(body);
 	requestRedraw();
 }
 
@@ -678,6 +680,7 @@ function deleteCell() {
 	// Update UI and redraw:
 	mouseDirty();
 	visBody.set(body);
+	visWire.set(body);
 	requestRedraw();
 }
 
@@ -988,6 +991,134 @@ class VisBody extends Geometry {
 const visBody = new VisBody();
 window.visBody = visBody; //DEBUG
 
+class VisWire extends Geometry {
+	static BYTES_PER_ATTRIB = 4*3 + 1*4; //Position, Color
+	constructor() {
+		const BYTES_PER_ATTRIB = VisWire.BYTES_PER_ATTRIB;
+
+		const buffer = gl.createBuffer();
+
+		const attribs = {
+			Position:{buffer:buffer, size:3, type:gl.FLOAT, normalize:false, stride:BYTES_PER_ATTRIB, offset:0},
+			Normal:[0,0,1],
+			Color:{buffer:buffer, size:4, type:gl.UNSIGNED_BYTE, normalize:true, stride:BYTES_PER_ATTRIB, offset:4*3},
+		};
+
+		super(gl, attribs, gl.LINES, 0);
+
+		this.buffer = buffer; //needed for set()
+	}
+	set(blocks) {
+		const BYTES_PER_ATTRIB = VisWire.BYTES_PER_ATTRIB;
+
+		//figure out how much space to allocate for attributes:
+		let totalAttribs = 0;
+		for (const cell of body.cells) {
+			for (let fi = 0; fi < cell.template.faces.length; ++fi) {
+				const face = cell.template.faces[fi];
+				totalAttribs += face.indices.length * 2 + 4;
+				const con = cell.connections[fi];
+				if (con !== null) totalAttribs += face.indices.length * 3;
+			}
+		}
+
+		const arrayBuffer = new ArrayBuffer(BYTES_PER_ATTRIB * totalAttribs);
+		const data = new DataView(arrayBuffer);
+		let dataOffset = 0;
+		function attrib(x,y,z, rgba) {
+			data.setFloat32(dataOffset, x, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, y, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, z, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+
+			data.setUint32(dataOffset, rgba, false); dataOffset += 4;
+		}
+
+		for (const cell of body.cells) {
+			let ports = [];
+			
+			{ //compute cell center:
+				let center = new gm.Vec3(0.0);
+				for (let v of cell.vertices) {
+					center = gm.add(center, v);
+				}
+				center = gm.mul(1.0 / cell.vertices.length, center);
+				cell.center = center;
+			}
+
+			for (const face of cell.template.faces) {
+				let center = new gm.Vec3(0.0);
+				for (let vi of face.indices) {
+					center = gm.add(center, cell.vertices[vi]);
+				}
+				center = gm.mul(1.0 / face.indices.length, center);
+				let port = [];
+				for (let i = 0; i < face.indices.length; ++i) {
+					let v = cell.vertices[face.indices[i]];
+					v = gm.mix(v, center, 0.5); //move toward center of face
+					port.push(v);
+				}
+				ports.push(port);
+				for (let i = 0; i < face.indices.length; ++i) {
+					let a = cell.vertices[face.indices[i]];
+					let b = cell.vertices[face.indices[(i+1)%face.indices.length]];
+					a = gm.add(gm.mul(0.9, gm.sub(a, center)), center);
+					b = gm.add(gm.mul(0.9, gm.sub(b, center)), center);
+					let col = css2Uint32(face.color);
+					attrib(a.x,a.y,a.z, col);
+					attrib(b.x,b.y,b.z, col);
+					if (i === 0) {
+						let c = gm.mul(0.5, gm.add(a,b));
+						c = gm.add(gm.mul(0.9, gm.sub(c, center)), center);
+						col = 0xffff00ff; //highlight "first edge"
+						attrib(a.x,a.y,a.z, col);
+						attrib(c.x,c.y,c.z, col);
+						attrib(c.x,c.y,c.z, col);
+						attrib(b.x,b.y,b.z, col);
+					}
+				}
+			}
+			cell.ports = ports;
+		}
+
+		//connections:
+		for (const cell of body.cells) {
+			for (let fi = 0 ; fi < cell.connections.length; ++fi) {
+				const connection = cell.connections[fi];
+				if (connection === null) continue;
+				if (cell.template.faces[fi].type[0] !== '-') continue; //draw connectsions from '-' => '+'
+
+				for (let i = 0; i < cell.ports[fi].length; ++i) {
+					let ci = (cell.template.faces[fi].indices.length + 1 - i) % cell.template.faces[fi].indices.length;
+					let a = cell.ports[fi][i];
+					let ca = gm.mix(a, cell.center, 0.1);
+					let b = connection.cell.ports[connection.face][ci];
+					let cb = gm.mix(b, connection.cell.center, 0.1);
+					attrib(ca.x, ca.y, ca.z, 0x888888ff); attrib(a.x, a.y, a.z, 0x888888ff);
+					attrib(a.x, a.y, a.z, 0x888888ff); attrib(b.x, b.y, b.z, 0xffffffff);
+					attrib(b.x, b.y, b.z, 0xffffffff); attrib(cb.x, cb.y, cb.z, 0xffffffff);
+				}
+			}
+		}
+
+		//remove temp stuff:
+		for (const cell of body.cells) {
+			delete cell.center;
+			delete cell.ports;
+		}
+
+
+		console.assert(dataOffset === arrayBuffer.byteLength, `Bytes of attributes (${dataOffset}) matches allocated data size (${data.byteLength}).`);
+
+		this.count = arrayBuffer.byteLength / BYTES_PER_ATTRIB;
+
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+		gl.bufferData(gl.ARRAY_BUFFER, arrayBuffer, gl.STATIC_DRAW);
+	}
+}
+
+const visWire = new VisWire();
+window.visWire = visWire; //DEBUG
+
 class VisDebug extends Geometry {
 	static BYTES_PER_ATTRIB = 4*3 + 1*4; //Position, Color
 	constructor() {
@@ -1016,7 +1147,6 @@ class VisDebug extends Geometry {
 		}
 
 		//----- make debug lines ----
-
 		
 		//mouse cursor:
 		if (MOUSE.x === MOUSE.x) {
@@ -1056,6 +1186,9 @@ class VisDebug extends Geometry {
 				for (let i = 0; i < face.indices.length; ++i) {
 					line(cell.vertices[face.indices[i]], cell.vertices[face.indices[(i+1)%face.indices.length]], 0x888800ff);
 				}
+			}
+			for (let yarn of cell.template.yarns) {
+				//... hmmm
 			}
 		}
 
@@ -1134,7 +1267,8 @@ function redraw() {
 	gl.lineWidth(1.0 * pixelRatio);
 	grid.draw(colorProgram);
 
-	visBody.draw(colorProgram);
+	//visBody.draw(colorProgram);
+	visWire.draw(colorProgram);
 
 	//show "hidden" debug lines also:
 
@@ -1193,6 +1327,7 @@ async function init() {
 	}
 
 	visBody.set(window.body);
+	visWire.set(window.body);
 
 	resetCamera();
 	requestRedraw();
