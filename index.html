@@ -837,7 +837,7 @@ class Grid extends Geometry {
 		const BYTES_PER_ATTRIB = 4*2 + 1*4;
 		const RADIUS = 10;
 
-		const arrayBuffer = new ArrayBuffer(4*(2*RADIUS+1) * BYTES_PER_ATTRIB);
+		const arrayBuffer = new ArrayBuffer(4*(2*RADIUS+1+1) * BYTES_PER_ATTRIB);
 		const data = new DataView(arrayBuffer);
 
 		let dataOffset = 0;
@@ -858,14 +858,27 @@ class Grid extends Geometry {
 
 
 		for (let x = -RADIUS; x <= RADIUS; ++x) {
-			const col = (x == 0 ? 0x88ff88ff : 0x888888ff);
-			attrib(x,-RADIUS, col);
-			attrib(x, RADIUS, col);
+			if (x === 0) {
+				attrib(x,-RADIUS, 0x008800ff);
+				attrib(x, 0, 0x008800ff);
+				attrib(x, 0, 0x88ff88ff);
+				attrib(x, RADIUS, 0x88ff88ff);
+			} else {
+				const col = (x == 0 ? 0x88ff88ff : 0x888888ff);
+				attrib(x,-RADIUS, 0x888888ff);
+				attrib(x, RADIUS, 0x888888ff);
+			}
 		}
 		for (let y = -RADIUS; y <= RADIUS; ++y) {
-			const col = (y == 0 ? 0xff8888ff : 0x888888ff);
-			attrib(-RADIUS,y, col);
-			attrib( RADIUS,y, col);
+			if (y === 0) {
+				attrib(-RADIUS,y, 0x880000ff);
+				attrib( 0,y, 0x880000ff);
+				attrib( 0,y, 0xff8888ff);
+				attrib( RADIUS,y, 0xff8888ff);
+			} else {
+				attrib(-RADIUS,y, 0x888888ff);
+				attrib( RADIUS,y, 0x888888ff);
+			}
 		}
 
 		console.assert(dataOffset === arrayBuffer.byteLength, `Bytes of attributes (${dataOffset}) matches allocated data size (${data.byteLength}).`);
@@ -1315,6 +1328,12 @@ async function init() {
 		//hack-y way of selecting first template:
 		window.template = null;
 		nextTemplate();
+
+		let info = 'Library contains:';
+		for (let name of Object.keys(library.templates).sort()) {
+			info += '\n   ' + name;
+		}
+		console.log(info);
 	}
 
 	{

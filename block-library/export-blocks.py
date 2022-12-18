@@ -35,7 +35,7 @@ TYPE_COLORS={
 	"+L1":"#bb0000",
 	"-y1":"#884488",
 	"+y1":"#bb88bb",
-	"":"#444444",
+	"x":"#444444",
 }
 
 out = []
@@ -58,8 +58,6 @@ for obj in blocks.objects:
 		face_normals.append(poly.normal)
 		face_types.append(None)
 		face_first.append(None)
-
-	print(face_normals)
 
 	yarns = []
 
@@ -117,19 +115,22 @@ for obj in blocks.objects:
 			if best == None:
 				print(f"  WARNING: Did not find side to label! Ignoring {child.name}")
 				continue
-			print(f"marker at {at} is closest to {best} at {face_centers[best]}") #DEBUG
 			if face_types[best] != None:
 				print(f"  WARNING: {child.name} labels already-labelled face {best}. Ignoring.")
 				continue
 
-			#determine face direction + assign:
-			align = outward.dot(face_normals[best])
-			if align > 0.9:
-				face_types[best] = '+' + child.data.name
-			elif align < -0.9:
-				face_types[best] = '-' + child.data.name
+			if child.data.name == 'x':
+				#'x' is special "disconnected" face
+				face_types[best] = child.data.name
 			else:
-				print(f"  WARNING: alignment ({align}) is not > 0.9 or < -0.9 -- not sure of face direction")
+				#determine face direction + assign:
+				align = outward.dot(face_normals[best])
+				if align > 0.9:
+					face_types[best] = '+' + child.data.name
+				elif align < -0.9:
+					face_types[best] = '-' + child.data.name
+				else:
+					print(f"  WARNING: alignment ({align}) is not > 0.9 or < -0.9 -- not sure of face direction")
 
 			#determine "first edge" = overall lowest edge:
 			poly = mesh.polygons[best]
@@ -142,10 +143,7 @@ for obj in blocks.objects:
 				if test < height:
 					height = test
 					first = i
-			face_first[best] = i
-
-	print(face_types)
-	print(face_first)
+			face_first[best] = first
 
 	#re-order vertices for sorted constraint:
 	vertex_order = sorted(range(0,len(mesh.vertices)), key=lambda i: tuple(mesh.vertices[i].co))
@@ -160,14 +158,14 @@ for obj in blocks.objects:
 	for f in range(0, len(mesh.polygons)):
 		face = dict()
 		if face_types[f] == None:
-			face["type"] = ""
-		else:
-			face["type"] = face_types[f]
+			print(f"ERROR: {obj.name} has an unlabeled face.")
+			exit(1)
+		face["type"] = face_types[f]
 		indices = []
 		for vi in mesh.polygons[f].vertices:
 			indices.append(vertex_to_sorted[vi])
-		if face_first[f] != None:
-			indices = indices[face_first[f]:] + indices[:face_first[f]]
+		assert face_first[f] != None
+		indices = indices[face_first[f]:] + indices[:face_first[f]]
 		face["indices"] = indices
 		faces.append(face)
 	faces = sorted(faces, key=lambda x: x["indices"])
