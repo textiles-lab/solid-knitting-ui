@@ -585,7 +585,7 @@ function previewCell() {
 					compat.push(f);
 				}
 			}
-			if (!compatible.length) {
+			if (!compat.length) {
 				//console.log(" (no compatible faces)");
 			} else {
 				const tf = compat[0];
@@ -656,6 +656,8 @@ function addCell() {
  * Consider: When cell is selected to delete a box, instead of highlighting
  * selected face, we should highlight selected cell. */
 function deleteCell() {
+	if (MOUSE.dirty) setMouseOver();
+
 	if (!MOUSE.over) {
 		return;
 	}
