@@ -64,16 +64,18 @@ for obj in blocks.objects:
 	for child in obj.children:
 		if child.type == 'CURVE':
 			to_parent = obj.matrix_world.inverted() @ child.matrix_world
-			for spline in child.data.splines:
-				if spline.type != 'BEZIER':
-					print(f"WARNING: {child.name} has {spline.type}-type spline -- skipping")
-					continue
-				cps = []
-				for i in range(0, len(spline.bezier_points)-1):
-					cps.append(to_parent @ spline.bezier_points[i].handle_right)
-					cps.append(to_parent @ spline.bezier_points[i].co)
-					cps.append(to_parent @ spline.bezier_points[i].handle_left)
-				cps = cps[1:-1]
+
+			MIRROR = False
+			if len(child.modifiers) == 0:
+				pass #nothing to do
+			elif len(child.modifiers) == 1 and child.modifiers[0].type == 'MIRROR':
+				print(f"  applying mirror modifier [assuming x] to {child.name}")
+				MIRROR = True
+
+			def append_yarn(cps):
+				for i in range(0, len(cps)):
+					cps[i] = to_parent @ cps[i]
+
 				yarn = dict()
 				yarn["cps"] = cps
 				begin = None
@@ -92,6 +94,37 @@ for obj in blocks.objects:
 				yarn["begin"] = begin
 				yarn["end"] = end
 				yarns.append(yarn)
+
+
+			for spline in child.data.splines:
+				if spline.type != 'BEZIER':
+					print(f"WARNING: {child.name} has {spline.type}-type spline -- skipping")
+					continue
+				cps = []
+				cps2 = None
+				for i in range(0, len(spline.bezier_points)):
+					cps.append(spline.bezier_points[i].handle_left)
+					cps.append(spline.bezier_points[i].co)
+					cps.append(spline.bezier_points[i].handle_right)
+				cps = cps[1:-1]
+
+				if MIRROR:
+					cps2 = []
+					for cp in reversed(cps):
+						cps2.append(Vector((-cp.x, cp.y, cp.z)))
+
+					#merge cps, cps2 if they meet at x=0:
+					if abs(cps[0].x) < 1e-3:
+						cps = cps2[:-1] + cps
+						cps2 = None
+					if abs(cps[-1].x) < 1e-3:
+						cps = cps + cps2[1:]
+						cps2 = None
+
+				append_yarn(cps)
+
+				if cps2 != None: append_yarn(cps2)
+
 
 		elif child.type == 'MESH':
 			#marker for side types

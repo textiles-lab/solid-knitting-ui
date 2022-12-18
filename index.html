@@ -1202,8 +1202,12 @@ class VisDebug extends Geometry {
 					line(cell.vertices[face.indices[i]], cell.vertices[face.indices[(i+1)%face.indices.length]], 0x888800ff);
 				}
 			}
+			//offset yarns, but no other xform just yet:
+			const ofs = gm.sub(cell.vertices[0], cell.template.vertices[0]);
 			for (let yarn of cell.template.yarns) {
-				//... hmmm
+				for (let i = 1; i < yarn.pts.length; ++i) {
+					line(gm.add(yarn.pts[i-1],ofs), gm.add(yarn.pts[i],ofs), 0xffffffff);
+				}
 			}
 		}
 

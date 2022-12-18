@@ -276,6 +276,11 @@ export class Template {
 
 		//yarns: format somewhat TBD at the moment
 		this.yarns = yarns;
+
+		for (let yarn of this.yarns) {
+			initYarn(yarn);
+		}
+
 		//instructions:
 		this.machine = machine;
 		this.human = human;
@@ -289,6 +294,38 @@ export class Template {
 		}
 		return sig;
 	}
+}
+
+function initYarn(yarn) {
+	let pts = [];
+	/*
+	//DEBUG:
+	for (let cp of yarn.cps) {
+		pts.push(toVec3('cp', cp));
+	}
+	yarn.pts = pts;
+	return;
+	*/
+	function splineTo(p1,p2,p3) {
+		const p0 = pts[pts.length-1];
+		for (let i = 1; i < 10; ++i) {
+			const t = i / 10.0;
+			const p01 = gm.mix(p0, p1, t);
+			const p12 = gm.mix(p1, p2, t);
+			const p23 = gm.mix(p2, p3, t);
+			const p012 = gm.mix(p01, p12, t);
+			const p123 = gm.mix(p12, p23, t);
+			const p = gm.mix(p012, p123, t);
+			pts.push(p);
+		}
+		pts.push(p3);
+	}
+	pts.push(toVec3(`cps[0]`, yarn.cps[0]));
+	for (let i = 3; i < yarn.cps.length; i += 3) {
+		console.log(`${i-2} ${i-1} ${i} of ${yarn.cps.length}`); //DEBUG
+		splineTo(toVec3(`cps[${i-2}]`, yarn.cps[i-2]), toVec3(`cps[${i-1}]`, yarn.cps[i-1]), toVec3(`cps[${i}]`, yarn.cps[i]));
+	}
+	yarn.pts = pts;
 }
 
 function toVec3(what, val) {
