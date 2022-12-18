@@ -221,7 +221,7 @@ import {Geometry, Program} from './code/gl.mjs';
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Getting_started_with_WebGL
 
 const canvas = document.getElementById("canvas");
-const gl = canvas.getContext('webgl');
+const gl = canvas.getContext('webgl', {alpha:false});
 window.gl = gl; //DEBUG
 
 //------- camera -------
@@ -801,13 +801,14 @@ const colorProgram = new Program(gl,
 	}
 `,`
 	uniform highp vec3 HEMI_DIRECTION;
+	uniform lowp vec4 TINT;
 	varying lowp vec4 color;
 	varying highp vec3 normal;
 	void main() {
 		highp vec3 n = normalize(normal);
 		//upper dome light:
 		highp vec3 light = mix(vec3(0.1), vec3(1.0), 0.5*dot(n, HEMI_DIRECTION)+0.5);
-		gl_FragColor = vec4(color.rgb * light, color.a);
+		gl_FragColor = TINT * vec4(color.rgb * light, color.a);
 	}
 `);
 window.colorProgram = colorProgram; //DEBUG
@@ -844,13 +845,24 @@ class Grid extends Geometry {
 			data.setUint32(dataOffset, rgba, false); dataOffset += 4;
 		}
 
+		/*
+		//TODO: maybe eventually have axis at origin
+		//axes:
+		line({x:0,y:0,z:0},{x:5,y:0,z:0}, 0xff0000ff);
+		line({x:0,y:0,z:0},{x:0,y:5,z:0}, 0x00ff00ff);
+		line({x:0,y:0,z:0},{x:0,y:0,z:5}, 0x0000ffff);
+		*/
+
+
 		for (let x = -RADIUS; x <= RADIUS; ++x) {
-			attrib(x,-RADIUS, 0x888888ff);
-			attrib(x, RADIUS, 0x888888ff);
+			const col = (x == 0 ? 0x88ff88ff : 0x888888ff);
+			attrib(x,-RADIUS, col);
+			attrib(x, RADIUS, col);
 		}
 		for (let y = -RADIUS; y <= RADIUS; ++y) {
-			attrib(-RADIUS,y, 0x888888ff);
-			attrib( RADIUS,y, 0x888888ff);
+			const col = (y == 0 ? 0xff8888ff : 0x888888ff);
+			attrib(-RADIUS,y, col);
+			attrib( RADIUS,y, col);
 		}
 
 		console.assert(dataOffset === arrayBuffer.byteLength, `Bytes of attributes (${dataOffset}) matches allocated data size (${data.byteLength}).`);
@@ -1005,11 +1017,7 @@ class VisDebug extends Geometry {
 
 		//----- make debug lines ----
 
-		//axes:
-		line({x:0,y:0,z:0},{x:5,y:0,z:0}, 0xff0000ff);
-		line({x:0,y:0,z:0},{x:0,y:5,z:0}, 0x00ff00ff);
-		line({x:0,y:0,z:0},{x:0,y:0,z:5}, 0x0000ffff);
-
+		
 		//mouse cursor:
 		if (MOUSE.x === MOUSE.x) {
 			const ray = mouseRay();
@@ -1114,6 +1122,11 @@ function redraw() {
 		colorProgram.uniformLocations.HEMI_DIRECTION,
 		lightDir.x, lightDir.y, lightDir.z
 	);
+	gl.uniform4f(
+		colorProgram.uniformLocations.TINT,
+		1.0, 1.0, 1.0, 1.0
+	);
+
 
 	gl.lineWidth(2.0 * pixelRatio);
 	visDebug.draw(colorProgram);
@@ -1122,6 +1135,24 @@ function redraw() {
 	grid.draw(colorProgram);
 
 	visBody.draw(colorProgram);
+
+	//show "hidden" debug lines also:
+
+	gl.enable(gl.BLEND);
+	gl.blendEquation(gl.FUNC_ADD);
+	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+	gl.uniform4f(
+		colorProgram.uniformLocations.TINT,
+		0.0, 0.0, 0.0, 0.1
+	);
+	gl.depthFunc(gl.GREATER);
+	gl.depthMask(false);
+	gl.lineWidth(2.0 * pixelRatio);
+	visDebug.draw(colorProgram);
+
+	gl.depthFunc(gl.LESS);
+	gl.depthMask(true);
+	gl.disable(gl.BLEND);
 }
 
 function requestRedraw() {

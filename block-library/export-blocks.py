@@ -28,6 +28,16 @@ bpy.ops.wm.open_mainfile(filepath=infile)
 
 blocks = bpy.data.collections['Blocks']
 
+TYPE_COLORS={
+	"-l1":"#888811",
+	"+l1":"#bbbb11",
+	"-L1":"#aa0000",
+	"+L1":"#bb0000",
+	"-y1":"#884488",
+	"+y1":"#bb88bb",
+	"":"#444444",
+}
+
 out = []
 
 for obj in blocks.objects:
@@ -183,7 +193,7 @@ for obj in blocks.objects:
 	for face in faces:
 		comma = ','
 		if face is faces[-1]: comma = ''
-		out.append(f'\t\t{{ "type":"{face["type"]}", "indices":[{",".join(map(str, face["indices"]))}], "color":"#888811" }}{comma}')
+		out.append(f'\t\t{{ "type":"{face["type"]}", "indices":[{",".join(map(str, face["indices"]))}], "color":"{TYPE_COLORS[face["type"]]}" }}{comma}')
 		
 	out.append(f'\t],')
 	out.append(f'\t"yarns":[')
