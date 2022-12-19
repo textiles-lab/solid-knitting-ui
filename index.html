@@ -936,9 +936,9 @@ function css2Uint32(color) {
 
 function rgb2Uint32(color) {
 	let val;
-	val = Math.max(0, Math.min(255, 255 * color[0]));
-	val = val * 256 + Math.max(0, Math.min(255, 255 * color[1]));
-	val = val * 256 + Math.max(0, Math.min(255, 255 * color[2]));
+	val = Math.max(0, Math.min(255, Math.round(255 * color[0])));
+	val = val * 256 + Math.max(0, Math.min(255, Math.round(255 * color[1])));
+	val = val * 256 + Math.max(0, Math.min(255, Math.round(255 * color[2])));
 	val = val * 256 + 255;
 	return val;
 }
