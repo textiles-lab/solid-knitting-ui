@@ -934,6 +934,16 @@ function css2Uint32(color) {
 	return val;
 }
 
+function rgb2Uint32(color) {
+	let val;
+	val = Math.max(0, Math.min(255, 255 * color[0]));
+	val = val * 256 + Math.max(0, Math.min(255, 255 * color[1]));
+	val = val * 256 + Math.max(0, Math.min(255, 255 * color[2]));
+	val = val * 256 + 255;
+	return val;
+}
+
+
 class VisBody extends Geometry {
 	static BYTES_PER_ATTRIB = 4*3 + 4*3 + 1*4; //Position, Normal, Color
 	constructor() {
@@ -1035,6 +1045,9 @@ class VisWire extends Geometry {
 				const con = cell.connections[fi];
 				if (con !== null) totalAttribs += face.indices.length * 3;
 			}
+			for (const yarn of cell.template.yarns) {
+				totalAttribs += (yarn.ptWeights.length-1)*2;
+			}
 		}
 
 		const arrayBuffer = new ArrayBuffer(BYTES_PER_ATTRIB * totalAttribs);
@@ -1058,6 +1071,46 @@ class VisWire extends Geometry {
 				}
 				center = gm.mul(1.0 / cell.vertices.length, center);
 				cell.center = center;
+			}
+
+			if (!('vertexColors' in cell.template)) {
+				cell.template.vertexColors = [];
+				for (let i = 0; i < cell.template.vertices.length; ++i) {
+					while (true) {
+						let r = Math.random();
+						let g = Math.random();
+						let b = Math.random();
+						let min = Math.min(r,g,b);
+						let max = Math.max(r,g,b);
+						if (max - min < 1e-3) continue;
+						r = (r - min) / (max - min);
+						g = (g - min) / (max - min);
+						b = (b - min) / (max - min);
+						cell.template.vertexColors.push(new gm.Vec3(r,g,b));
+						break;
+					}
+				}
+			}
+
+			for (const yarn of cell.template.yarns) {
+				let prev = null;
+				let prevCol = null;
+				for (const pw of yarn.ptWeights) {
+					let at = new gm.Vec3(0);
+					let col = new gm.Vec3(0);
+					for (let i = 0; i < pw.length; ++i) {
+						at = gm.add(at, gm.mul(pw[i], cell.vertices[i]));
+						col = gm.add(col, gm.mul(pw[i], cell.template.vertexColors[i]));
+					}
+
+					if (prev !== null) {
+						attrib(prev.x,prev.y,prev.z, rgb2Uint32(prevCol));
+						attrib(at.x,at.y,at.z, rgb2Uint32(col));
+					}
+
+					prev = at;
+					prevCol = col;
+				}
 			}
 
 			for (const face of cell.template.faces) {
@@ -1210,7 +1263,6 @@ class VisDebug extends Geometry {
 				}
 			}
 		}
-
 
 		//---- copy debug lines to buffer for drawing ----
 

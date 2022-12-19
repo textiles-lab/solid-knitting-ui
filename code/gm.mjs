@@ -560,6 +560,11 @@ export function normalize(a) {
 	return mul(1.0 / len, a);
 }
 
+
+export function length(a) {
+	return Math.sqrt(dot(a,a));
+}
+
 export function svd(A_) {
 	if (!(A_ instanceof Mat && A_.rows === 3 && A_.columns === 3)) throw new Error("This svd code only works on 3x3 matricies.");
 
