@@ -1096,16 +1096,20 @@ class VisWire extends Geometry {
 				let prev = null;
 				let prevCol = null;
 				for (const pw of yarn.ptWeights) {
-					let at = new gm.Vec3(0);
-					let col = new gm.Vec3(0);
+					let at = [0,0,0];
+					let col = [0,0,0];
 					for (let i = 0; i < pw.length; ++i) {
-						at = gm.add(at, gm.mul(pw[i], cell.vertices[i]));
-						col = gm.add(col, gm.mul(pw[i], cell.template.vertexColors[i]));
+						at[0] += pw[i] * cell.vertices[i][0];
+						at[1] += pw[i] * cell.vertices[i][1];
+						at[2] += pw[i] * cell.vertices[i][2];
+						col[0] += pw[i] * cell.template.vertexColors[i][0];
+						col[1] += pw[i] * cell.template.vertexColors[i][1];
+						col[2] += pw[i] * cell.template.vertexColors[i][2];
 					}
 
 					if (prev !== null) {
-						attrib(prev.x,prev.y,prev.z, rgb2Uint32(prevCol));
-						attrib(at.x,at.y,at.z, rgb2Uint32(col));
+						attrib(prev[0],prev[1],prev[2], rgb2Uint32(prevCol));
+						attrib(at[0],at[1],at[2], rgb2Uint32(col));
 					}
 
 					prev = at;

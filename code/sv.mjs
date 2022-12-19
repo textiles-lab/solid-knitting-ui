@@ -359,8 +359,9 @@ function initYarn(template,yarn) {
 		for (let i = 0; i < dis.length; ++i) {
 			//compute 1/d weights scaled by the product of the distances:
 			let weight = 1;
-			if (i > 1) weight *= prefixProduct[i-1];
+			if (i > 0) weight *= prefixProduct[i-1];
 			if (i + 1 < dis.length) weight *= suffixProduct[i+1];
+
 			weights.push( weight );
 			sum += weight;
 		}
