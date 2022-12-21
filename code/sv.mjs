@@ -155,7 +155,7 @@ export class Cell {
 
 		this.template = template;
 		this.vertices = vertices;
-		this.connections = connections; //connections have "block" (reference) and "face" (index)
+		this.connections = connections; //connections have "cell" (reference) and "face" (index)
 
 		//should be the case that:
 		//this.connections[0].block.connections[ this.connections[0].face ] === this
