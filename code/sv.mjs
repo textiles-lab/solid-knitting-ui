@@ -83,6 +83,35 @@ export class Body {
 		const data = JSON.parse(json);
 		return Body.fromData(data, library);
 	}
+	toData() {
+		let data = [];
+		//for convenience:
+		for (let i = 0; i < this.cells.length; ++i) {
+			this.cells[i].index = i;
+		}
+
+		for (const cell of this.cells) {
+			const template = cell.template.signature();
+			const vertices = [];
+			for (const v of cell.vertices) {
+				vertices.push([v[0], v[1], v[2]]);
+			}
+			const connections = [];
+			for (const con of cell.connections) {
+				if (con === null) {
+					connections.push(null);
+				} else {
+					connections.push({cell:con.cell.index, face:con.face});
+				}
+			}
+			data.push({template, vertices, connections});
+		}
+
+		for (const cell of this.cells) {
+			delete cell.index;
+		}
+		return data;
+	}
 	static fromData(data, library) {
 		if (!Array.isArray(data)) throw new Error("");
 		let body = new Body();
