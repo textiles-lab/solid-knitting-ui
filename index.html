@@ -28,10 +28,6 @@ body {
 #file {
 	display:none;
 }
-#fileLabel span {
-	cursor:pointer;
-	text-decoration:underline;
-}
 
 #views {
 	display:grid;
@@ -43,14 +39,42 @@ body {
 
 	/*background: #0008 ;*/
 }
-#view-controls {
+#controls {
 	grid-column: 1 / 3 ;
 	grid-row: 1 ;
 	font-size: 16px;
 	line-height:16px;
 	padding: 5px 10px;
+	display:flex;
+	flex-flow: row wrap;
+	align-items:center;
 	/*background: #f008 ;*/
 }
+
+.controlsButton {
+	box-sizing:border-box;
+	cursor:pointer;
+	display:block;
+	background:#cfbb96;
+	padding:4px 8px;
+	margin:0 2px;
+	box-shadow: 0 1px 2px 0 #0008;
+	text-decoration:none;
+	line-height:1;
+	border: none;
+	border-radius:2px;
+	height:100%;
+	font-size:inherit;
+}
+
+.controlsButton:hover {
+	background:#f6d69b;
+}
+
+.controlsButton:active {
+	box-shadow: 0 0 1px 0 #0008;
+}
+
 #view-3d {
 	grid-column: 1 ;
 	grid-row: 2 ;
@@ -93,12 +117,13 @@ body {
 <div id="views">
 
 <!-- controls bar at the top of the window -->
-<div id="view-controls">
-<h1 id="file-name">No File Loaded</h1>
+<div id="controls">
 <input id="file" type="file" />
-<label id="fileLabel" for="file"><span>Choose a .blocks file</span> or drag one into the window to load it.</label>
+<label id="fileLabel" for="file" class="controlsButton">Load</label>
+<span id="fileName">(no file loaded)</span>
 <!-- <button id="benchmark">benchmark</button>
 <span id="benchmark-result"></span> -->
+<button id="save" class="controlsButton">Save</button>
 </div>
 
 <!-- 3d view -->
@@ -128,7 +153,7 @@ body {
 window.currentFile = null;
 
 function setFilename(name) {
-	document.getElementById("file-name").firstChild.textContent = name;
+	document.getElementById("fileName").textContent = name;
 }
 function readFile(file) {
 	console.log("Attempting to read file: '" + file.name + "'");
@@ -142,8 +167,10 @@ function readFile(file) {
 	let reader = readFile.reader = new FileReader();
 	reader.onload = function(){
 		console.log("File was " + reader.result.byteLength + " bytes long.");
-		window.blocks = sv.Blocks.fromArrayBuffer(reader.result);
+		window.body = sv.Body.fromArrayBuffer(reader.result, library);
 
+		bodyDirty();
+		mouseDirty();
 		resetCamera();
 		requestRedraw();
 		window.currentFile = file;
@@ -197,6 +224,27 @@ file.addEventListener('change', function(evt){
 file.addEventListener('click', function(evt){
 	file.value = ""; //reset so 'change' event fires
 });
+
+document.getElementById("save").addEventListener('click', function(evt){
+	console.log("Saving");
+	const text = JSON.stringify(body.toData());
+	fileSave(text, "solid-knitting.body");
+});
+
+//from knitout-live-visualizer:
+function fileSave(sourceText, fileIdentity) {
+	var workElement = document.createElement("a");
+	if ('download' in workElement) {
+		workElement.href = "data:" + 'text/plain' + "charset=utf-8," + escape(sourceText);
+		workElement.setAttribute("download", fileIdentity);
+		document.body.appendChild(workElement);
+		var eventMouse = document.createEvent("MouseEvents");
+		eventMouse.initMouseEvent("click", true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+		workElement.dispatchEvent(eventMouse);
+		document.body.removeChild(workElement);
+	} else throw 'File saving not supported for this browser';
+}
+
 </script>
 
 <!-- Solid Knitting UI code -->
@@ -221,7 +269,7 @@ import {Geometry, Program} from './code/gl.mjs';
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Getting_started_with_WebGL
 
 const canvas = document.getElementById("canvas");
-const gl = canvas.getContext('webgl');
+const gl = canvas.getContext('webgl', {alpha:false});
 window.gl = gl; //DEBUG
 
 //------- camera -------
@@ -288,11 +336,12 @@ function resetCamera() {
 
 	requestRedraw();
 }
+window.resetCamera = resetCamera;
 
 //--- controls ---
 
 const MOUSE = {x:NaN, y:NaN, over:null, grid:null};
-window.MOUSE = MOUSE; //DEBUG
+let ACTION = null; //<-- current action; gets all events if not null
 
 let camFlipX = false; //used for camera rotation control
 
@@ -310,6 +359,22 @@ function mouseRay() {
 
 	return {origin, direction};
 }
+
+function mouseDirty() {
+	MOUSE.over = null;
+	MOUSE.grid = null;
+
+	MOUSE.dirty = true;
+	requestRedraw(); //mouse will be updated as part of redraw
+}
+window.mouseDirty = mouseDirty;
+
+function bodyDirty() {
+	visBody.dirty = true;
+	visWire.dirty = true;
+	requestRedraw();
+}
+window.bodyDirty = bodyDirty;
 
 function setMouseOver() {
 	MOUSE.over = null;
@@ -358,6 +423,36 @@ function setMouseOver() {
 	}
 
 	for (const cell of body.cells) {
+		{ //ray vs bounding box of cell:
+			let min = new gm.Vec3(Infinity);
+			let max = new gm.Vec3(-Infinity);
+			for (let v of cell.vertices) {
+				min = gm.min(min, v);
+				max = gm.max(max, v);
+			}
+			let t0 = 0;
+			let t1 = Infinity;
+			function reduce(low, high, origin, direction) {
+				//when is low <= origin + t * direction <= high?
+				if (direction > 0) {
+					t0 = Math.max(t0, (low - origin) / direction);
+					t1 = Math.min(t1, (high - origin) / direction);
+				} else if (direction < 0) {
+					t1 = Math.min(t1, (low - origin) / direction);
+					t0 = Math.max(t0, (high - origin) / direction);
+				} else {
+					if (origin < low || origin > high) {
+						t0 = 1;
+						t1 = 0;
+					}
+				}
+			}
+			reduce(min.x, max.x, ray.origin.x, ray.direction.x)
+			reduce(min.y, max.y, ray.origin.y, ray.direction.y)
+			reduce(min.z, max.z, ray.origin.z, ray.direction.z)
+			if (t0 > t1) continue; //if doesn't intersect bounding box
+		}
+
 		for (let fi = 0; fi < cell.template.faces.length; ++fi) {
 			const face = cell.template.faces[fi];
 			for (let i = 2; i < face.indices.length; ++i) {
@@ -408,72 +503,73 @@ canvas.addEventListener('wheel', function(evt){
 	if (camera.radius < 1.0) camera.radius = 1.0;
 	if (camera.radius > 1000.0) camera.radius = 1000.0;
 	requestRedraw();
-	return false;
 });
 
 canvas.addEventListener('mousedown', function(evt){
 	const mouse = relativeMouse(evt, canvas);
-	MOUSE.x = mouse.x;
-	MOUSE.y = mouse.y;
-	camFlipX = (camera.computeUp().z < 0.0);
-	evt.preventDefault();
-	return false;
-});
-
-canvas.addEventListener('mousemove', function(evt){
-	const mouse = relativeMouse(evt, canvas);
-	if (MOUSE.x === MOUSE.x) {
-		if (evt.buttons & 1) {
-			if (evt.shiftKey) {
-				const up = camera.computeUp();
-				const right = camera.computeRight();
-
-				const x = camera.radius * (mouse.x - MOUSE.x) * Math.tan(0.5 * camera.fovy / 180.0 * Math.PI) * camera.aspect;
-				const y = camera.radius * (mouse.y - MOUSE.y) * Math.tan(0.5 * camera.fovy / 180.0 * Math.PI);
-
-				camera.target.x -= right.x * x + up.x * y;
-				camera.target.y -= right.y * x + up.y * y;
-				camera.target.z -= right.z * x + up.z * y;
-			} else {
-				const deltaToAngle = 2.0 * camera.fovy / 180.0 * Math.PI;
-				camera.azimuth += (camFlipX ? -1.0 : 1.0) * -(mouse.x - MOUSE.x) * camera.aspect * deltaToAngle;
-				camera.elevation -= (mouse.y - MOUSE.y) * deltaToAngle;
-			}
-			requestRedraw();
+	if (ACTION) {
+		if (ACTION.mousedown) ACTION.mousedown(evt, mouse);
+	} else {
+		if (evt.button == 0) {
+			startCameraMove();
 		}
 	}
 	MOUSE.x = mouse.x;
 	MOUSE.y = mouse.y;
-	setMouseOver();
-	requestRedraw(); //needed if we want to draw mouse cursor, maybe not generally needed
+	mouseDirty();
 	evt.preventDefault();
-	return false;
+});
+
+canvas.addEventListener('mousemove', function(evt){
+	const mouse = relativeMouse(evt, canvas);
+	if (ACTION) {
+		if (ACTION.mousemove) ACTION.mousemove(evt, mouse);
+	} else {
+		//generally, nothing
+	}
+	MOUSE.x = mouse.x;
+	MOUSE.y = mouse.y;
+	mouseDirty();
+	evt.preventDefault();
 });
 
 canvas.addEventListener('mouseup', function(evt){
-	MOUSE.x = NaN;
-	MOUSE.y = NaN;
+	const mouse = relativeMouse(evt, canvas);
+	if (ACTION) {
+		if (ACTION.mouseup) ACTION.mouseup(evt, mouse);
+	} else {
+		//generally, nothing
+	}
+	MOUSE.x = mouse.x;
+	MOUSE.y = mouse.y;
+	mouseDirty();
 	evt.preventDefault();
-	return false;
 });
 
 window.addEventListener('keydown', function(evt){
-	if (evt.code === 'Space') {
-		body.relax();
-		visBody.set(body);
-		requestRedraw();
-	} else if (evt.code == 'KeyA') {
-		addCell();
-	} else if (evt.code == 'KeyX') {
-		deleteCell();
-	} else if (evt.code == 'ArrowUp') {
-		prevTemplate();
-		requestRedraw();
-	} else if (evt.code == 'ArrowDown') {
-		nextTemplate();
-		requestRedraw();
+	if (ACTION) {
+		if (ACTION.keydown) ACTION.keydown(evt);
+	} else {
+		if (evt.code === 'Space') {
+			body.relax();
+			bodyDirty();
+		} else if (evt.code == 'KeyA') {
+			addCell();
+		} else if (evt.code == 'KeyX') {
+			deleteCell();
+		} else if (evt.code == 'KeyG') {
+			startGrabCell(); //start drag
+		} else if (evt.code == 'KeyC') {
+			startConnectFace(); //start connection
+		} else if (evt.code == 'ArrowUp') {
+			prevTemplate();
+			requestRedraw();
+		} else if (evt.code == 'ArrowDown') {
+			nextTemplate();
+			requestRedraw();
+		}
+		//console.log(evt.code); //when you want more keys
 	}
-	//console.log(evt); //when you want more keys
 });
 
 // TODO: Consider moving each script into its own module for the sake of code
@@ -547,7 +643,7 @@ function previewCell() {
 					compat.push(f);
 				}
 			}
-			if (!compatible.length) {
+			if (!compat.length) {
 				//console.log(" (no compatible faces)");
 			} else {
 				const tf = compat[0];
@@ -586,6 +682,8 @@ window.previewCell = previewCell; //DEBUG
  * addCell (): 
  * Adds cell adjacent to selected face. */
 function addCell() {
+	if (MOUSE.dirty) setMouseOver();
+
 	//is there a cell that could exist here? Ask the preview function:
 	const preview = previewCell();
 
@@ -611,9 +709,8 @@ function addCell() {
 	**/
 
 	//update UI and redraw:
-	setMouseOver();
-	visBody.set(body);
-	requestRedraw();
+	mouseDirty();
+	bodyDirty();
 }
 
 // Checks that connections between two cells are appropriate. 
@@ -657,9 +754,8 @@ function checkGlobalCellCorrectness() {
  * Consider: When cell is selected to delete a box, instead of highlighting
  * selected face, we should highlight selected cell. */
 function deleteCell() {
-	if (!MOUSE.over) {
-		return;
-	}
+	if (MOUSE.dirty) setMouseOver();
+	if (!MOUSE.over) return;
 
 	const cell = MOUSE.over.cell;
 
@@ -679,9 +775,207 @@ function deleteCell() {
 	body.cells.splice(cellIndex, 1);
 
 	// Update UI and redraw:
-	setMouseOver();
-	visBody.set(body);
-	requestRedraw();
+	mouseDirty();
+	bodyDirty();
+}
+
+/**
+ * startConnectFace()
+ * Start connecting current face
+ */
+function startConnectFace() {
+	if (ACTION !== null) return;
+	if (MOUSE.dirty) setMouseOver();
+	if (!MOUSE.over) return;
+	const cell = MOUSE.over.cell;
+	const face = MOUSE.over.face;
+
+	//is face already connected?
+	const oldConnection = cell.connections[face];
+
+	function clearConnection() {
+		if (cell.connections[face] !== null) {
+			const toCell = cell.connections[face].cell;
+			const toFace = cell.connections[face].face;
+			console.assert(toCell.connections[toFace] !== null
+			 && toCell.connections[toFace].cell === cell
+			 && toCell.connections[toFace].face === face, "connections should be reflexive");
+			toCell.connections[toFace] = null;
+			cell.connections[face] = null;
+			bodyDirty();
+		}
+	}
+
+	clearConnection();
+
+	function setConnection() {
+		if (!setConnection.pending) return; //HACK: allow cancelling past end-of-action
+		setConnection.pending = false;
+
+		clearConnection();
+		if (MOUSE.dirty) setMouseOver();
+		if (!MOUSE.over) return;
+		const toCell = MOUSE.over.cell;
+		if (toCell === cell) return; //can't self-connect
+		const toFace = MOUSE.over.face;
+		if (toCell.connections[toFace]) return; //can't double-connect
+
+		function compatible(a,b) {
+			if (a[0] === '-' && b[0] === '+') return a.substr(1) === b.substr(1);
+			if (a[0] === '+' && b[0] === '-') return a.substr(1) === b.substr(1);
+			return false;
+		}
+		if (!compatible(cell.template.faces[face].type, toCell.template.faces[toFace].type)) return;
+
+
+		//make the connection:
+		cell.connections[face] = {cell:toCell, face:toFace};
+		toCell.connections[toFace] = {cell:cell, face:face};
+
+		bodyDirty();
+	}
+
+	console.log("Starting connect.");
+
+	ACTION = {
+		mousedown:(evt,mouse) => {
+			if (evt.button === 0) {
+				startCameraMove();
+			} else if (evt.button === 2) {
+				console.log("Cancelling connect.");
+				setConnection.pending = false;
+				cell.connections[face] = oldConnection;
+				if (oldConnection) {
+					oldConnection.cell.connections[oldConnection.face] = {cell:cell, face:face};
+				}
+				bodyDirty();
+				ACTION = null;
+			}
+		},
+		//nothing: mouseup:(evt,mouse) => { },
+		mousemove:(evt,mouse) => {
+			if (!setConnection.pending) {
+				setConnection.pending = true;
+				window.requestAnimationFrame( setConnection );
+			}
+		},
+		keydown:(evt) => {
+			if (evt.code === 'KeyC') {
+				console.log("Confirming connect.");
+				setConnection.pending = false;
+				ACTION = null;
+			}
+		},
+	};
+
+
+}
+
+
+/**
+ * startGrabCell()
+ * Grab (start moving) current cell.
+ */
+function startGrabCell() {
+	if (ACTION !== null) return;
+
+	if (MOUSE.dirty) setMouseOver();
+
+	if (!MOUSE.over) return;
+
+
+	const cell = MOUSE.over.cell;
+	const startVertices = [];
+	let center = new gm.Vec3(0);
+	for (const v of cell.vertices) {
+		startVertices.push(new gm.Vec3(v));
+		center = gm.add(center, v);
+	}
+	center = gm.mul(1 / cell.vertices.length, center);
+
+	const right = camera.computeRight();
+	const up = camera.computeUp();
+	const out = camera.computeOut();
+
+	function mousePt() {
+		const ray = mouseRay();
+		const offset = gm.dot(gm.sub(ray.origin, center), out);
+		const step = gm.dot(ray.direction, out);
+		if (Math.abs(step) < 1e-3 * Math.abs(offset)) return null;
+		const t = -offset / step;
+		return gm.add(ray.origin, gm.mul(t, ray.direction));
+	}
+
+	const begin = mousePt();
+	if (begin === null) {
+		console.warn("Trying to start drag from null point -- cancelling.");
+		return;
+	}
+
+	ACTION = {
+		mousedown:(evt,mouse) => {
+			if (evt.button == 0) {
+				console.log("Confirming grab.");
+				ACTION = null;
+				bodyDirty();
+			} else if (evt.button == 2) {
+				console.log("Cancelling grab.");
+				cell.vertices = startVertices;
+				ACTION = null;
+				bodyDirty();
+			}
+		},
+		//nothing: mouseup:(evt,mouse) => { },
+		mousemove:(evt,mouse) => {
+			MOUSE.x = mouse.x;
+			MOUSE.y = mouse.y;
+			const at = mousePt();
+			if (at !== null) {
+				const delta = gm.sub(at,begin);
+				for (let i = 0; i < cell.vertices.length; ++i) {
+					cell.vertices[i] = gm.add(startVertices[i], delta);
+				}
+				bodyDirty();
+			}
+		}
+	};
+}
+
+/**
+ * startCameraMove()
+ */
+function startCameraMove() {
+	let oldACTION = ACTION;
+	camFlipX = (camera.computeUp().z < 0.0);
+
+	ACTION = {
+		//ignore: mousedown:(evt,mouse) => { },
+		mouseup:(evt,mouse) => {
+			if (evt.button === 0) {
+				ACTION = oldACTION;
+				return;
+			}
+		},
+		mousemove:(evt,mouse) => {
+			if (MOUSE.x !== MOUSE.x) return;
+			if (evt.shiftKey) {
+				const up = camera.computeUp();
+				const right = camera.computeRight();
+
+				const x = camera.radius * (mouse.x - MOUSE.x) * Math.tan(0.5 * camera.fovy / 180.0 * Math.PI) * camera.aspect;
+				const y = camera.radius * (mouse.y - MOUSE.y) * Math.tan(0.5 * camera.fovy / 180.0 * Math.PI);
+
+				camera.target.x -= right.x * x + up.x * y;
+				camera.target.y -= right.y * x + up.y * y;
+				camera.target.z -= right.z * x + up.z * y;
+			} else {
+				const deltaToAngle = 2.0 * camera.fovy / 180.0 * Math.PI;
+				camera.azimuth += (camFlipX ? -1.0 : 1.0) * -(mouse.x - MOUSE.x) * camera.aspect * deltaToAngle;
+				camera.elevation -= (mouse.y - MOUSE.y) * deltaToAngle;
+			}
+			requestRedraw();
+		}
+	};
 }
 
 //--- vector math library ---
@@ -804,13 +1098,14 @@ const colorProgram = new Program(gl,
 	}
 `,`
 	uniform highp vec3 HEMI_DIRECTION;
+	uniform lowp vec4 TINT;
 	varying lowp vec4 color;
 	varying highp vec3 normal;
 	void main() {
 		highp vec3 n = normalize(normal);
 		//upper dome light:
 		highp vec3 light = mix(vec3(0.1), vec3(1.0), 0.5*dot(n, HEMI_DIRECTION)+0.5);
-		gl_FragColor = vec4(color.rgb * light, color.a);
+		gl_FragColor = TINT * vec4(color.rgb * light, color.a);
 	}
 `);
 window.colorProgram = colorProgram; //DEBUG
@@ -836,7 +1131,7 @@ class Grid extends Geometry {
 		const BYTES_PER_ATTRIB = 4*2 + 1*4;
 		const RADIUS = 10;
 
-		const arrayBuffer = new ArrayBuffer(4*(2*RADIUS+1) * BYTES_PER_ATTRIB);
+		const arrayBuffer = new ArrayBuffer(4*(2*RADIUS+1+1) * BYTES_PER_ATTRIB);
 		const data = new DataView(arrayBuffer);
 
 		let dataOffset = 0;
@@ -847,13 +1142,37 @@ class Grid extends Geometry {
 			data.setUint32(dataOffset, rgba, false); dataOffset += 4;
 		}
 
+		/*
+		//TODO: maybe eventually have axis at origin
+		//axes:
+		line({x:0,y:0,z:0},{x:5,y:0,z:0}, 0xff0000ff);
+		line({x:0,y:0,z:0},{x:0,y:5,z:0}, 0x00ff00ff);
+		line({x:0,y:0,z:0},{x:0,y:0,z:5}, 0x0000ffff);
+		*/
+
+
 		for (let x = -RADIUS; x <= RADIUS; ++x) {
-			attrib(x,-RADIUS, 0x888888ff);
-			attrib(x, RADIUS, 0x888888ff);
+			if (x === 0) {
+				attrib(x,-RADIUS, 0x008800ff);
+				attrib(x, 0, 0x008800ff);
+				attrib(x, 0, 0x88ff88ff);
+				attrib(x, RADIUS, 0x88ff88ff);
+			} else {
+				const col = (x == 0 ? 0x88ff88ff : 0x888888ff);
+				attrib(x,-RADIUS, 0x888888ff);
+				attrib(x, RADIUS, 0x888888ff);
+			}
 		}
 		for (let y = -RADIUS; y <= RADIUS; ++y) {
-			attrib(-RADIUS,y, 0x888888ff);
-			attrib( RADIUS,y, 0x888888ff);
+			if (y === 0) {
+				attrib(-RADIUS,y, 0x880000ff);
+				attrib( 0,y, 0x880000ff);
+				attrib( 0,y, 0xff8888ff);
+				attrib( RADIUS,y, 0xff8888ff);
+			} else {
+				attrib(-RADIUS,y, 0x888888ff);
+				attrib( RADIUS,y, 0x888888ff);
+			}
 		}
 
 		console.assert(dataOffset === arrayBuffer.byteLength, `Bytes of attributes (${dataOffset}) matches allocated data size (${data.byteLength}).`);
@@ -906,6 +1225,16 @@ function css2Uint32(color) {
 	}
 	return val;
 }
+
+function rgb2Uint32(color) {
+	let val;
+	val = Math.max(0, Math.min(255, Math.round(255 * color[0])));
+	val = val * 256 + Math.max(0, Math.min(255, Math.round(255 * color[1])));
+	val = val * 256 + Math.max(0, Math.min(255, Math.round(255 * color[2])));
+	val = val * 256 + 255;
+	return val;
+}
+
 
 class VisBody extends Geometry {
 	static BYTES_PER_ATTRIB = 4*3 + 4*3 + 1*4; //Position, Normal, Color
@@ -979,6 +1308,181 @@ class VisBody extends Geometry {
 const visBody = new VisBody();
 window.visBody = visBody; //DEBUG
 
+class VisWire extends Geometry {
+	static BYTES_PER_ATTRIB = 4*3 + 1*4; //Position, Color
+	constructor() {
+		const BYTES_PER_ATTRIB = VisWire.BYTES_PER_ATTRIB;
+
+		const buffer = gl.createBuffer();
+
+		const attribs = {
+			Position:{buffer:buffer, size:3, type:gl.FLOAT, normalize:false, stride:BYTES_PER_ATTRIB, offset:0},
+			Normal:[0,0,1],
+			Color:{buffer:buffer, size:4, type:gl.UNSIGNED_BYTE, normalize:true, stride:BYTES_PER_ATTRIB, offset:4*3},
+		};
+
+		super(gl, attribs, gl.LINES, 0);
+
+		this.buffer = buffer; //needed for set()
+	}
+	set(blocks) {
+		const BYTES_PER_ATTRIB = VisWire.BYTES_PER_ATTRIB;
+
+		//figure out how much space to allocate for attributes:
+		let totalAttribs = 0;
+		for (const cell of body.cells) {
+			for (let fi = 0; fi < cell.template.faces.length; ++fi) {
+				const face = cell.template.faces[fi];
+				totalAttribs += face.indices.length * 2 + 4;
+				const con = cell.connections[fi];
+				if (con !== null) totalAttribs += face.indices.length * 3;
+			}
+			for (const yarn of cell.template.yarns) {
+				totalAttribs += (yarn.ptWeights.length-1)*2;
+			}
+		}
+
+		const arrayBuffer = new ArrayBuffer(BYTES_PER_ATTRIB * totalAttribs);
+		const data = new DataView(arrayBuffer);
+		let dataOffset = 0;
+		function attrib(x,y,z, rgba) {
+			data.setFloat32(dataOffset, x, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, y, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, z, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+
+			data.setUint32(dataOffset, rgba, false); dataOffset += 4;
+		}
+
+		for (const cell of body.cells) {
+			let ports = [];
+			
+			{ //compute cell center:
+				let center = new gm.Vec3(0.0);
+				for (let v of cell.vertices) {
+					center = gm.add(center, v);
+				}
+				center = gm.mul(1.0 / cell.vertices.length, center);
+				cell.center = center;
+			}
+
+			if (!('vertexColors' in cell.template)) {
+				cell.template.vertexColors = [];
+				for (let i = 0; i < cell.template.vertices.length; ++i) {
+					while (true) {
+						let r = Math.random();
+						let g = Math.random();
+						let b = Math.random();
+						let min = Math.min(r,g,b);
+						let max = Math.max(r,g,b);
+						if (max - min < 1e-3) continue;
+						r = (r - min) / (max - min);
+						g = (g - min) / (max - min);
+						b = (b - min) / (max - min);
+						cell.template.vertexColors.push(new gm.Vec3(r,g,b));
+						break;
+					}
+				}
+			}
+
+			for (const yarn of cell.template.yarns) {
+				let prev = null;
+				let prevCol = null;
+				for (const pw of yarn.ptWeights) {
+					let at = [0,0,0];
+					let col = [0,0,0];
+					for (let i = 0; i < pw.length; ++i) {
+						at[0] += pw[i] * cell.vertices[i][0];
+						at[1] += pw[i] * cell.vertices[i][1];
+						at[2] += pw[i] * cell.vertices[i][2];
+						col[0] += pw[i] * cell.template.vertexColors[i][0];
+						col[1] += pw[i] * cell.template.vertexColors[i][1];
+						col[2] += pw[i] * cell.template.vertexColors[i][2];
+					}
+
+					if (prev !== null) {
+						attrib(prev[0],prev[1],prev[2], rgb2Uint32(prevCol));
+						attrib(at[0],at[1],at[2], rgb2Uint32(col));
+					}
+
+					prev = at;
+					prevCol = col;
+				}
+			}
+
+			for (const face of cell.template.faces) {
+				let center = new gm.Vec3(0.0);
+				for (let vi of face.indices) {
+					center = gm.add(center, cell.vertices[vi]);
+				}
+				center = gm.mul(1.0 / face.indices.length, center);
+				let port = [];
+				for (let i = 0; i < face.indices.length; ++i) {
+					let v = cell.vertices[face.indices[i]];
+					v = gm.mix(v, center, 0.5); //move toward center of face
+					port.push(v);
+				}
+				ports.push(port);
+				for (let i = 0; i < face.indices.length; ++i) {
+					let a = cell.vertices[face.indices[i]];
+					let b = cell.vertices[face.indices[(i+1)%face.indices.length]];
+					a = gm.add(gm.mul(0.9, gm.sub(a, center)), center);
+					b = gm.add(gm.mul(0.9, gm.sub(b, center)), center);
+					let col = css2Uint32(face.color);
+					attrib(a.x,a.y,a.z, col);
+					attrib(b.x,b.y,b.z, col);
+					if (i === 0) {
+						let c = gm.mul(0.5, gm.add(a,b));
+						c = gm.add(gm.mul(0.9, gm.sub(c, center)), center);
+						col = 0xffff00ff; //highlight "first edge"
+						attrib(a.x,a.y,a.z, col);
+						attrib(c.x,c.y,c.z, col);
+						attrib(c.x,c.y,c.z, col);
+						attrib(b.x,b.y,b.z, col);
+					}
+				}
+			}
+			cell.ports = ports;
+		}
+
+		//connections:
+		for (const cell of body.cells) {
+			for (let fi = 0 ; fi < cell.connections.length; ++fi) {
+				const connection = cell.connections[fi];
+				if (connection === null) continue;
+				if (cell.template.faces[fi].type[0] !== '-') continue; //draw connectsions from '-' => '+'
+
+				for (let i = 0; i < cell.ports[fi].length; ++i) {
+					let ci = (cell.template.faces[fi].indices.length + 1 - i) % cell.template.faces[fi].indices.length;
+					let a = cell.ports[fi][i];
+					let ca = gm.mix(a, cell.center, 0.1);
+					let b = connection.cell.ports[connection.face][ci];
+					let cb = gm.mix(b, connection.cell.center, 0.1);
+					attrib(ca.x, ca.y, ca.z, 0x888888ff); attrib(a.x, a.y, a.z, 0x888888ff);
+					attrib(a.x, a.y, a.z, 0x888888ff); attrib(b.x, b.y, b.z, 0xffffffff);
+					attrib(b.x, b.y, b.z, 0xffffffff); attrib(cb.x, cb.y, cb.z, 0xffffffff);
+				}
+			}
+		}
+
+		//remove temp stuff:
+		for (const cell of body.cells) {
+			delete cell.center;
+			delete cell.ports;
+		}
+
+
+		console.assert(dataOffset === arrayBuffer.byteLength, `Bytes of attributes (${dataOffset}) matches allocated data size (${data.byteLength}).`);
+
+		this.count = arrayBuffer.byteLength / BYTES_PER_ATTRIB;
+
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+		gl.bufferData(gl.ARRAY_BUFFER, arrayBuffer, gl.STATIC_DRAW);
+	}
+}
+
+const visWire = new VisWire();
+window.visWire = visWire; //DEBUG
+
 class VisDebug extends Geometry {
 	static BYTES_PER_ATTRIB = 4*3 + 1*4; //Position, Color
 	constructor() {
@@ -1007,12 +1511,7 @@ class VisDebug extends Geometry {
 		}
 
 		//----- make debug lines ----
-
-		//axes:
-		line({x:0,y:0,z:0},{x:5,y:0,z:0}, 0xff0000ff);
-		line({x:0,y:0,z:0},{x:0,y:5,z:0}, 0x00ff00ff);
-		line({x:0,y:0,z:0},{x:0,y:0,z:5}, 0x0000ffff);
-
+		
 		//mouse cursor:
 		if (MOUSE.x === MOUSE.x) {
 			const ray = mouseRay();
@@ -1052,8 +1551,14 @@ class VisDebug extends Geometry {
 					line(cell.vertices[face.indices[i]], cell.vertices[face.indices[(i+1)%face.indices.length]], 0x888800ff);
 				}
 			}
+			//offset yarns, but no other xform just yet:
+			const ofs = gm.sub(cell.vertices[0], cell.template.vertices[0]);
+			for (let yarn of cell.template.yarns) {
+				for (let i = 1; i < yarn.pts.length; ++i) {
+					line(gm.add(yarn.pts[i-1],ofs), gm.add(yarn.pts[i],ofs), 0xffffffff);
+				}
+			}
 		}
-
 
 		//---- copy debug lines to buffer for drawing ----
 
@@ -1094,6 +1599,19 @@ function redraw() {
 		camera.aspect = width / height;
 	})();
 
+	//update mouse info:
+	if (MOUSE.dirty) setMouseOver();
+
+	//update geometry:
+	if (visWire.dirty) {
+		visWire.set(body);
+		delete visWire.dirty;
+	}
+	if (visBody.dirty) {
+		visBody.set(body);
+		delete visWire.dirty;
+	}
+
 	visDebug.update();
 
 	gl.clearColor(0.1, 0.1, 0.1, 1.0);
@@ -1114,6 +1632,11 @@ function redraw() {
 		colorProgram.uniformLocations.HEMI_DIRECTION,
 		lightDir.x, lightDir.y, lightDir.z
 	);
+	gl.uniform4f(
+		colorProgram.uniformLocations.TINT,
+		1.0, 1.0, 1.0, 1.0
+	);
+
 
 	gl.lineWidth(2.0 * pixelRatio);
 	visDebug.draw(colorProgram);
@@ -1121,7 +1644,26 @@ function redraw() {
 	gl.lineWidth(1.0 * pixelRatio);
 	grid.draw(colorProgram);
 
-	visBody.draw(colorProgram);
+	//visBody.draw(colorProgram);
+	visWire.draw(colorProgram);
+
+	//show "hidden" debug lines also:
+
+	gl.enable(gl.BLEND);
+	gl.blendEquation(gl.FUNC_ADD);
+	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+	gl.uniform4f(
+		colorProgram.uniformLocations.TINT,
+		0.0, 0.0, 0.0, 0.1
+	);
+	gl.depthFunc(gl.GREATER);
+	gl.depthMask(false);
+	gl.lineWidth(2.0 * pixelRatio);
+	visDebug.draw(colorProgram);
+
+	gl.depthFunc(gl.LESS);
+	gl.depthMask(true);
+	gl.disable(gl.BLEND);
 }
 
 function requestRedraw() {
@@ -1132,6 +1674,7 @@ function requestRedraw() {
 		redraw();
 	});
 }
+window.requestRedraw = requestRedraw;
 
 resetCamera();
 requestRedraw();
@@ -1141,7 +1684,8 @@ window.addEventListener('resize', requestRedraw);
 async function init() {
 	{
 		console.log(`Fetching library...`);
-		const request = await fetch('solid-knitting.library');
+		//const request = await fetch('solid-knitting.library');
+		const request = await fetch('block-library/blocks.json');
 		const arrayBuffer = await request.arrayBuffer();
 		console.log(`  got ${arrayBuffer.byteLength} bytes.`);
 
@@ -1149,6 +1693,12 @@ async function init() {
 		//hack-y way of selecting first template:
 		window.template = null;
 		nextTemplate();
+
+		let info = 'Library contains:';
+		for (let name of Object.keys(library.templates).sort()) {
+			info += '\n   ' + name;
+		}
+		console.log(info);
 	}
 
 	{
@@ -1160,8 +1710,7 @@ async function init() {
 		window.body = sv.Body.fromArrayBuffer(arrayBuffer, library);
 	}
 
-	visBody.set(window.body);
-
+	bodyDirty();
 	resetCamera();
 	requestRedraw();
 }

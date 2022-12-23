@@ -83,6 +83,35 @@ export class Body {
 		const data = JSON.parse(json);
 		return Body.fromData(data, library);
 	}
+	toData() {
+		let data = [];
+		//for convenience:
+		for (let i = 0; i < this.cells.length; ++i) {
+			this.cells[i].index = i;
+		}
+
+		for (const cell of this.cells) {
+			const template = cell.template.signature();
+			const vertices = [];
+			for (const v of cell.vertices) {
+				vertices.push([v[0], v[1], v[2]]);
+			}
+			const connections = [];
+			for (const con of cell.connections) {
+				if (con === null) {
+					connections.push(null);
+				} else {
+					connections.push({cell:con.cell.index, face:con.face});
+				}
+			}
+			data.push({template, vertices, connections});
+		}
+
+		for (const cell of this.cells) {
+			delete cell.index;
+		}
+		return data;
+	}
 	static fromData(data, library) {
 		if (!Array.isArray(data)) throw new Error("");
 		let body = new Body();
@@ -155,7 +184,7 @@ export class Cell {
 
 		this.template = template;
 		this.vertices = vertices;
-		this.connections = connections; //connections have "block" (reference) and "face" (index)
+		this.connections = connections; //connections have "cell" (reference) and "face" (index)
 
 		//should be the case that:
 		//this.connections[0].block.connections[ this.connections[0].face ] === this
@@ -274,8 +303,31 @@ export class Template {
 		}
 		this.faces = faces;
 
+		//compute a normal direction + a center point for the faces (used when making yarn weights):
+		for (const face of this.faces) {
+			let center = new gm.Vec3(0);
+			for (let i = 0; i < face.indices.length; ++i) {
+				center = gm.add(center, this.vertices[face.indices[i]]);
+			}
+			center = gm.mul(1 / face.indices.length, center);
+			face.center = center;
+			let normal = new gm.Vec3(0);
+			for (let i = 0; i < face.indices.length; ++i) {
+				const a = this.vertices[face.indices[i]];
+				const b = this.vertices[face.indices[(i+1)%face.indices.length]];
+				normal = gm.add(normal, gm.cross(gm.sub(b,a), gm.sub(center,a)));
+			}
+			normal = gm.normalize(normal);
+			face.normal = normal;
+		}
+
 		//yarns: format somewhat TBD at the moment
 		this.yarns = yarns;
+
+		for (let yarn of this.yarns) {
+			initYarn(this,yarn);
+		}
+
 		//instructions:
 		this.machine = machine;
 		this.human = human;
@@ -289,6 +341,147 @@ export class Template {
 		}
 		return sig;
 	}
+}
+
+function initYarn(template,yarn) {
+	let pts = [];
+	function splineTo(p1,p2,p3) {
+		const p0 = pts[pts.length-1];
+		for (let i = 1; i < 10; ++i) {
+			const t = i / 10.0;
+			const p01 = gm.mix(p0, p1, t);
+			const p12 = gm.mix(p1, p2, t);
+			const p23 = gm.mix(p2, p3, t);
+			const p012 = gm.mix(p01, p12, t);
+			const p123 = gm.mix(p12, p23, t);
+			const p = gm.mix(p012, p123, t);
+			pts.push(p);
+		}
+		pts.push(p3);
+	}
+	pts.push(toVec3(`cps[0]`, yarn.cps[0]));
+	for (let i = 3; i < yarn.cps.length; i += 3) {
+		splineTo(toVec3(`cps[${i-2}]`, yarn.cps[i-2]), toVec3(`cps[${i-1}]`, yarn.cps[i-1]), toVec3(`cps[${i}]`, yarn.cps[i]));
+	}
+	yarn.pts = pts;
+
+	//also compute weights for the points -- i.e., their coordinates as a linear combination of the vertices.
+
+	
+	function normalizedDistanceWeights(dis) {
+		let prefixProduct = [];
+		let product = 1;
+		for (let i = 0; i < dis.length; ++i) {
+			product *= dis[i];
+			prefixProduct.push(product);
+		}
+
+		let suffixProduct = [];
+		product = 1;
+		for (let i = dis.length-1; i >= 0; --i) {
+			product *= dis[i];
+			suffixProduct.unshift(product);
+		}
+
+		let weights = [];
+		let sum = 0;
+		for (let i = 0; i < dis.length; ++i) {
+			//compute 1/d weights scaled by the product of the distances:
+			let weight = 1;
+			if (i > 0) weight *= prefixProduct[i-1];
+			if (i + 1 < dis.length) weight *= suffixProduct[i+1];
+
+			weights.push( weight );
+			sum += weight;
+		}
+		if (sum < 1e-3) {
+			console.log("Had case where two or more distances were nearly zero -- bailing out to equal weighting.");
+			sum = 0;
+			let min = Math.min(...dis);
+			for (let i = 0; i < dis.length; ++i) {
+				if (dis[i] == min) weights[i] = 1;
+				else weights[i] = 0;
+				sum += weights[i];
+			}
+		}
+		//now the normalization:
+		for (let i = 0; i < dis.length; ++i) {
+			weights[i] /= sum;
+		}
+		return weights;
+	}
+
+	function makeFaceWeights(face, pt) {
+		//per-edge distances:
+		let edgeDis = [];
+		let edgeAlong = [];
+		for (let i = 0; i < face.indices.length; ++i) {
+			const a = template.vertices[face.indices[i]];
+			const b = template.vertices[face.indices[(i+1)%face.indices.length]];
+			const ab = gm.sub(b,a);
+			const length2 = gm.dot(ab,ab);
+			const along = Math.max(0, Math.min(length2, gm.dot(gm.sub(pt,a),ab) )) / length2;
+			const close = gm.mix(a,b,along);
+			const dis = gm.length(close);
+			edgeDis.push(dis);
+			edgeAlong.push(along);
+		}
+		let edgeWeight = normalizedDistanceWeights(edgeDis);
+		let weights = [];
+		for (let i = 0; i < template.vertices.length; ++i) {
+			weights.push(0);
+		}
+		for (let i = 0; i < face.indices.length; ++i) {
+			const ai = face.indices[i];
+			const bi = face.indices[(i+1)%face.indices.length];
+			const along = edgeAlong[i];
+			const weight = edgeWeight[i];
+			weights[ai] += weight * (1 - along);
+			weights[bi] += weight * along;
+		}
+
+		return weights;
+	}
+
+	function makeWeights(pt) {
+		//per-face weights and a weighting factor:
+		let faceDis = [];
+		let faceWeights = [];
+		for (let f = 0; f < template.faces.length; ++f) {
+			const face = template.faces[f];
+			const dis = gm.dot(gm.sub(pt, face.center), face.normal);
+			const projected = gm.sub(pt, gm.mul(dis, face.normal));
+			faceDis.push(Math.abs(dis));
+			faceWeights.push(makeFaceWeights(face, pt));
+		}
+		let faceInvDis = normalizedDistanceWeights(faceDis);
+
+		//compute final weights:
+		let weights = [];
+		for (let i = 0; i < template.vertices.length; ++i) {
+			let w = 0;
+			for (let f = 0; f < faceWeights.length; ++f) {
+				w += faceInvDis[f] * faceWeights[f][i];
+			}
+			weights.push(w);
+		}
+
+		return weights;
+	}
+
+	let ptWeights = [];
+	for (const pt of pts) {
+		const weights = makeWeights(pt);
+		let sum = 0;
+		for (const w of weights) {
+			sum += w;
+		}
+		if (Math.abs(sum - 1.0) > 1e-3) {
+			console.log(`Weights sum to ${sum}, expected 1.0!`);
+		}
+		ptWeights.push(weights);
+	}
+	yarn.ptWeights = ptWeights;
 }
 
 function toVec3(what, val) {
