@@ -699,36 +699,52 @@ function addCell() {
 	}
 	body.cells.push(preview);
 
-	// Check correctness from preview cell. 
-	checkLocalCellCorrectness(preview);
-	/**
-	 * // Check global correctness accross all cells, i.e. simulate addition. 
-	 * // Note: Potentially expensive operation so perhaps it might not be a good idea to call
-	 * // it every time a funct 
-	 * checkGlobalCellCorrectness();
-	**/
+	// Check global correctness from preview cell. 
+	// (i.e. begins search from cell as a starting point)
+	// Run topological sort only from selected cell. (i.e. yarns should be acyclic). 
+	// Alternatively: checkGlobalCellCorrectness() assesses global correctness accross all possible blocks. 
+	// I think it's probably safe just to do one block at a time rather than checking the entire system all at once. 
+	checkCellCorrectness(preview);
+
 
 	//update UI and redraw:
 	mouseDirty();
 	bodyDirty();
 }
 
-// Checks that connections between two cells are appropriate. 
-function checkLocalCellCorrectness(preview) {
-	let connectionsLen = preview.connections.length();
-	for (let j = 0; j < connectionsLen; j++){
-		// check that face connections have corresponding block directions. 
+// TODO: Perhaps this should be moved elsewhere. 
+// Temporarily moved this from setConnection() to be used for correctness checks, to avoid repeated code.
+function compatible(a,b) {
+	if (a[0] === '-' && b[0] === '+') return a.substr(1) === b.substr(1);
+	if (a[0] === '+' && b[0] === '-') return a.substr(1) === b.substr(1);
+	return false;
+}
 
-		// Possible valid connections:
-		// +l joins -l
-		// -l joins +l
-		// +L joins -L
-		// -L joins +L
-		// +y joins -y 
-		// -y joins +y
+// BFS using Kahn's ? 
+function checkCellCorrectness(preview) {
+	// Dictionary of visited cells {cell, visit #}
+	let visitedCells = new Map();
+	let visitN = 0; 
 
-		// To respect the interface, it might be best for this to go in sv.mjs? 
-		// I need to look into it.
+	// Cells to visit, beginning with preview cell's potential connections.
+	let toVisit =  previewCell.connections.filter(connection => connection != null).map(connection => connection.cell);
+	
+	while (toVisit != null){
+		// Shift topmost element: 
+		let currCell = toVisit.shift(); 
+ 
+		if (visitedCells.get(currCell) != null) {
+		// If cell has already been visited, then we check for correctness. 
+
+		} else{
+			// Cell has not been visited, add it to dictionary. 
+			visitedCells.set(currCell, visitN); 
+			visitN++;
+
+			// Push its neighbors into the current cells to visit. 
+			let newConnections = currCell.connections.filter(connection => connection != null).map(connection => connection.cell);
+			toVisit.push(newConnections)
+		}
 	}
 }
 
@@ -820,11 +836,6 @@ function startConnectFace() {
 		const toFace = MOUSE.over.face;
 		if (toCell.connections[toFace]) return; //can't double-connect
 
-		function compatible(a,b) {
-			if (a[0] === '-' && b[0] === '+') return a.substr(1) === b.substr(1);
-			if (a[0] === '+' && b[0] === '-') return a.substr(1) === b.substr(1);
-			return false;
-		}
 		if (!compatible(cell.template.faces[face].type, toCell.template.faces[toFace].type)) return;
 
 
