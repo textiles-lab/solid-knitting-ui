@@ -1331,25 +1331,6 @@ class VisWire extends Geometry {
 				cell.center = center;
 			}
 
-			if (!('vertexColors' in cell.template)) {
-				cell.template.vertexColors = [];
-				for (let i = 0; i < cell.template.vertices.length; ++i) {
-					while (true) {
-						let r = Math.random();
-						let g = Math.random();
-						let b = Math.random();
-						let min = Math.min(r,g,b);
-						let max = Math.max(r,g,b);
-						if (max - min < 1e-3) continue;
-						r = (r - min) / (max - min);
-						g = (g - min) / (max - min);
-						b = (b - min) / (max - min);
-						cell.template.vertexColors.push(gm.vec3(r,g,b));
-						break;
-					}
-				}
-			}
-
 			//yarns:
 			const xf = cell.xform;
 			for (const yarn of cell.template.yarns) {

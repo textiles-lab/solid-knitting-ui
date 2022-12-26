@@ -48,18 +48,19 @@ export class Body {
 			const s = find(v);
 			if (s === v) {
 				//last in set; divide
-				vertices[v].x /= vertices[v].a;
-				vertices[v].y /= vertices[v].a;
-				vertices[v].z /= vertices[v].a;
-				delete vertices[v].a; //mark division as already done
+				console.assert(vertices[v].length === 4);
+				vertices[v][0] /= vertices[v][3];
+				vertices[v][1] /= vertices[v][3];
+				vertices[v][2] /= vertices[v][3];
+				vertices[v].pop(); //mark division as already done
 			} else {
 				//accumulate
-				console.assert('a' in vertices[s]);
-				console.assert('a' in vertices[v]);
-				vertices[s].x += vertices[v].x;
-				vertices[s].y += vertices[v].y;
-				vertices[s].z += vertices[v].z;
-				vertices[s].a += vertices[v].a;
+				console.assert(vertices[s].length === 4);
+				console.assert(vertices[v].length === 4);
+				vertices[s][0] += vertices[v][0];
+				vertices[s][1] += vertices[v][1];
+				vertices[s][2] += vertices[v][2];
+				vertices[s][3] += vertices[v][3];
 			}
 		}
 

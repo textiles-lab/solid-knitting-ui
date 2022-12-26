@@ -60,11 +60,11 @@ function flatten(limit, args) {
 
 //---- for adding aliases for particular elements to vector ---
 /*
-function addAliases(cls, dim) {
+function addAliases(obj, dim) {
 	//does this slow things down?
 	for (const NAMES of [ "xyzw", "rgba", "stpq" ]) {
 		for (let i = 0; i < dim; ++i) {
-			Object.defineProperty(cls.prototype, NAMES[i], {
+			Object.defineProperty(obj, NAMES[i], {
 				get() { return this[i]; },
 				set(v) { this[i] = v; }
 			});
@@ -77,17 +77,23 @@ function addAliases(cls, dim) {
 //all vector types are just Arrays -- no extra parameters or anything.
 
 export function vec2(...args) {
-	return [...flatten(2, args)];
+	let ret = [...flatten(2, args)];
+	//addAliases(ret, 2);
+	return ret;
 }
 //addAliases(Vec2, 2);
 
 export function vec3(...args) {
-	return [...flatten(3, args)];
+	let ret = [...flatten(3, args)];
+	//addAliases(ret, 3);
+	return ret;
 }
 //addAliases(Vec3, 3);
 
 export function vec4(...args) {
-	return [...flatten(4, args)];
+	let ret = [...flatten(4, args)];
+	//addAliases(ret, 4);
+	return ret;
 }
 //addAliases(Vec4, 4);
 
