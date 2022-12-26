@@ -74,6 +74,7 @@ export class Body {
 			for (let vi = 0; vi < cell.vertices.length; ++vi) {
 				cell.vertices[vi] = gm.mul(xf, new gm.Vec4(cell.template.vertices[vi], 1));
 			}
+			cell.xform = xf; //remember for yarn drawing later
 		}
 	}
 	check() { } //consistency check (connections point both directions)
@@ -127,6 +128,7 @@ export class Body {
 			for (const vertex of cell.vertices) {
 				vertices.push(toVec3(`cell vertex "${JSON.stringify(vertex)}"`, vertex));
 			}
+			let xform = gm.rigidTransform(template.vertices, vertices);
 
 			if (!Array.isArray(cell.connections)) throw new Error("Cell connections should be an array.");
 			if (cell.connections.length !== template.faces.length) throw new Error("Cell should have same number of connections as its template's faces.");
@@ -144,7 +146,7 @@ export class Body {
 				}
 			}
 
-			body.cells.push(new Cell({template, vertices, connections}));
+			body.cells.push(new Cell({template, vertices, connections, xform}));
 		}
 
 		//convert connections from indices -> references:
@@ -176,15 +178,19 @@ export class Cell {
 	constructor({
 		template,
 		vertices,
-		connections
+		connections,
+		xform
 	}) {
 		if (!(template instanceof Template)) throw new Error("Cell's template must be a Template");
 		if (!(template.vertices.length === vertices.length)) throw new Error("Should have as many vertices as template.");
 		if (!(template.faces.length === connections.length)) throw new Error("Should have as many connections as template.faces .");
+		if (!(xform instanceof gm.Mat4x3)) throw new Error("Should have a 4x3 rigid xform.");
+
 
 		this.template = template;
 		this.vertices = vertices;
 		this.connections = connections; //connections have "cell" (reference) and "face" (index)
+		this.xform = xform;
 
 		//should be the case that:
 		//this.connections[0].block.connections[ this.connections[0].face ] === this
@@ -205,7 +211,9 @@ export class Cell {
 			connections.push(null);
 		}
 
-		return new Cell({template, vertices, connections});
+		const cell = new Cell({template, vertices, connections, xform:new gm.Mat4x3(xform)});
+
+		return cell;
 	}
 };
 
@@ -321,7 +329,7 @@ export class Template {
 			face.normal = normal;
 		}
 
-		//yarns: format somewhat TBD at the moment
+		//yarns:
 		this.yarns = yarns;
 
 		for (let yarn of this.yarns) {
@@ -364,124 +372,6 @@ function initYarn(template,yarn) {
 		splineTo(toVec3(`cps[${i-2}]`, yarn.cps[i-2]), toVec3(`cps[${i-1}]`, yarn.cps[i-1]), toVec3(`cps[${i}]`, yarn.cps[i]));
 	}
 	yarn.pts = pts;
-
-	//also compute weights for the points -- i.e., their coordinates as a linear combination of the vertices.
-
-	
-	function normalizedDistanceWeights(dis) {
-		let prefixProduct = [];
-		let product = 1;
-		for (let i = 0; i < dis.length; ++i) {
-			product *= dis[i];
-			prefixProduct.push(product);
-		}
-
-		let suffixProduct = [];
-		product = 1;
-		for (let i = dis.length-1; i >= 0; --i) {
-			product *= dis[i];
-			suffixProduct.unshift(product);
-		}
-
-		let weights = [];
-		let sum = 0;
-		for (let i = 0; i < dis.length; ++i) {
-			//compute 1/d weights scaled by the product of the distances:
-			let weight = 1;
-			if (i > 0) weight *= prefixProduct[i-1];
-			if (i + 1 < dis.length) weight *= suffixProduct[i+1];
-
-			weights.push( weight );
-			sum += weight;
-		}
-		if (sum < 1e-3) {
-			console.log("Had case where two or more distances were nearly zero -- bailing out to equal weighting.");
-			sum = 0;
-			let min = Math.min(...dis);
-			for (let i = 0; i < dis.length; ++i) {
-				if (dis[i] == min) weights[i] = 1;
-				else weights[i] = 0;
-				sum += weights[i];
-			}
-		}
-		//now the normalization:
-		for (let i = 0; i < dis.length; ++i) {
-			weights[i] /= sum;
-		}
-		return weights;
-	}
-
-	function makeFaceWeights(face, pt) {
-		//per-edge distances:
-		let edgeDis = [];
-		let edgeAlong = [];
-		for (let i = 0; i < face.indices.length; ++i) {
-			const a = template.vertices[face.indices[i]];
-			const b = template.vertices[face.indices[(i+1)%face.indices.length]];
-			const ab = gm.sub(b,a);
-			const length2 = gm.dot(ab,ab);
-			const along = Math.max(0, Math.min(length2, gm.dot(gm.sub(pt,a),ab) )) / length2;
-			const close = gm.mix(a,b,along);
-			const dis = gm.length(close);
-			edgeDis.push(dis);
-			edgeAlong.push(along);
-		}
-		let edgeWeight = normalizedDistanceWeights(edgeDis);
-		let weights = [];
-		for (let i = 0; i < template.vertices.length; ++i) {
-			weights.push(0);
-		}
-		for (let i = 0; i < face.indices.length; ++i) {
-			const ai = face.indices[i];
-			const bi = face.indices[(i+1)%face.indices.length];
-			const along = edgeAlong[i];
-			const weight = edgeWeight[i];
-			weights[ai] += weight * (1 - along);
-			weights[bi] += weight * along;
-		}
-
-		return weights;
-	}
-
-	function makeWeights(pt) {
-		//per-face weights and a weighting factor:
-		let faceDis = [];
-		let faceWeights = [];
-		for (let f = 0; f < template.faces.length; ++f) {
-			const face = template.faces[f];
-			const dis = gm.dot(gm.sub(pt, face.center), face.normal);
-			const projected = gm.sub(pt, gm.mul(dis, face.normal));
-			faceDis.push(Math.abs(dis));
-			faceWeights.push(makeFaceWeights(face, pt));
-		}
-		let faceInvDis = normalizedDistanceWeights(faceDis);
-
-		//compute final weights:
-		let weights = [];
-		for (let i = 0; i < template.vertices.length; ++i) {
-			let w = 0;
-			for (let f = 0; f < faceWeights.length; ++f) {
-				w += faceInvDis[f] * faceWeights[f][i];
-			}
-			weights.push(w);
-		}
-
-		return weights;
-	}
-
-	let ptWeights = [];
-	for (const pt of pts) {
-		const weights = makeWeights(pt);
-		let sum = 0;
-		for (const w of weights) {
-			sum += w;
-		}
-		if (Math.abs(sum - 1.0) > 1e-3) {
-			console.log(`Weights sum to ${sum}, expected 1.0!`);
-		}
-		ptWeights.push(weights);
-	}
-	yarn.ptWeights = ptWeights;
 }
 
 function toVec3(what, val) {

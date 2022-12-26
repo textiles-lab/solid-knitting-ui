@@ -621,9 +621,7 @@ function previewCell() {
 			0,0,1,
 			MOUSE.grid.x, MOUSE.grid.y, 0
 		);
-		const preview = sv.Cell.fromTemplate(template, xform);
-		preview.xform = xform; //record for temp drawing purposes
-		return preview;
+		return sv.Cell.fromTemplate(template, xform);
 	}
 
 	if (MOUSE.over !== null) {
@@ -666,7 +664,6 @@ function previewCell() {
 				const xform = gm.rigidTransform(templateVerts, cellVerts);
 
 				const preview = sv.Cell.fromTemplate(template, xform);
-				preview.xform = xform; //record xform for drawing purposes
 
 				//record the fact that the connection exists:
 				preview.connections[tf] = {cell:cell, face:face};
@@ -692,8 +689,6 @@ function addCell() {
 
 	//if doesn't exist, don't create anything:
 	if (preview === null) return;
-
-	delete preview.xform; //get rid of field used for preview drawing
 
 	//if the cell *does* exist, hook up the other side of any connections it has:
 	for (let f = 0; f < preview.connections.length; ++f) {
@@ -848,6 +843,7 @@ function startGrabCell() {
 
 
 	const cell = MOUSE.over.cell;
+	const startXform = cell.xform;
 	const startVertices = [];
 	let center = new gm.Vec3(0);
 	for (const v of cell.vertices) {
@@ -884,6 +880,7 @@ function startGrabCell() {
 			} else if (evt.button == 2) {
 				console.log("Cancelling grab.");
 				cell.vertices = startVertices;
+				cell.xform = startXform;
 				ACTION = null;
 				bodyDirty();
 			}
@@ -898,6 +895,7 @@ function startGrabCell() {
 				for (let i = 0; i < cell.vertices.length; ++i) {
 					cell.vertices[i] = gm.add(startVertices[i], delta);
 				}
+				cell.xform = gm.rigidTransform(cell.template.vertices, cell.vertices); //could compute directly from starting xform but this is not performace-critical code
 				bodyDirty();
 			}
 		}
@@ -1301,7 +1299,7 @@ class VisWire extends Geometry {
 				if (con !== null) totalAttribs += face.indices.length * 3;
 			}
 			for (const yarn of cell.template.yarns) {
-				totalAttribs += (yarn.ptWeights.length-1)*2;
+				totalAttribs += (yarn.pts.length-1)*2;
 			}
 		}
 
@@ -1347,28 +1345,18 @@ class VisWire extends Geometry {
 				}
 			}
 
+			//yarns:
+			const xf = cell.xform;
 			for (const yarn of cell.template.yarns) {
 				let prev = null;
-				let prevCol = null;
-				for (const pw of yarn.ptWeights) {
-					let at = [0,0,0];
-					let col = [0,0,0];
-					for (let i = 0; i < pw.length; ++i) {
-						at[0] += pw[i] * cell.vertices[i][0];
-						at[1] += pw[i] * cell.vertices[i][1];
-						at[2] += pw[i] * cell.vertices[i][2];
-						col[0] += pw[i] * cell.template.vertexColors[i][0];
-						col[1] += pw[i] * cell.template.vertexColors[i][1];
-						col[2] += pw[i] * cell.template.vertexColors[i][2];
-					}
-
+				let col = rgb2Uint32([1.0, 0.6, 0.5]);
+				for (const pt of yarn.pts) {
+					let at = gm.mul(xf, new gm.Vec4(pt, 1));
 					if (prev !== null) {
-						attrib(prev[0],prev[1],prev[2], rgb2Uint32(prevCol));
-						attrib(at[0],at[1],at[2], rgb2Uint32(col));
+						attrib(prev[0],prev[1],prev[2], col);
+						attrib(at[0],at[1],at[2], col);
 					}
-
 					prev = at;
-					prevCol = col;
 				}
 			}
 
@@ -1514,7 +1502,7 @@ class VisDebug extends Geometry {
 					line(cell.vertices[face.indices[i]], cell.vertices[face.indices[(i+1)%face.indices.length]], 0x888800ff);
 				}
 			}
-			//offset yarns, but no other xform just yet:
+			//yarns:
 			const xf = cell.xform;
 			for (let yarn of cell.template.yarns) {
 				for (let i = 1; i < yarn.pts.length; ++i) {
