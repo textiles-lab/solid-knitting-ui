@@ -628,8 +628,8 @@ export function svd(A_) {
 		V = normalize(mul(V, Q.toQuat()));
 		//console.log("remain:\n" + mul(transpose(V.toMat3()), mul(S, V.toMat3())).toString()); //DEBUG
 	}
-	//console.log(A.toString())
-	//console.log(mul(A, V.toMat3()).toString());
+	//console.log(A.toString()) //DEBUG
+	//console.log(mul(A, V.toMat3()).toString()); //DEBUG
 
 	{ //Sort the singular values:
 		let B = mul(A, V.toMat3());
@@ -668,6 +668,7 @@ export function svd(A_) {
 			V = mul(V, new Quat(Math.SQRT1_2, 0, 0, Math.SQRT1_2));
 		}
 		/*
+		//DEBUG:
 		B = mul(A, V.toMat3());
 		s = [
 			B[0*3+0] * B[0*3+0] + B[0*3+1] * B[0*3+1] + B[0*3+2] * B[0*3+2],
@@ -680,12 +681,12 @@ export function svd(A_) {
 
 	//figure out U factor:
 	let B = mul(A, V.toMat3());
-	//console.log(`before:\n${B}`);
+	//console.log(`before:\n${B}`); //DEBUG
 	function qr_cs(app, apq, aqq) {
 		const den2 = aqq*aqq + apq*apq;
 		if (den2 < tol2) {
 			//if very small, rotate so sign of aqq is positive, ignoring off-diagonal:
-			const c = (aqq >= 0 ? 1 : 0);
+			const c = (aqq >= 0 ? 1 : -1);
 			const s = 0;
 			return {c, s};
 		} else {
@@ -727,9 +728,9 @@ export function svd(A_) {
 	const U = normalize(Q.toQuat());
 	const Sigma = new Mat3(B[0*3+0],0,0, 0,B[1*3+1],0, 0,0,B[2*3+2]);
 
-	//console.log(`A:\n${A}`);
-	//console.log(`U S Vt:\n${mul(mul(U.toMat3(), Sigma), transpose(V.toMat3()))}`);
-	//console.log(`U:\n${U.toMat3()}\nS:\n${Sigma}\nV:\n${V.toMat3()}`);
+	//console.log(`A:\n${A}`); //DEBUG
+	//console.log(`U S Vt:\n${mul(mul(U.toMat3(), Sigma), transpose(V.toMat3()))}`); //DEBUG
+	//console.log(`U:\n${U.toMat3()}\nS:\n${Sigma}\nV:\n${V.toMat3()}`); //DEBUG
 
 	return {U, Sigma, V};
 }
@@ -792,4 +793,104 @@ export function rigidTransform(A,B) {
 	xform[3*3+2] = translation[2];
 
 	return xform;
+}
+
+
+async function test_svd() {
+	console.log("Testing svd function.");
+
+	const MersenneTwister = (await import('./mersenne-twister.js')).default;
+
+	const mt = new MersenneTwister(314159);
+	const iters = 50000;
+
+	const before = performance.now();
+
+	let max_delta_info = null;
+	let max_delta = -1.0;
+
+	function test(mat, iter=-1) {
+		const {U, Sigma:s, V} = svd(mat);
+
+		const recon = mul(U.toMat3(), mul(s, transpose(V.toMat3())));
+
+		let delta = 0.0;
+		for (let i = 0; i < mat.length; ++i) {
+			delta = Math.max(delta, Math.abs(recon[i] - mat[i]));
+		}
+
+		if (delta > 1e-3) {
+			console.log(`iter ${iter}: delta is ${delta}`);
+		}
+
+		if (delta > max_delta) {
+			max_delta_info = {mat, U, s, V, recon};
+			max_delta = delta;
+		}
+	}
+
+	/* //this was especially a problem
+	test(new Mat3(
+		0.9, 0.0, 0.0,
+		0.0, 0.0, 0.91,
+		0.0, 0.05, 0.0
+	));
+	*/
+	for (let iter = 0; iter < iters; ++iter) {
+
+		//random matrix with entries in [-1,1]:
+		const mat = new Mat3(0);
+		for (let i = 0; i < mat.length; ++i) {
+			mat[i] = mt.random() * 2 - 1;
+		}
+
+		{ //add some zeros:
+			const zeros = Math.floor(mt.random() * mat.length);
+			const pattern = [];
+			for (let i = 0; i < zeros; ++i) {
+				pattern.push(0);
+			}
+			while (pattern.length < mat.length) {
+				pattern.push(1);
+			}
+			//shuffle zero pattern:
+			for (let i = 0; i < pattern.length; ++i) {
+				let sel = i + Math.floor(mt.random() * (pattern.length-i));
+				[pattern[i], pattern[sel]] = [pattern[sel], pattern[i]];
+			}
+			//enforce zeros:
+			for (let i = 0; i < pattern.length; ++i) {
+				mat[i] *= pattern[i];
+			}
+		}
+
+		test(mat,iter);
+	}
+
+	const after = performance.now();
+
+	console.log(`Over ${iters} random [-1,1] matrices have ${max_delta} as maximum reconstruction error.`);
+	//console.log(`${max_delta_info.mat}\n vs\n${max_delta_info.recon}`);
+	console.log(`Took ${(after-before)/iters}ms per iteration.`);
+
+}
+
+if (typeof process !== 'undefined') {
+
+
+	async function init() {
+		const url = await import('url');
+		const fs = await import('fs');
+		if (process.argv[1] !== url.fileURLToPath(import.meta.url)) return;
+		const ops = {
+			'test-svd':test_svd
+		};
+		if (process.argv.length !== 3 || !(process.argv[2] in ops)) {
+			console.log("Usage:\n\tnode gm.mjs <" + Object.keys(ops).join('|')+ ">");
+			process.exit(1);
+		}
+		const op = process.argv[2];
+		ops[op]();
+	}
+	init();
 }
