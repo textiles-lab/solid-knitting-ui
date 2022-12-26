@@ -778,10 +778,10 @@ export function rigidTransform(A,B) {
 	const {U, Sigma, V} = svd(S);
 
 	//NOTE: this multiplication would be more efficient betwixt U and V as quaternions:
-	//const rot = mul(V.toMat3(), transpose(U.toMat3()));
+	const rot = mul(V.toMat3(), transpose(U.toMat3()));
 
 	//HACK: actually ignore rotation:
-	const rot = new Mat3(1);
+	//const rot = new Mat3(1);
 
 	const translation = sub(B_mean, mul(rot, A_mean));
 

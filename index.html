@@ -1407,7 +1407,7 @@ class VisWire extends Geometry {
 			for (let fi = 0 ; fi < cell.connections.length; ++fi) {
 				const connection = cell.connections[fi];
 				if (connection === null) continue;
-				if (cell.template.faces[fi].type[0] !== '-') continue; //draw connectsions from '-' => '+'
+				if (cell.template.faces[fi].type[0] !== '+') continue; //draw connectsions from '+' => '-'
 
 				for (let i = 0; i < cell.ports[fi].length; ++i) {
 					let ci = (cell.template.faces[fi].indices.length + 1 - i) % cell.template.faces[fi].indices.length;
