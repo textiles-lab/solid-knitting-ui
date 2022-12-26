@@ -28,10 +28,6 @@ body {
 #file {
 	display:none;
 }
-#fileLabel span {
-	cursor:pointer;
-	text-decoration:underline;
-}
 
 #views {
 	display:grid;
@@ -43,14 +39,42 @@ body {
 
 	/*background: #0008 ;*/
 }
-#view-controls {
+#controls {
 	grid-column: 1 / 3 ;
 	grid-row: 1 ;
 	font-size: 16px;
 	line-height:16px;
 	padding: 5px 10px;
+	display:flex;
+	flex-flow: row wrap;
+	align-items:center;
 	/*background: #f008 ;*/
 }
+
+.controlsButton {
+	box-sizing:border-box;
+	cursor:pointer;
+	display:block;
+	background:#cfbb96;
+	padding:4px 8px;
+	margin:0 2px;
+	box-shadow: 0 1px 2px 0 #0008;
+	text-decoration:none;
+	line-height:1;
+	border: none;
+	border-radius:2px;
+	height:100%;
+	font-size:inherit;
+}
+
+.controlsButton:hover {
+	background:#f6d69b;
+}
+
+.controlsButton:active {
+	box-shadow: 0 0 1px 0 #0008;
+}
+
 #view-3d {
 	grid-column: 1 ;
 	grid-row: 2 ;
@@ -93,12 +117,13 @@ body {
 <div id="views">
 
 <!-- controls bar at the top of the window -->
-<div id="view-controls">
-<h1 id="file-name">No File Loaded</h1>
+<div id="controls">
 <input id="file" type="file" />
-<label id="fileLabel" for="file"><span>Choose a .blocks file</span> or drag one into the window to load it.</label>
+<label id="fileLabel" for="file" class="controlsButton">Load</label>
+<span id="fileName">(no file loaded)</span>
 <!-- <button id="benchmark">benchmark</button>
 <span id="benchmark-result"></span> -->
+<button id="save" class="controlsButton">Save</button>
 </div>
 
 <!-- 3d view -->
@@ -128,7 +153,7 @@ body {
 window.currentFile = null;
 
 function setFilename(name) {
-	document.getElementById("file-name").firstChild.textContent = name;
+	document.getElementById("fileName").textContent = name;
 }
 function readFile(file) {
 	console.log("Attempting to read file: '" + file.name + "'");
@@ -142,8 +167,10 @@ function readFile(file) {
 	let reader = readFile.reader = new FileReader();
 	reader.onload = function(){
 		console.log("File was " + reader.result.byteLength + " bytes long.");
-		window.blocks = sv.Blocks.fromArrayBuffer(reader.result);
+		window.body = sv.Body.fromArrayBuffer(reader.result, library);
 
+		bodyDirty();
+		mouseDirty();
 		resetCamera();
 		requestRedraw();
 		window.currentFile = file;
@@ -197,6 +224,27 @@ file.addEventListener('change', function(evt){
 file.addEventListener('click', function(evt){
 	file.value = ""; //reset so 'change' event fires
 });
+
+document.getElementById("save").addEventListener('click', function(evt){
+	console.log("Saving");
+	const text = JSON.stringify(body.toData());
+	fileSave(text, "solid-knitting.body");
+});
+
+//from knitout-live-visualizer:
+function fileSave(sourceText, fileIdentity) {
+	var workElement = document.createElement("a");
+	if ('download' in workElement) {
+		workElement.href = "data:" + 'text/plain' + "charset=utf-8," + escape(sourceText);
+		workElement.setAttribute("download", fileIdentity);
+		document.body.appendChild(workElement);
+		var eventMouse = document.createEvent("MouseEvents");
+		eventMouse.initMouseEvent("click", true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+		workElement.dispatchEvent(eventMouse);
+		document.body.removeChild(workElement);
+	} else throw 'File saving not supported for this browser';
+}
+
 </script>
 
 <!-- Solid Knitting UI code -->
@@ -288,11 +336,12 @@ function resetCamera() {
 
 	requestRedraw();
 }
+window.resetCamera = resetCamera;
 
 //--- controls ---
 
 const MOUSE = {x:NaN, y:NaN, over:null, grid:null};
-window.MOUSE = MOUSE; //DEBUG
+let ACTION = null; //<-- current action; gets all events if not null
 
 let camFlipX = false; //used for camera rotation control
 
@@ -318,6 +367,15 @@ function mouseDirty() {
 	MOUSE.dirty = true;
 	requestRedraw(); //mouse will be updated as part of redraw
 }
+window.mouseDirty = mouseDirty;
+
+function bodyDirty() {
+	visBody.dirty = true;
+	visWire.dirty = true;
+	requestRedraw();
+}
+window.bodyDirty = bodyDirty;
+
 function setMouseOver() {
 	MOUSE.over = null;
 	MOUSE.grid = null;
@@ -445,73 +503,73 @@ canvas.addEventListener('wheel', function(evt){
 	if (camera.radius < 1.0) camera.radius = 1.0;
 	if (camera.radius > 1000.0) camera.radius = 1000.0;
 	requestRedraw();
-	return false;
 });
 
 canvas.addEventListener('mousedown', function(evt){
 	const mouse = relativeMouse(evt, canvas);
-	MOUSE.x = mouse.x;
-	MOUSE.y = mouse.y;
-	camFlipX = (camera.computeUp().z < 0.0);
-	evt.preventDefault();
-	return false;
-});
-
-canvas.addEventListener('mousemove', function(evt){
-	const mouse = relativeMouse(evt, canvas);
-	if (MOUSE.x === MOUSE.x) {
-		if (evt.buttons & 1) {
-			if (evt.shiftKey) {
-				const up = camera.computeUp();
-				const right = camera.computeRight();
-
-				const x = camera.radius * (mouse.x - MOUSE.x) * Math.tan(0.5 * camera.fovy / 180.0 * Math.PI) * camera.aspect;
-				const y = camera.radius * (mouse.y - MOUSE.y) * Math.tan(0.5 * camera.fovy / 180.0 * Math.PI);
-
-				camera.target.x -= right.x * x + up.x * y;
-				camera.target.y -= right.y * x + up.y * y;
-				camera.target.z -= right.z * x + up.z * y;
-			} else {
-				const deltaToAngle = 2.0 * camera.fovy / 180.0 * Math.PI;
-				camera.azimuth += (camFlipX ? -1.0 : 1.0) * -(mouse.x - MOUSE.x) * camera.aspect * deltaToAngle;
-				camera.elevation -= (mouse.y - MOUSE.y) * deltaToAngle;
-			}
-			requestRedraw();
+	if (ACTION) {
+		if (ACTION.mousedown) ACTION.mousedown(evt, mouse);
+	} else {
+		if (evt.button == 0) {
+			startCameraMove();
 		}
 	}
 	MOUSE.x = mouse.x;
 	MOUSE.y = mouse.y;
 	mouseDirty();
 	evt.preventDefault();
-	return false;
+});
+
+canvas.addEventListener('mousemove', function(evt){
+	const mouse = relativeMouse(evt, canvas);
+	if (ACTION) {
+		if (ACTION.mousemove) ACTION.mousemove(evt, mouse);
+	} else {
+		//generally, nothing
+	}
+	MOUSE.x = mouse.x;
+	MOUSE.y = mouse.y;
+	mouseDirty();
+	evt.preventDefault();
 });
 
 canvas.addEventListener('mouseup', function(evt){
-	MOUSE.x = NaN;
-	MOUSE.y = NaN;
+	const mouse = relativeMouse(evt, canvas);
+	if (ACTION) {
+		if (ACTION.mouseup) ACTION.mouseup(evt, mouse);
+	} else {
+		//generally, nothing
+	}
+	MOUSE.x = mouse.x;
+	MOUSE.y = mouse.y;
 	mouseDirty();
 	evt.preventDefault();
-	return false;
 });
 
 window.addEventListener('keydown', function(evt){
-	if (evt.code === 'Space') {
-		body.relax();
-		visBody.set(body);
-		visWire.set(body);
-		requestRedraw();
-	} else if (evt.code == 'KeyA') {
-		addCell();
-	} else if (evt.code == 'KeyX') {
-		deleteCell();
-	} else if (evt.code == 'ArrowUp') {
-		prevTemplate();
-		requestRedraw();
-	} else if (evt.code == 'ArrowDown') {
-		nextTemplate();
-		requestRedraw();
+	if (ACTION) {
+		if (ACTION.keydown) ACTION.keydown(evt);
+	} else {
+		if (evt.code === 'Space') {
+			body.relax();
+			bodyDirty();
+		} else if (evt.code == 'KeyA') {
+			addCell();
+		} else if (evt.code == 'KeyX') {
+			deleteCell();
+		} else if (evt.code == 'KeyG') {
+			startGrabCell(); //start drag
+		} else if (evt.code == 'KeyC') {
+			startConnectFace(); //start connection
+		} else if (evt.code == 'ArrowUp') {
+			prevTemplate();
+			requestRedraw();
+		} else if (evt.code == 'ArrowDown') {
+			nextTemplate();
+			requestRedraw();
+		}
+		//console.log(evt.code); //when you want more keys
 	}
-	//console.log(evt); //when you want more keys
 });
 
 // TODO: Consider moving each script into its own module for the sake of code
@@ -644,9 +702,7 @@ function addCell() {
 
 	//update UI and redraw:
 	mouseDirty();
-	visBody.set(body);
-	visWire.set(body);
-	requestRedraw();
+	bodyDirty();
 }
 
 
@@ -657,10 +713,7 @@ function addCell() {
  * selected face, we should highlight selected cell. */
 function deleteCell() {
 	if (MOUSE.dirty) setMouseOver();
-
-	if (!MOUSE.over) {
-		return;
-	}
+	if (!MOUSE.over) return;
 
 	const cell = MOUSE.over.cell;
 
@@ -681,9 +734,206 @@ function deleteCell() {
 
 	// Update UI and redraw:
 	mouseDirty();
-	visBody.set(body);
-	visWire.set(body);
-	requestRedraw();
+	bodyDirty();
+}
+
+/**
+ * startConnectFace()
+ * Start connecting current face
+ */
+function startConnectFace() {
+	if (ACTION !== null) return;
+	if (MOUSE.dirty) setMouseOver();
+	if (!MOUSE.over) return;
+	const cell = MOUSE.over.cell;
+	const face = MOUSE.over.face;
+
+	//is face already connected?
+	const oldConnection = cell.connections[face];
+
+	function clearConnection() {
+		if (cell.connections[face] !== null) {
+			const toCell = cell.connections[face].cell;
+			const toFace = cell.connections[face].face;
+			console.assert(toCell.connections[toFace] !== null
+			 && toCell.connections[toFace].cell === cell
+			 && toCell.connections[toFace].face === face, "connections should be reflexive");
+			toCell.connections[toFace] = null;
+			cell.connections[face] = null;
+			bodyDirty();
+		}
+	}
+
+	clearConnection();
+
+	function setConnection() {
+		if (!setConnection.pending) return; //HACK: allow cancelling past end-of-action
+		setConnection.pending = false;
+
+		clearConnection();
+		if (MOUSE.dirty) setMouseOver();
+		if (!MOUSE.over) return;
+		const toCell = MOUSE.over.cell;
+		if (toCell === cell) return; //can't self-connect
+		const toFace = MOUSE.over.face;
+		if (toCell.connections[toFace]) return; //can't double-connect
+
+		function compatible(a,b) {
+			if (a[0] === '-' && b[0] === '+') return a.substr(1) === b.substr(1);
+			if (a[0] === '+' && b[0] === '-') return a.substr(1) === b.substr(1);
+			return false;
+		}
+		if (!compatible(cell.template.faces[face].type, toCell.template.faces[toFace].type)) return;
+
+
+		//make the connection:
+		cell.connections[face] = {cell:toCell, face:toFace};
+		toCell.connections[toFace] = {cell:cell, face:face};
+
+		bodyDirty();
+	}
+
+	console.log("Starting connect.");
+
+	ACTION = {
+		mousedown:(evt,mouse) => {
+			if (evt.button === 0) {
+				startCameraMove();
+			} else if (evt.button === 2) {
+				console.log("Cancelling connect.");
+				setConnection.pending = false;
+				cell.connections[face] = oldConnection;
+				if (oldConnection) {
+					oldConnection.cell.connections[oldConnection.face] = {cell:cell, face:face};
+				}
+				bodyDirty();
+				ACTION = null;
+			}
+		},
+		//nothing: mouseup:(evt,mouse) => { },
+		mousemove:(evt,mouse) => {
+			if (!setConnection.pending) {
+				setConnection.pending = true;
+				window.requestAnimationFrame( setConnection );
+			}
+		},
+		keydown:(evt) => {
+			if (evt.code === 'KeyC') {
+				console.log("Confirming connect.");
+				setConnection.pending = false;
+				ACTION = null;
+			}
+		},
+	};
+
+
+}
+
+
+/**
+ * startGrabCell()
+ * Grab (start moving) current cell.
+ */
+function startGrabCell() {
+	if (ACTION !== null) return;
+
+	if (MOUSE.dirty) setMouseOver();
+
+	if (!MOUSE.over) return;
+
+
+	const cell = MOUSE.over.cell;
+	const startVertices = [];
+	let center = new gm.Vec3(0);
+	for (const v of cell.vertices) {
+		startVertices.push(new gm.Vec3(v));
+		center = gm.add(center, v);
+	}
+	center = gm.mul(1 / cell.vertices.length, center);
+
+	const right = camera.computeRight();
+	const up = camera.computeUp();
+	const out = camera.computeOut();
+
+	function mousePt() {
+		const ray = mouseRay();
+		const offset = gm.dot(gm.sub(ray.origin, center), out);
+		const step = gm.dot(ray.direction, out);
+		if (Math.abs(step) < 1e-3 * Math.abs(offset)) return null;
+		const t = -offset / step;
+		return gm.add(ray.origin, gm.mul(t, ray.direction));
+	}
+
+	const begin = mousePt();
+	if (begin === null) {
+		console.warn("Trying to start drag from null point -- cancelling.");
+		return;
+	}
+
+	ACTION = {
+		mousedown:(evt,mouse) => {
+			if (evt.button == 0) {
+				console.log("Confirming grab.");
+				ACTION = null;
+				bodyDirty();
+			} else if (evt.button == 2) {
+				console.log("Cancelling grab.");
+				cell.vertices = startVertices;
+				ACTION = null;
+				bodyDirty();
+			}
+		},
+		//nothing: mouseup:(evt,mouse) => { },
+		mousemove:(evt,mouse) => {
+			MOUSE.x = mouse.x;
+			MOUSE.y = mouse.y;
+			const at = mousePt();
+			if (at !== null) {
+				const delta = gm.sub(at,begin);
+				for (let i = 0; i < cell.vertices.length; ++i) {
+					cell.vertices[i] = gm.add(startVertices[i], delta);
+				}
+				bodyDirty();
+			}
+		}
+	};
+}
+
+/**
+ * startCameraMove()
+ */
+function startCameraMove() {
+	let oldACTION = ACTION;
+	camFlipX = (camera.computeUp().z < 0.0);
+
+	ACTION = {
+		//ignore: mousedown:(evt,mouse) => { },
+		mouseup:(evt,mouse) => {
+			if (evt.button === 0) {
+				ACTION = oldACTION;
+				return;
+			}
+		},
+		mousemove:(evt,mouse) => {
+			if (MOUSE.x !== MOUSE.x) return;
+			if (evt.shiftKey) {
+				const up = camera.computeUp();
+				const right = camera.computeRight();
+
+				const x = camera.radius * (mouse.x - MOUSE.x) * Math.tan(0.5 * camera.fovy / 180.0 * Math.PI) * camera.aspect;
+				const y = camera.radius * (mouse.y - MOUSE.y) * Math.tan(0.5 * camera.fovy / 180.0 * Math.PI);
+
+				camera.target.x -= right.x * x + up.x * y;
+				camera.target.y -= right.y * x + up.y * y;
+				camera.target.z -= right.z * x + up.z * y;
+			} else {
+				const deltaToAngle = 2.0 * camera.fovy / 180.0 * Math.PI;
+				camera.azimuth += (camFlipX ? -1.0 : 1.0) * -(mouse.x - MOUSE.x) * camera.aspect * deltaToAngle;
+				camera.elevation -= (mouse.y - MOUSE.y) * deltaToAngle;
+			}
+			requestRedraw();
+		}
+	};
 }
 
 //--- vector math library ---
@@ -1310,6 +1560,16 @@ function redraw() {
 	//update mouse info:
 	if (MOUSE.dirty) setMouseOver();
 
+	//update geometry:
+	if (visWire.dirty) {
+		visWire.set(body);
+		delete visWire.dirty;
+	}
+	if (visBody.dirty) {
+		visBody.set(body);
+		delete visWire.dirty;
+	}
+
 	visDebug.update();
 
 	gl.clearColor(0.1, 0.1, 0.1, 1.0);
@@ -1372,6 +1632,7 @@ function requestRedraw() {
 		redraw();
 	});
 }
+window.requestRedraw = requestRedraw;
 
 resetCamera();
 requestRedraw();
@@ -1407,9 +1668,7 @@ async function init() {
 		window.body = sv.Body.fromArrayBuffer(arrayBuffer, library);
 	}
 
-	visBody.set(window.body);
-	visWire.set(window.body);
-
+	bodyDirty();
 	resetCamera();
 	requestRedraw();
 }
