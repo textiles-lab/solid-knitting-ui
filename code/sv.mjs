@@ -12,7 +12,7 @@ export class Body {
 			cell.viBase = vertices.length;
 			for (const vertex of cell.vertices) {
 				merged.push(vertices.length);
-				vertices.push(new gm.Vec4(vertex, 1));
+				vertices.push(gm.vec4(vertex, 1));
 			}
 		}
 		//basic union-find for making sets of vertices:
@@ -68,11 +68,11 @@ export class Body {
 			//copy vertices:
 			for (let vi = 0; vi < cell.vertices.length; ++vi) {
 				const target = vertices[find(cell.viBase + vi)];
-				cell.vertices[vi] = new gm.Vec3(target);
+				cell.vertices[vi] = gm.vec3(target);
 			}
 			const xf = gm.rigidTransform(cell.template.vertices, cell.vertices);
 			for (let vi = 0; vi < cell.vertices.length; ++vi) {
-				cell.vertices[vi] = gm.mul(xf, new gm.Vec4(cell.template.vertices[vi], 1));
+				cell.vertices[vi] = gm.mul_mat4x3_vec4(xf, gm.vec4(cell.template.vertices[vi], 1));
 			}
 			cell.xform = xf; //remember for yarn drawing later
 		}
@@ -184,7 +184,7 @@ export class Cell {
 		if (!(template instanceof Template)) throw new Error("Cell's template must be a Template");
 		if (!(template.vertices.length === vertices.length)) throw new Error("Should have as many vertices as template.");
 		if (!(template.faces.length === connections.length)) throw new Error("Should have as many connections as template.faces .");
-		if (!(xform instanceof gm.Mat4x3)) throw new Error("Should have a 4x3 rigid xform.");
+		if (!(Array.isArray(xform) && xform.length === 4*3)) throw new Error("Should have a 4x3 rigid xform.");
 
 
 		this.template = template;
@@ -197,12 +197,12 @@ export class Cell {
 
 	}
 	//generate from a template given some transform:
-	static fromTemplate(template, xform = new gm.Mat4x3(1)) {
+	static fromTemplate(template, xform = gm.mat4x3(1)) {
 
 		//vertices are a transformed copy of the template's vertices:
 		let vertices = [];
 		for (let vertex of template.vertices) {
-			vertices.push(gm.mul(xform, new gm.Vec4(vertex,1)));
+			vertices.push(gm.mul_mat4x3_vec4(xform, gm.vec4(vertex,1)));
 		}
 
 		//connections are a list of blank connections:
@@ -211,7 +211,7 @@ export class Cell {
 			connections.push(null);
 		}
 
-		const cell = new Cell({template, vertices, connections, xform:new gm.Mat4x3(xform)});
+		const cell = new Cell({template, vertices, connections, xform:gm.mat4x3(xform)});
 
 		return cell;
 	}
@@ -263,9 +263,9 @@ export class Template {
 		for (let i = 1; i < this.vertices.length; ++i) {
 			const a = this.vertices[i-1];
 			const b = this.vertices[i];
-			if (a.x < b.x
-			 || (a.x === b.x && a.y < b.y)
-			 || (a.x === b.x && a.y === b.y && a.z < b.z)) {
+			if (a[0] < b[0]
+			 || (a[0] === b[0] && a[1] < b[1])
+			 || (a[0] === b[0] && a[1] === b[1] && a[2] < b[2])) {
 				//great, a < b
 			} else {
 				throw new Error(`Vertices ${a} and ${b} are not ordered by x,y,z.`);
@@ -313,13 +313,13 @@ export class Template {
 
 		//compute a normal direction + a center point for the faces (used when making yarn weights):
 		for (const face of this.faces) {
-			let center = new gm.Vec3(0);
+			let center = gm.vec3(0);
 			for (let i = 0; i < face.indices.length; ++i) {
 				center = gm.add(center, this.vertices[face.indices[i]]);
 			}
-			center = gm.mul(1 / face.indices.length, center);
+			center = gm.scale(1 / face.indices.length, center);
 			face.center = center;
-			let normal = new gm.Vec3(0);
+			let normal = gm.vec3(0);
 			for (let i = 0; i < face.indices.length; ++i) {
 				const a = this.vertices[face.indices[i]];
 				const b = this.vertices[face.indices[(i+1)%face.indices.length]];
@@ -378,7 +378,7 @@ function toVec3(what, val) {
 	if (!Array.isArray(val)
 	 || val.length !== 3
 	 || !val.every( (v) => typeof v === 'number' ) ) throw new Error(`${what} is not an array of 3 numbers.`);
-	return new gm.Vec3(val[0], val[1], val[2]);
+	return gm.vec3(val[0], val[1], val[2]);
 }
 
 
