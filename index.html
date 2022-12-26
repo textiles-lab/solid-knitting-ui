@@ -621,7 +621,9 @@ function previewCell() {
 			0,0,1,
 			MOUSE.grid.x, MOUSE.grid.y, 0
 		);
-		return sv.Cell.fromTemplate(template, xform);
+		const preview = sv.Cell.fromTemplate(template, xform);
+		preview.xform = xform; //record for temp drawing purposes
+		return preview;
 	}
 
 	if (MOUSE.over !== null) {
@@ -664,6 +666,7 @@ function previewCell() {
 				const xform = gm.rigidTransform(templateVerts, cellVerts);
 
 				const preview = sv.Cell.fromTemplate(template, xform);
+				preview.xform = xform; //record xform for drawing purposes
 
 				//record the fact that the connection exists:
 				preview.connections[tf] = {cell:cell, face:face};
@@ -689,6 +692,8 @@ function addCell() {
 
 	//if doesn't exist, don't create anything:
 	if (preview === null) return;
+
+	delete preview.xform; //get rid of field used for preview drawing
 
 	//if the cell *does* exist, hook up the other side of any connections it has:
 	for (let f = 0; f < preview.connections.length; ++f) {
@@ -1510,10 +1515,10 @@ class VisDebug extends Geometry {
 				}
 			}
 			//offset yarns, but no other xform just yet:
-			const ofs = gm.sub(cell.vertices[0], cell.template.vertices[0]);
+			const xf = cell.xform;
 			for (let yarn of cell.template.yarns) {
 				for (let i = 1; i < yarn.pts.length; ++i) {
-					line(gm.add(yarn.pts[i-1],ofs), gm.add(yarn.pts[i],ofs), 0xffffffff);
+					line(gm.mul(xf, new gm.Vec4(yarn.pts[i-1],1)), gm.mul(xf, new gm.Vec4(yarn.pts[i],1)), 0xffffffff);
 				}
 			}
 		}
