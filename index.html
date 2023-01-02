@@ -659,6 +659,45 @@ function previewCell() {
 				//record the fact that the connection exists:
 				preview.connections[tf] = {cell:cell, face:face};
 
+				//see if there are other connections that might make sense:
+				let centers = [];
+				for (let fi = 0; fi < preview.template.faces.length; ++fi) {
+					const face = template.faces[fi];
+					let center = gm.vec3(0.0);
+					for (let vi of face.indices) {
+						center = gm.add(center, preview.vertices[vi]);
+					}
+					center = gm.scale(1.0 / face.indices.length, center);
+					centers.push(center);
+				}
+
+				//Check all faces with compatible types for overlapping centers:
+				//TODO: less brute force than this!
+				for (let cell of body.cells) {
+					for (let fi = 0; fi < cell.template.faces.length; ++fi) {
+						if (cell.connections[fi] !== null) continue;
+						const face = cell.template.faces[fi];
+						if (face.type === 'x') continue;
+						let center = null;
+						for (let pfi = 0; pfi < preview.template.faces.length; ++pfi) {
+							if (preview.connections[pfi] !== null) continue;
+							if (!sv.canConnectFaces(preview.template.faces[pfi], face)) continue;
+							if (center === null) {
+								center = gm.vec3(0.0);
+								for (let vi of face.indices) {
+									center = gm.add(center, cell.vertices[vi]);
+								}
+								center = gm.scale(1.0 / face.indices.length, center);
+							}
+							const ofs = gm.sub(center, centers[pfi]);
+							const length2 = gm.dot(ofs, ofs);
+							if (length2 < 0.1 * 0.1) {
+								preview.connections[pfi] = {cell:cell, face:fi};
+							}
+						}
+					}
+				}
+
 				return preview;
 			}
 		}
