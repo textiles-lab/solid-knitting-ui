@@ -26,10 +26,9 @@ export function canConnectFaces(face1, face2) {
 		if (a[0] === '+' && b[0] === '-') return a.substr(1) === b.substr(1);
 		return false;
 	}
-	//should have compatible type signatures (one is '+something' and the other is '-something'):
-	//should also have opposite directions so cells don't overlap:
-	return compatibleTypes(face1, face2)
-	 && cell.template.faces[face].direction === template.faces[f].direction;
+	//should have compatible type signatures (one is '+something' and the other is '-something')
+	//should also have opposite directions so cells don't overlap
+	return compatibleTypes(face1.type, face2.type) && face1.direction === -face2.direction;
 }
 
 export class Body {
