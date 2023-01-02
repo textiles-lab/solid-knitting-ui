@@ -88,6 +88,12 @@ body {
 	width:100%;
 	height:100%;
 }
+#status-line {
+	position:absolute;
+	left:0;
+	bottom:0;
+	background:#fff8;
+}
 #view-library {
 	grid-column: 2 ;
 	grid-row: 2 ;
@@ -129,6 +135,7 @@ body {
 <!-- 3d view -->
 <div id="view-3d">
 <canvas id="canvas" width="120" height="120"></canvas>
+<div id="status-line">(Status Line)</div>
 </div>
 
 <!-- library panel -->
@@ -271,6 +278,9 @@ import {Geometry, Program} from './code/gl.mjs';
 const canvas = document.getElementById("canvas");
 const gl = canvas.getContext('webgl', {alpha:false});
 window.gl = gl; //DEBUG
+
+const STATUS_LINE = document.getElementById("status-line");
+window.STATUS_LINE = STATUS_LINE;
 
 //------- camera -------
 const camera = {
@@ -553,6 +563,14 @@ window.addEventListener('keydown', function(evt){
 			bodyDirty();
 		} else if (evt.code == 'KeyA') {
 			addCell();
+		} else if (evt.code == 'Enter') {
+			if (MOUSE.over) {
+				template = MOUSE.over.cell.template;
+				requestRedraw();
+			} else {
+				template = null;
+				requestRedraw();
+			}
 		} else if (evt.code == 'KeyX') {
 			deleteCell();
 		} else if (evt.code == 'KeyG') {
@@ -1718,8 +1736,21 @@ function redraw() {
 		visBody.set(body);
 		delete visWire.dirty;
 	}
-
 	visDebug.update();
+
+	//update status line:
+	{
+		let info = "";
+		if (template !== null) {
+			info += `Template: ${template.signature()}`;
+		} else {
+			info += `No Template`;
+		}
+		if (MOUSE.over) {
+			info += `; Hovered: ${MOUSE.over.cell.template.signature()} / face: ${MOUSE.over.face} (${MOUSE.over.cell.template.faces[MOUSE.over.face].type})`;
+		}
+		STATUS_LINE.innerText = info;
+	}
 
 	gl.clearColor(0.1, 0.1, 0.1, 1.0);
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
