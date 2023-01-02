@@ -1366,6 +1366,10 @@ class VisWire extends Geometry {
 	set(blocks) {
 		const BYTES_PER_ATTRIB = VisWire.BYTES_PER_ATTRIB;
 
+		const SHOW_INTERNAL_FACES = false;
+		const SHOW_TIGHT_CONNECTIONS = false;
+		const SHOW_MISSING_CONNECTIONS = true;
+
 		//figure out how much space to allocate for attributes:
 		let totalAttribs = 0;
 		for (const cell of body.cells) {
@@ -1394,7 +1398,9 @@ class VisWire extends Geometry {
 
 		for (const cell of body.cells) {
 			setCellDrawingInfo(cell);
+		}
 
+		for (const cell of body.cells) {
 			//yarns:
 			const xf = cell.xform;
 			for (const yarn of cell.template.yarns) {
@@ -1410,7 +1416,19 @@ class VisWire extends Geometry {
 				}
 			}
 
+			//faces:
 			for (let fi = 0; fi < cell.template.faces.length; ++fi) {
+				if (!SHOW_INTERNAL_FACES) {
+					//skip faces which are connected tightly:
+					const connection = cell.connections[fi];
+					if (connection !== null) {
+						const ofs = gm.sub(connection.cell.centers[connection.face], cell.centers[fi]);
+						const length2 = gm.dot(ofs,ofs);
+						if (length2 < 0.1 * 0.1) {
+							continue;
+						}
+					}
+				}
 				const face = cell.template.faces[fi];
 				const center = cell.centers[fi];
 				for (let i = 0; i < face.indices.length; ++i) {
@@ -1421,10 +1439,9 @@ class VisWire extends Geometry {
 					let col = css2Uint32(face.color);
 					attrib(a[0],a[1],a[2], col);
 					attrib(b[0],b[1],b[2], col);
-					if (i === 0) {
+					if (i === 0 && face.type !== 'x') { //show "first edge" (for non-'x' face types)
 						let c = gm.scale(0.5, gm.add(a,b));
 						c = gm.add(gm.scale(0.9, gm.sub(c, center)), center);
-						col = 0xffff00ff; //highlight "first edge"
 						attrib(a[0],a[1],a[2], col);
 						attrib(c[0],c[1],c[2], col);
 						attrib(c[0],c[1],c[2], col);
@@ -1432,11 +1449,8 @@ class VisWire extends Geometry {
 					}
 				}
 			}
-		}
 
-		//connections:
-		const SHOW_MISSING_CONNECTIONS = true;
-		for (const cell of body.cells) {
+			//connections:
 			for (let fi = 0 ; fi < cell.connections.length; ++fi) {
 				const connection = cell.connections[fi];
 				if (connection === null) {
@@ -1452,6 +1466,8 @@ class VisWire extends Geometry {
 				}
 				if (cell.template.faces[fi].type[0] !== '+') continue; //draw connectsions from '+' => '-'
 
+				let maxLength2 = 0;
+				const watermark = dataOffset;
 				sv.forAlignedIndices(cell.template.faces[fi], connection.cell.template.faces[connection.face], (i, ci) => {
 					let colOut = COLOR_OUTPUT;
 					let colIn = COLOR_INPUT;
@@ -1467,7 +1483,19 @@ class VisWire extends Geometry {
 					attrib(ca[0], ca[1], ca[2], colOut); attrib(a[0], a[1], a[2], colOut);
 					attrib(a[0], a[1], a[2], colOut); attrib(b[0], b[1], b[2], colIn);
 					attrib(b[0], b[1], b[2], colIn); attrib(cb[0], cb[1], cb[2], colIn);
+
+					if (!SHOW_TIGHT_CONNECTIONS) {
+						const ofs = gm.sub(b,a);
+						const length2 = gm.dot(ofs,ofs);
+						maxLength2 = Math.max(maxLength2, length2);
+					}
 				} );
+
+				if (!SHOW_TIGHT_CONNECTIONS) {
+					if (maxLength2 < 0.01 * 0.01) {
+						dataOffset = watermark;
+					}
+				}
 			}
 		}
 
@@ -1478,9 +1506,10 @@ class VisWire extends Geometry {
 		}
 
 
-		console.assert(dataOffset === arrayBuffer.byteLength, `Bytes of attributes (${dataOffset}) matches allocated data size (${data.byteLength}).`);
+		//with various skipping may actually under-fill:
+		console.assert(dataOffset <= arrayBuffer.byteLength, `Bytes of attributes (${dataOffset}) matches allocated data size (${data.byteLength}).`);
 
-		this.count = arrayBuffer.byteLength / BYTES_PER_ATTRIB;
+		this.count = dataOffset / BYTES_PER_ATTRIB;
 
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
 		gl.bufferData(gl.ARRAY_BUFFER, arrayBuffer, gl.STATIC_DRAW);
@@ -1581,10 +1610,9 @@ class VisDebug extends Geometry {
 					b = gm.add(gm.scale(0.9, gm.sub(b, center)), center);
 					let col = css2Uint32(face.color);
 					line(a,b,col);
-					if (i === 0) {
+					if (i === 0 && face.type !== 'x') { //decorate first edge
 						let c = gm.scale(0.5, gm.add(a,b));
 						c = gm.add(gm.scale(0.9, gm.sub(c, center)), center);
-						col = 0xffff00ff; //highlight "first edge"
 						line(a,c,col);
 						line(c,b,col);
 					}
