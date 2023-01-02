@@ -1290,6 +1290,7 @@ class VisWire extends Geometry {
 				totalAttribs += face.indices.length * 2 + 4;
 				const con = cell.connections[fi];
 				if (con !== null) totalAttribs += face.indices.length * 3;
+				else if (face.type !== 'x') totalAttribs += face.indices.length * 2;
 			}
 			for (const yarn of cell.template.yarns) {
 				totalAttribs += (yarn.pts.length-1)*2;
@@ -1370,10 +1371,23 @@ class VisWire extends Geometry {
 		}
 
 		//connections:
+		const SHOW_MISSING_CONNECTIONS = true;
+		const COLOR_OUTPUT_WARNING = 0x881111ff;
+		const COLOR_INPUT_WARNING = 0xff2222ff;
 		for (const cell of body.cells) {
 			for (let fi = 0 ; fi < cell.connections.length; ++fi) {
 				const connection = cell.connections[fi];
-				if (connection === null) continue;
+				if (connection === null) {
+					if (cell.template.faces[fi].type[0] !== 'x' && SHOW_MISSING_CONNECTIONS) {
+						const col = (cell.template.faces[fi].type[0] === '+' ? COLOR_OUTPUT_WARNING : COLOR_INPUT_WARNING);
+						for (let i = 0; i < cell.ports[fi].length; ++i) {
+							let a = cell.ports[fi][i];
+							let ca = gm.mix(a, cell.center, 0.1);
+							attrib(ca[0], ca[1], ca[2], col); attrib(a[0], a[1], a[2], col);
+						}
+					}
+					continue;
+				}
 				if (cell.template.faces[fi].type[0] !== '+') continue; //draw connectsions from '+' => '-'
 
 				sv.forAlignedIndices(cell.template.faces[fi], connection.cell.template.faces[connection.face], (i, ci) => {
@@ -1381,8 +1395,8 @@ class VisWire extends Geometry {
 					let colIn = 0xffffffff;
 					if (!sv.canConnectFaces(cell.template.faces[fi], connection.cell.template.faces[connection.face])) {
 						//apparently somehow this connection got made though it shouldn't be allowed:
-						colOut = 0x881111ff;
-						colIn = 0xff2222ff;
+						colOut = COLOR_OUTPUT_WARNING;
+						colIn = COLOR_INPUT_WARNING;
 					}
 					let a = cell.ports[fi][i];
 					let ca = gm.mix(a, cell.center, 0.1);
@@ -1395,6 +1409,7 @@ class VisWire extends Geometry {
 			}
 		}
 
+		
 		//remove temp stuff:
 		for (const cell of body.cells) {
 			delete cell.center;
