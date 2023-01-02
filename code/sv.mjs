@@ -149,43 +149,57 @@ export class Body {
 		if (!Array.isArray(data)) throw new Error("");
 		let body = new Body();
 
+		let dataToBody = [];
+
 		for (const cell of data) {
-			if (typeof cell.template !== 'string') throw new Error("Cell template should be a string.");
-			if (!(cell.template in library.templates)) throw new Error(`Cell template "${cell.template}" does not appear in the library.`);
-			let template = library.templates[cell.template];
-
-			if (!Array.isArray(cell.vertices)) throw new Error("Cell vertices should be an array.");
-			if (cell.vertices.length !== template.vertices.length) throw new Error("Cell should have same number of vertices as its template.");
-			let vertices = [];
-			for (const vertex of cell.vertices) {
-				vertices.push(toVec3(`cell vertex "${JSON.stringify(vertex)}"`, vertex));
-			}
-			let xform = gm.rigidTransform(template.vertices, vertices);
-
-			if (!Array.isArray(cell.connections)) throw new Error("Cell connections should be an array.");
-			if (cell.connections.length !== template.faces.length) throw new Error("Cell should have same number of connections as its template's faces.");
-			let connections = [];
-			for (const connection of cell.connections) {
-				if (typeof connection !== 'object') throw new Error("Cell connections should be an object.");
-				if (connection === null) {
-					//not connected
-					connections.push(null);
-				} else {
-					//connected to something
-					if (typeof connection.cell !== 'number' || connection.cell >= data.length) throw new Error(`Connection.cell should be an index into cells list.`);
-					if (typeof connection.face !== 'number') throw new Error("connection face should be a number.");
-					connections.push({cell:connection.cell, face:connection.face});
+			try {
+				if (typeof cell.template !== 'string') throw new Error("Cell template should be a string.");
+				if (!(cell.template in library.templates)) throw new Error(`Cell template "${cell.template}" does not appear in the library.`);
+				let template = library.templates[cell.template];
+	
+				if (!Array.isArray(cell.vertices)) throw new Error("Cell vertices should be an array.");
+				if (cell.vertices.length !== template.vertices.length) throw new Error("Cell should have same number of vertices as its template.");
+				let vertices = [];
+				for (const vertex of cell.vertices) {
+					vertices.push(toVec3(`cell vertex "${JSON.stringify(vertex)}"`, vertex));
 				}
+				let xform = gm.rigidTransform(template.vertices, vertices);
+	
+				if (!Array.isArray(cell.connections)) throw new Error("Cell connections should be an array.");
+				if (cell.connections.length !== template.faces.length) throw new Error("Cell should have same number of connections as its template's faces.");
+				let connections = [];
+				for (const connection of cell.connections) {
+					if (typeof connection !== 'object') throw new Error("Cell connections should be an object.");
+					if (connection === null) {
+						//not connected
+						connections.push(null);
+					} else {
+						//connected to something
+						if (typeof connection.cell !== 'number' || connection.cell >= data.length) throw new Error(`Connection.cell should be an index into cells list.`);
+						if (typeof connection.face !== 'number') throw new Error("connection face should be a number.");
+						connections.push({cell:connection.cell, face:connection.face});
+					}
+				}
+	
+				dataToBody.push(body.cells.length);
+				body.cells.push(new Cell({template, vertices, connections, xform}));
+			} catch (e) {
+				console.warn(`Skipping cell in file: ${e}`);
+				dataToBody.push(null);
 			}
-
-			body.cells.push(new Cell({template, vertices, connections, xform}));
 		}
 
 		//convert connections from indices -> references:
 		for (const cell of body.cells) {
-			for (const connection of cell.connections) {
+			for (let i = 0; i < cell.connections.length; ++i) {
+				const connection = cell.connections[i];
 				if (connection === null) continue;
-				connection.cell = body.cells[connection.cell];
+				if (dataToBody[connection.cell] === null) {
+					//skip connections to skipped cells.
+					cell.connections[i] = null;
+					continue;
+				}
+				connection.cell = body.cells[dataToBody[connection.cell]];
 				if (connection.face >= connection.cell.template.faces.length) throw new Error("connected face doesn't exist in neighbor.");
 			}
 		}
