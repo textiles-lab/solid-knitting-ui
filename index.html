@@ -629,15 +629,9 @@ function previewCell() {
 		// Only connect if hovered face is not connected. 
 		if (!cell.connections[face]) {
 
-			// find face on template with compatible type:
-			function compatible(a,b) {
-				if (a[0] === '-' && b[0] === '+') return a.substr(1) === b.substr(1);
-				if (a[0] === '+' && b[0] === '-') return a.substr(1) === b.substr(1);
-				return false;
-			}
 			let compat = [];
 			for (let f = 0; f < template.faces.length; ++f) {
-				if (compatible(cell.template.faces[face].type, template.faces[f].type)) {
+				if (sv.canConnectFaces(cell.template.faces[face], template.faces[f])) {
 					compat.push(f);
 				}
 			}
@@ -651,13 +645,12 @@ function previewCell() {
 				//vertex lists that should connect:
 				const cellVerts = [];
 				const templateVerts = [];
-				const L = cell.template.faces[face].indices.length;
-				for (let i = 0; i < L; ++i) {
+				sv.forAlignedIndices(cell.template.faces[face], template.faces[tf], (i, ti) => {
 					const cv = cell.template.faces[face].indices[i];
-					const tv = template.faces[tf].indices[(L+1-i)%L];
+					const tv = template.faces[tf].indices[ti];
 					cellVerts.push(cell.vertices[cv]);
 					templateVerts.push(template.vertices[tv]);
-				}
+				});
 
 				const xform = gm.rigidTransform(templateVerts, cellVerts);
 
@@ -776,12 +769,7 @@ function startConnectFace() {
 		const toFace = MOUSE.over.face;
 		if (toCell.connections[toFace]) return; //can't double-connect
 
-		function compatible(a,b) {
-			if (a[0] === '-' && b[0] === '+') return a.substr(1) === b.substr(1);
-			if (a[0] === '+' && b[0] === '-') return a.substr(1) === b.substr(1);
-			return false;
-		}
-		if (!compatible(cell.template.faces[face].type, toCell.template.faces[toFace].type)) return;
+		if (!sv.canConnectFaces(cell.template.faces[face], toCell.template.faces[toFace])) return;
 
 
 		//make the connection:
@@ -1388,16 +1376,22 @@ class VisWire extends Geometry {
 				if (connection === null) continue;
 				if (cell.template.faces[fi].type[0] !== '+') continue; //draw connectsions from '+' => '-'
 
-				for (let i = 0; i < cell.ports[fi].length; ++i) {
-					let ci = (cell.template.faces[fi].indices.length + 1 - i) % cell.template.faces[fi].indices.length;
+				sv.forAlignedIndices(cell.template.faces[fi], connection.cell.template.faces[connection.face], (i, ci) => {
+					let colOut = 0x888888ff;
+					let colIn = 0xffffffff;
+					if (!sv.canConnectFaces(cell.template.faces[fi], connection.cell.template.faces[connection.face])) {
+						//apparently somehow this connection got made though it shouldn't be allowed:
+						colOut = 0x881111ff;
+						colIn = 0xff2222ff;
+					}
 					let a = cell.ports[fi][i];
 					let ca = gm.mix(a, cell.center, 0.1);
 					let b = connection.cell.ports[connection.face][ci];
 					let cb = gm.mix(b, connection.cell.center, 0.1);
-					attrib(ca[0], ca[1], ca[2], 0x888888ff); attrib(a[0], a[1], a[2], 0x888888ff);
-					attrib(a[0], a[1], a[2], 0x888888ff); attrib(b[0], b[1], b[2], 0xffffffff);
-					attrib(b[0], b[1], b[2], 0xffffffff); attrib(cb[0], cb[1], cb[2], 0xffffffff);
-				}
+					attrib(ca[0], ca[1], ca[2], colOut); attrib(a[0], a[1], a[2], colOut);
+					attrib(a[0], a[1], a[2], colOut); attrib(b[0], b[1], b[2], colIn);
+					attrib(b[0], b[1], b[2], colIn); attrib(cb[0], cb[1], cb[2], colIn);
+				} );
 			}
 		}
 

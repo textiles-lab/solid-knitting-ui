@@ -47,17 +47,18 @@ for obj in blocks.objects:
 
 	mesh = obj.data
 
-	face_centers = []
-	face_types = []
-	face_normals = []
-	face_types = []
-	face_first = []
+	face_centers = [] #center position per face (used to assign connection labels to faces)
+	face_normals = [] #normal direction per face
+	face_types = [] #type as [+-][yLl][1-9] or 'x'
+	face_first = [] #first vertex of first (lowest-y) edge in port coordinate system
+	face_direction = [] #sign indicates direction of first edge in port coordinate system
 
 	for poly in mesh.polygons:
 		face_centers.append(poly.center)
 		face_normals.append(poly.normal)
 		face_types.append(None)
 		face_first.append(None)
+		face_direction.append(None)
 
 	yarns = []
 
@@ -84,13 +85,17 @@ for obj in blocks.objects:
 				end_dis = float('inf')
 				for f in range(0, len(face_centers)):
 					test = abs( (cps[0] - face_centers[f]).dot(face_normals[f]) )
-					if test < begin_dis:
-						begin_dis = test
-						begin = f
+					if test < 0.01: #if in the plane...
+						test = (cps[0] - face_centers[f]).length #...compute distance to center
+						if test < begin_dis:
+							begin_dis = test
+							begin = f
 					test = abs( (cps[-1] - face_centers[f]).dot(face_normals[f]) )
-					if test < end_dis:
-						end_dis = test
-						end = f
+					if test < 0.01: #if in the plane...
+						test = (cps[-1] - face_centers[f]).length #...compute distance to center
+						if test < end_dis:
+							end_dis = test
+							end = f
 				yarn["begin"] = begin
 				yarn["end"] = end
 				yarns.append(yarn)
@@ -136,6 +141,8 @@ for obj in blocks.objects:
 			outward.normalize()
 			up = (to_parent @ Vector((0,1,0))) - at
 			up.normalize()
+			right = (to_parent @ Vector((1,0,0))) - at
+			right.normalize()
 
 			dis = float('inf')
 			best = None
@@ -168,15 +175,19 @@ for obj in blocks.objects:
 			#determine "first edge" = overall lowest edge:
 			poly = mesh.polygons[best]
 			first = None
+			first_direction = None
 			height = up.dot(at) #should be below the center of the marker, right?
 			for i in range(0, len(poly.vertices)):
 				a = mesh.vertices[poly.vertices[i]].co
 				b = mesh.vertices[poly.vertices[(i + 1) % len(poly.vertices)]].co
 				test = max(up.dot(a), up.dot(b))
+				direction = right.dot(b) - right.dot(a)
 				if test < height:
 					height = test
 					first = i
+					first_direction = direction
 			face_first[best] = first
+			face_direction[best] = first_direction
 
 	#re-order vertices for sorted constraint:
 	vertex_order = sorted(range(0,len(mesh.vertices)), key=lambda i: tuple(mesh.vertices[i].co))
@@ -198,8 +209,15 @@ for obj in blocks.objects:
 		for vi in mesh.polygons[f].vertices:
 			indices.append(vertex_to_sorted[vi])
 		assert face_first[f] != None
+		assert face_direction[f] != None
 		indices = indices[face_first[f]:] + indices[:face_first[f]]
+		#if face_direction[f] < 0:
+		#	indices = list(reversed(indices))
 		face["indices"] = indices
+		if face_direction[f] >= 0:
+			face["direction"] = 1
+		else:
+			face["direction"] = -1
 		faces.append(face)
 	faces = sorted(faces, key=lambda x: x["indices"])
 
@@ -224,7 +242,7 @@ for obj in blocks.objects:
 	for face in faces:
 		comma = ','
 		if face is faces[-1]: comma = ''
-		out.append(f'\t\t{{ "type":"{face["type"]}", "indices":[{",".join(map(str, face["indices"]))}], "color":"{TYPE_COLORS[face["type"]]}" }}{comma}')
+		out.append(f'\t\t{{ "type":"{face["type"]}", "direction":{face["direction"]}, "indices":[{",".join(map(str, face["indices"]))}], "color":"{TYPE_COLORS[face["type"]]}" }}{comma}')
 		
 	out.append(f'\t],')
 	out.append(f'\t"yarns":[')

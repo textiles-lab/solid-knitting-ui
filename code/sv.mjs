@@ -1,5 +1,37 @@
 import * as gm from './gm.mjs';
 
+//helper to compute indices aligned by a connection between two faces:
+// NOTE: indices are into face.template.indices
+export function forAlignedIndices(face1, face2, func) {
+	if (face1.indices.length !== face2.indices.length) throw new Error("can't find corresponding indices for faces that are different sizes.");
+	if (face1.direction === face2.direction) {
+		//same order:
+		for (let i1 = 0; i1 < face1.indices.length; ++i1) {
+			const i2 = i1;
+			func(i1, i2);
+		}
+	} else {
+		//opposite order:
+		for (let i1 = 0; i1 < face1.indices.length; ++i1) {
+			const i2 =  (face1.indices.length + 1 - i1) % face1.indices.length;
+			func(i1, i2);
+		}
+	}
+}
+
+//helper for checking whether it makes sense to connect two faces:
+export function canConnectFaces(face1, face2) {
+	function compatibleTypes(a,b) {
+		if (a[0] === '-' && b[0] === '+') return a.substr(1) === b.substr(1);
+		if (a[0] === '+' && b[0] === '-') return a.substr(1) === b.substr(1);
+		return false;
+	}
+	//should have compatible type signatures (one is '+something' and the other is '-something'):
+	//should also have opposite directions so cells don't overlap:
+	return compatibleTypes(face1, face2)
+	 && cell.template.faces[face].direction === template.faces[f].direction;
+}
+
 export class Body {
 	constructor() {
 		this.cells = [];
@@ -36,9 +68,9 @@ export class Body {
 				const face2 = cell2.template.faces[connection.face];
 				const L = face.indices.length;
 				console.assert(L === face2.indices.length);
-				for (let i = 0; i < face.indices.length; ++i) {
-					union(cell.viBase + face.indices[i], cell2.viBase + face2.indices[(L + 1 - i) % L]);
-				}
+				forAlignedIndices( face, face2, (i, i2) => {
+					union(cell.viBase + face.indices[i], cell2.viBase + face2.indices[i2]);
+				});
 			}
 		}
 		//TODO: also connections to construction grid?
@@ -273,7 +305,7 @@ export class Template {
 			}
 		}
 
-		//faces should be objects with a 'type', 'indices', and 'color':
+		//faces should be objects with a 'type', 'indices', 'direction', and 'color':
 		if (!Array.isArray(faces)) throw new Error("LibraryBlock.faces should be an array.");
 		function isVertexArray(x) {
 			if (!Array.isArray(x)) return false;
@@ -286,6 +318,7 @@ export class Template {
 		}
 		for (let i = 0; i < faces.length; ++i) {
 			if (typeof faces[i].type !== 'string') throw new Error(`Template.faces[${i}].type should be a string.`);
+			if (!(faces[i].direction === 1 || faces[i].direction === -1)) throw new Error(`Template.faces[${i}].direction should be in {-1,1}.`);
 			if (!isVertexArray(faces[i].indices)) throw new Error(`Template.faces[${i}].indices (${faces[i].indices}) should be an array of vertex indices.`);
 			if (typeof faces[i].color !== 'string') throw new Error(`Template.faces[${i}].color should be a string.`);
 		}
