@@ -31,10 +31,12 @@ blocks = bpy.data.collections['Blocks']
 TYPE_COLORS={
 	"-l1":"#888811",
 	"+l1":"#bbbb11",
-	"-L1":"#aa0000",
+	"-L1":"#880000",
 	"+L1":"#bb0000",
-	"-y1":"#884488",
+	"-y1":"#882288",
 	"+y1":"#bb88bb",
+	"-c1":"#228888",
+	"+c1":"#88bbbb",
 	"x":"#444444",
 }
 
@@ -252,7 +254,14 @@ for obj in blocks.objects:
 		cps = []
 		for cp in yarn["cps"]:
 			cps.append(f'[{cp.x:.3f},{cp.y:.3f},{cp.z:.3f}]')
-		out.append(f'\t\t{{ "begin":{yarn["begin"]}, "end":{yarn["end"]}, "cps":[{",".join(cps)}] }}{comma}')
+		info = f'\t\t{{'
+		if yarn["begin"] == None: pass
+		else: info += f' "begin":{yarn["begin"]},'
+		if yarn["end"] == None: pass
+		else: info += f' "end":{yarn["end"]},'
+		info += f' "cps":[{",".join(cps)}] }}{comma}'
+		out.append(info)
+		#was: out.append(f'\t\t{{ "begin":{yarn["begin"]}, "end":{yarn["end"]}, "cps":[{",".join(cps)}] }}{comma}')
 
 	out.append(f'\t],')
 	out.append(f'\t"machine":{{ }},')
