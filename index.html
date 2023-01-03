@@ -88,6 +88,12 @@ body {
 	width:100%;
 	height:100%;
 }
+#status-line {
+	position:absolute;
+	left:0;
+	bottom:0;
+	background:#fff8;
+}
 #view-library {
 	grid-column: 2 ;
 	grid-row: 2 ;
@@ -129,6 +135,7 @@ body {
 <!-- 3d view -->
 <div id="view-3d">
 <canvas id="canvas" width="120" height="120"></canvas>
+<div id="status-line">(Status Line)</div>
 </div>
 
 <!-- library panel -->
@@ -272,9 +279,12 @@ const canvas = document.getElementById("canvas");
 const gl = canvas.getContext('webgl', {alpha:false});
 window.gl = gl; //DEBUG
 
+const STATUS_LINE = document.getElementById("status-line");
+window.STATUS_LINE = STATUS_LINE;
+
 //------- camera -------
 const camera = {
-	target:new gm.Vec3(0),
+	target:gm.vec3(0),
 	radius:2.5,
 	azimuth:0.0,
 	elevation:0.0,
@@ -285,7 +295,7 @@ const camera = {
 window.camera = camera; //DEBUG
 
 camera.computeUp = function camera_computeUp() {
-	return new gm.Vec3(
+	return gm.vec3(
 		Math.cos(this.azimuth)*-Math.sin(this.elevation),
 		Math.sin(this.azimuth)*-Math.sin(this.elevation),
 		Math.cos(this.elevation)
@@ -293,7 +303,7 @@ camera.computeUp = function camera_computeUp() {
 };
 
 camera.computeRight = function camera_computeRight() {
-	return new gm.Vec3(
+	return gm.vec3(
 		-Math.sin(this.azimuth),
 		Math.cos(this.azimuth),
 		0.0
@@ -301,7 +311,7 @@ camera.computeRight = function camera_computeRight() {
 };
 
 camera.computeOut = function camera_computeOut() {
-	return new gm.Vec3(
+	return gm.vec3(
 		Math.cos(this.azimuth)*Math.cos(this.elevation),
 		Math.sin(this.azimuth)*Math.cos(this.elevation),
 		Math.sin(this.elevation)
@@ -309,28 +319,26 @@ camera.computeOut = function camera_computeOut() {
 };
 
 camera.computeAt = function camera_computeAt() {
-	return gm.add(this.target, gm.mul(this.radius, this.computeOut()));
+	return gm.add(this.target, gm.scale(this.radius, this.computeOut()));
 };
 
 function resetCamera() {
-	let min = new gm.Vec3(Infinity);
-	let max = new gm.Vec3(-Infinity);
+	let min = gm.vec3(Infinity);
+	let max = gm.vec3(-Infinity);
 
 	//TOOD: compute bounding box
 
-	if (min.x > max.x) {
+	if (min[0] > max[0]) {
 		//for now, just some default:
-		min.x = -10.0; min.y = -10.0; min.z = -10.0;
-		max.x =  10.0; max.y =  10.0; max.z =  10.0;
+		min[0] = -10.0; min[1] = -10.0; min[2] = -10.0;
+		max[0] =  10.0; max[1] =  10.0; max[2] =  10.0;
 	}
 
-	camera.target.x = 0.5 * (min.x + max.x);
-	camera.target.y = 0.5 * (min.y + max.y);
-	camera.target.z = 0.5 * (min.z + max.z);
+	camera.target = gm.scale(0.5, gm.add(min,max));
 
 	//console.log("Range: ",min,max);
 
-	camera.radius = 0.5 * (max.y - min.y) / Math.tan(0.5 * camera.fovy * Math.PI / 180.0) + 0.5 * (max.z - min.z);
+	camera.radius = 0.5 * (max[1] - min[1]) / Math.tan(0.5 * camera.fovy * Math.PI / 180.0) + 0.5 * (max[2] - min[2]);
 	camera.azimuth = Math.PI / 6.0;
 	camera.elevation = Math.PI / 4.0;
 
@@ -355,7 +363,7 @@ function mouseRay() {
 	const rh = Math.tan(0.5 * camera.fovy / 180.0 * Math.PI); //half of the image plane height
 	const rw = rh * camera.aspect; //half of the image plane width
 
-	const direction = gm.sub( gm.add( gm.mul(rw * MOUSE.x, r), gm.mul(rh * MOUSE.y, u)), o);
+	const direction = gm.sub( gm.add( gm.scale(rw * MOUSE.x, r), gm.scale(rh * MOUSE.y, u)), o);
 
 	return {origin, direction};
 }
@@ -405,7 +413,7 @@ function setMouseOver() {
 		if (t >= close) return;
 
 		//move point to plane of triangle:
-		const p = gm.add(ray.origin, gm.mul(t, ray.direction));
+		const p = gm.add(ray.origin, gm.scale(t, ray.direction));
 
 		//console.log(`Close to zero(?): ${dot(perp, sub(p,a))}`); //DEBUG
 
@@ -424,8 +432,8 @@ function setMouseOver() {
 
 	for (const cell of body.cells) {
 		{ //ray vs bounding box of cell:
-			let min = new gm.Vec3(Infinity);
-			let max = new gm.Vec3(-Infinity);
+			let min = gm.vec3(Infinity);
+			let max = gm.vec3(-Infinity);
 			for (let v of cell.vertices) {
 				min = gm.min(min, v);
 				max = gm.max(max, v);
@@ -447,9 +455,9 @@ function setMouseOver() {
 					}
 				}
 			}
-			reduce(min.x, max.x, ray.origin.x, ray.direction.x)
-			reduce(min.y, max.y, ray.origin.y, ray.direction.y)
-			reduce(min.z, max.z, ray.origin.z, ray.direction.z)
+			for (let d = 0; d < 3; ++d) {
+				reduce(min[d], max[d], ray.origin[d], ray.direction[d]);
+			}
 			if (t0 > t1) continue; //if doesn't intersect bounding box
 		}
 
@@ -466,17 +474,17 @@ function setMouseOver() {
 
 	//also check grid (at z = 0) [but only if not over a face]:
 	if (MOUSE.over === null) {
-		const ofs = ray.origin.z;
-		const step = ray.direction.z;
+		const ofs = ray.origin[2];
+		const step = ray.direction[2];
 		if ((ofs < 0 && step > 0) || (ofs > 0 && step < 0)) {
 			const t = -ofs / step;
 			if (t < close) {
 				close = t;
 				MOUSE.over = null;
 				MOUSE.grid = {
-					x:ray.origin.x + ray.direction.x * t,
-					y:ray.origin.y + ray.direction.y * t,
-					z:ray.origin.z + ray.direction.z * t
+					x:ray.origin[0] + ray.direction[0] * t,
+					y:ray.origin[1] + ray.direction[1] * t,
+					z:ray.origin[2] + ray.direction[2] * t
 				};
 			}
 		}
@@ -555,6 +563,14 @@ window.addEventListener('keydown', function(evt){
 			bodyDirty();
 		} else if (evt.code == 'KeyA') {
 			addCell();
+		} else if (evt.code == 'Enter') {
+			if (MOUSE.over) {
+				template = MOUSE.over.cell.template;
+				requestRedraw();
+			} else {
+				template = null;
+				requestRedraw();
+			}
 		} else if (evt.code == 'KeyX') {
 			deleteCell();
 		} else if (evt.code == 'KeyG') {
@@ -615,7 +631,7 @@ function previewCell() {
 
 	if (MOUSE.grid !== null) {
 		//transform that puts center of cell at mouse position on the grid:
-		const xform = new gm.Mat4x3(
+		const xform = gm.mat4x3(
 			1,0,0,
 			0,1,0,
 			0,0,1,
@@ -631,15 +647,9 @@ function previewCell() {
 		// Only connect if hovered face is not connected. 
 		if (!cell.connections[face]) {
 
-			// find face on template with compatible type:
-			function compatible(a,b) {
-				if (a[0] === '-' && b[0] === '+') return a.substr(1) === b.substr(1);
-				if (a[0] === '+' && b[0] === '-') return a.substr(1) === b.substr(1);
-				return false;
-			}
 			let compat = [];
 			for (let f = 0; f < template.faces.length; ++f) {
-				if (compatible(cell.template.faces[face].type, template.faces[f].type)) {
+				if (sv.canConnectFaces(cell.template.faces[face], template.faces[f])) {
 					compat.push(f);
 				}
 			}
@@ -653,13 +663,12 @@ function previewCell() {
 				//vertex lists that should connect:
 				const cellVerts = [];
 				const templateVerts = [];
-				const L = cell.template.faces[face].indices.length;
-				for (let i = 0; i < L; ++i) {
+				sv.forAlignedIndices(cell.template.faces[face], template.faces[tf], (i, ti) => {
 					const cv = cell.template.faces[face].indices[i];
-					const tv = template.faces[tf].indices[(L+1-i)%L];
+					const tv = template.faces[tf].indices[ti];
 					cellVerts.push(cell.vertices[cv]);
 					templateVerts.push(template.vertices[tv]);
-				}
+				});
 
 				const xform = gm.rigidTransform(templateVerts, cellVerts);
 
@@ -667,6 +676,45 @@ function previewCell() {
 
 				//record the fact that the connection exists:
 				preview.connections[tf] = {cell:cell, face:face};
+
+				//see if there are other connections that might make sense:
+				let centers = [];
+				for (let fi = 0; fi < preview.template.faces.length; ++fi) {
+					const face = template.faces[fi];
+					let center = gm.vec3(0.0);
+					for (let vi of face.indices) {
+						center = gm.add(center, preview.vertices[vi]);
+					}
+					center = gm.scale(1.0 / face.indices.length, center);
+					centers.push(center);
+				}
+
+				//Check all faces with compatible types for overlapping centers:
+				//TODO: less brute force than this!
+				for (let cell of body.cells) {
+					for (let fi = 0; fi < cell.template.faces.length; ++fi) {
+						if (cell.connections[fi] !== null) continue;
+						const face = cell.template.faces[fi];
+						if (face.type === 'x') continue;
+						let center = null;
+						for (let pfi = 0; pfi < preview.template.faces.length; ++pfi) {
+							if (preview.connections[pfi] !== null) continue;
+							if (!sv.canConnectFaces(preview.template.faces[pfi], face)) continue;
+							if (center === null) {
+								center = gm.vec3(0.0);
+								for (let vi of face.indices) {
+									center = gm.add(center, cell.vertices[vi]);
+								}
+								center = gm.scale(1.0 / face.indices.length, center);
+							}
+							const ofs = gm.sub(center, centers[pfi]);
+							const length2 = gm.dot(ofs, ofs);
+							if (length2 < 0.1 * 0.1) {
+								preview.connections[pfi] = {cell:cell, face:fi};
+							}
+						}
+					}
+				}
 
 				return preview;
 			}
@@ -870,7 +918,7 @@ function startConnectFace() {
 		const toFace = MOUSE.over.face;
 		if (toCell.connections[toFace]) return; //can't double-connect
 
-		if (!compatible(cell.template.faces[face].type, toCell.template.faces[toFace].type)) return;
+		if (!sv.canConnectFaces(cell.template.faces[face], toCell.template.faces[toFace])) return;
 
 
 		//make the connection:
@@ -930,13 +978,14 @@ function startGrabCell() {
 
 
 	const cell = MOUSE.over.cell;
+	const startXform = cell.xform;
 	const startVertices = [];
-	let center = new gm.Vec3(0);
+	let center = gm.vec3(0);
 	for (const v of cell.vertices) {
-		startVertices.push(new gm.Vec3(v));
+		startVertices.push(gm.vec3(v));
 		center = gm.add(center, v);
 	}
-	center = gm.mul(1 / cell.vertices.length, center);
+	center = gm.scale(1 / cell.vertices.length, center);
 
 	const right = camera.computeRight();
 	const up = camera.computeUp();
@@ -948,13 +997,21 @@ function startGrabCell() {
 		const step = gm.dot(ray.direction, out);
 		if (Math.abs(step) < 1e-3 * Math.abs(offset)) return null;
 		const t = -offset / step;
-		return gm.add(ray.origin, gm.mul(t, ray.direction));
+		return gm.add(ray.origin, gm.scale(t, ray.direction));
 	}
 
 	const begin = mousePt();
 	if (begin === null) {
 		console.warn("Trying to start drag from null point -- cancelling.");
 		return;
+	}
+
+	function cancelGrab() {
+		console.log("Cancelling grab.");
+		cell.vertices = startVertices;
+		cell.xform = startXform;
+		ACTION = null;
+		bodyDirty();
 	}
 
 	ACTION = {
@@ -964,10 +1021,7 @@ function startGrabCell() {
 				ACTION = null;
 				bodyDirty();
 			} else if (evt.button == 2) {
-				console.log("Cancelling grab.");
-				cell.vertices = startVertices;
-				ACTION = null;
-				bodyDirty();
+				cancelGrab();
 			}
 		},
 		//nothing: mouseup:(evt,mouse) => { },
@@ -980,7 +1034,13 @@ function startGrabCell() {
 				for (let i = 0; i < cell.vertices.length; ++i) {
 					cell.vertices[i] = gm.add(startVertices[i], delta);
 				}
+				cell.xform = gm.rigidTransform(cell.template.vertices, cell.vertices); //could compute directly from starting xform but this is not performace-critical code
 				bodyDirty();
+			}
+		},
+		keydown:(evt) => {
+			if (evt.code === 'Escape') {
+				cancelGrab();
 			}
 		}
 	};
@@ -991,7 +1051,7 @@ function startGrabCell() {
  */
 function startCameraMove() {
 	let oldACTION = ACTION;
-	camFlipX = (camera.computeUp().z < 0.0);
+	camFlipX = (camera.computeUp()[2] < 0.0);
 
 	ACTION = {
 		//ignore: mousedown:(evt,mouse) => { },
@@ -1010,9 +1070,7 @@ function startCameraMove() {
 				const x = camera.radius * (mouse.x - MOUSE.x) * Math.tan(0.5 * camera.fovy / 180.0 * Math.PI) * camera.aspect;
 				const y = camera.radius * (mouse.y - MOUSE.y) * Math.tan(0.5 * camera.fovy / 180.0 * Math.PI);
 
-				camera.target.x -= right.x * x + up.x * y;
-				camera.target.y -= right.y * x + up.y * y;
-				camera.target.z -= right.z * x + up.z * y;
+				camera.target = gm.sub(camera.target, gm.add(gm.scale(x, right), gm.scale(y, up)));
 			} else {
 				const deltaToAngle = 2.0 * camera.fovy / 180.0 * Math.PI;
 				camera.azimuth += (camFlipX ? -1.0 : 1.0) * -(mouse.x - MOUSE.x) * camera.aspect * deltaToAngle;
@@ -1029,17 +1087,17 @@ function startCameraMove() {
 function lookAt(eye, target, up) {
 	var out = gm.normalize(gm.sub(eye, target));
 	var proj = gm.dot(up, out);
-	up = gm.normalize( gm.sub(up, gm.mul(proj, out) ) );
+	up = gm.normalize( gm.sub(up, gm.scale(proj, out) ) );
 
 	var right = gm.cross(up, out);
 
-	var offset = new gm.Vec3(-gm.dot(eye, right), -gm.dot(eye, up), -gm.dot(eye, out));
+	var offset = gm.vec3(-gm.dot(eye, right), -gm.dot(eye, up), -gm.dot(eye, out));
 
 	return new Float32Array([
-		right.x, up.x, out.x, 0.0,
-		right.y, up.y, out.y, 0.0,
-		right.z, up.z, out.z, 0.0,
-		offset.x, offset.y, offset.z, 1.0
+		right[0], up[0], out[0], 0.0,
+		right[1], up[1], out[1], 0.0,
+		right[2], up[2], out[2], 0.0,
+		offset[0], offset[1], offset[2], 1.0
 	]);
 }
 
@@ -1240,6 +1298,12 @@ class Grid extends Geometry {
 const grid = new Grid();
 window.grid = grid; //DEBUG
 
+//Some predefined colors:
+const COLOR_OUTPUT_WARNING = 0x881111ff;
+const COLOR_INPUT_WARNING = 0xff2222ff;
+const COLOR_OUTPUT = 0x888888ff;
+const COLOR_INPUT = 0xffffffff;
+
 //helper for color conversion from '#rrggbb', '#rrggbbaa', '#rgb', and '#rgba' to 0xrrggbbaa
 function css2Uint32(color) {
 	let val;
@@ -1326,9 +1390,9 @@ class VisBody extends Geometry {
 		
 		function triangle(va,vb,vc, color) {
 			let n = gm.normalize(gm.cross(gm.sub(vb, va), gm.sub(vc, va)));
-			attrib(va.x,va.y,va.z, n.x,n.y,n.z, color);
-			attrib(vb.x,vb.y,vb.z, n.x,n.y,n.z, color);
-			attrib(vc.x,vc.y,vc.z, n.x,n.y,n.z, color);
+			attrib(va[0],va[1],va[2], n[0],n[1],n[2], color);
+			attrib(vb[0],vb[1],vb[2], n[0],n[1],n[2], color);
+			attrib(vc[0],vc[1],vc[2], n[0],n[1],n[2], color);
 		}
 		for (const cell of body.cells) {
 			for (const face of cell.template.faces) {
@@ -1353,6 +1417,45 @@ class VisBody extends Geometry {
 const visBody = new VisBody();
 window.visBody = visBody; //DEBUG
 
+//compute cell center point, face centers, and port vertices (used for drawing stuff):
+function setCellDrawingInfo(cell) {
+	{ //set center:
+		let center = gm.vec3(0.0);
+		for (let v of cell.vertices) {
+			center = gm.add(center, v);
+		}
+		center = gm.scale(1.0 / cell.vertices.length, center);
+		cell.center = center;
+	}
+
+	let ports = [];
+	let centers = [];
+	for (const face of cell.template.faces) {
+		let center = gm.vec3(0.0);
+		for (let vi of face.indices) {
+			center = gm.add(center, cell.vertices[vi]);
+		}
+		center = gm.scale(1.0 / face.indices.length, center);
+		centers.push(center);
+
+		let port = [];
+		for (let i = 0; i < face.indices.length; ++i) {
+			let v = cell.vertices[face.indices[i]];
+			v = gm.mix(v, center, 0.5); //move toward center of face
+			port.push(v);
+		}
+		ports.push(port);
+	}
+	cell.ports = ports;
+	cell.centers = centers;
+}
+
+function deleteCellDrawingInfo(cell) {
+	delete cell.center;
+	delete cell.ports;
+	delete cell.centers;
+}
+
 class VisWire extends Geometry {
 	static BYTES_PER_ATTRIB = 4*3 + 1*4; //Position, Color
 	constructor() {
@@ -1373,6 +1476,10 @@ class VisWire extends Geometry {
 	set(blocks) {
 		const BYTES_PER_ATTRIB = VisWire.BYTES_PER_ATTRIB;
 
+		const SHOW_INTERNAL_FACES = false;
+		const SHOW_TIGHT_CONNECTIONS = false;
+		const SHOW_MISSING_CONNECTIONS = true;
+
 		//figure out how much space to allocate for attributes:
 		let totalAttribs = 0;
 		for (const cell of body.cells) {
@@ -1381,9 +1488,10 @@ class VisWire extends Geometry {
 				totalAttribs += face.indices.length * 2 + 4;
 				const con = cell.connections[fi];
 				if (con !== null) totalAttribs += face.indices.length * 3;
+				else if (face.type !== 'x') totalAttribs += face.indices.length * 2;
 			}
 			for (const yarn of cell.template.yarns) {
-				totalAttribs += (yarn.ptWeights.length-1)*2;
+				totalAttribs += (yarn.pts.length-1)*2;
 			}
 		}
 
@@ -1399,126 +1507,119 @@ class VisWire extends Geometry {
 		}
 
 		for (const cell of body.cells) {
-			let ports = [];
-			
-			{ //compute cell center:
-				let center = new gm.Vec3(0.0);
-				for (let v of cell.vertices) {
-					center = gm.add(center, v);
-				}
-				center = gm.mul(1.0 / cell.vertices.length, center);
-				cell.center = center;
-			}
+			setCellDrawingInfo(cell);
+		}
 
-			if (!('vertexColors' in cell.template)) {
-				cell.template.vertexColors = [];
-				for (let i = 0; i < cell.template.vertices.length; ++i) {
-					while (true) {
-						let r = Math.random();
-						let g = Math.random();
-						let b = Math.random();
-						let min = Math.min(r,g,b);
-						let max = Math.max(r,g,b);
-						if (max - min < 1e-3) continue;
-						r = (r - min) / (max - min);
-						g = (g - min) / (max - min);
-						b = (b - min) / (max - min);
-						cell.template.vertexColors.push(new gm.Vec3(r,g,b));
-						break;
-					}
-				}
-			}
-
+		for (const cell of body.cells) {
+			//yarns:
+			const xf = cell.xform;
 			for (const yarn of cell.template.yarns) {
 				let prev = null;
-				let prevCol = null;
-				for (const pw of yarn.ptWeights) {
-					let at = [0,0,0];
-					let col = [0,0,0];
-					for (let i = 0; i < pw.length; ++i) {
-						at[0] += pw[i] * cell.vertices[i][0];
-						at[1] += pw[i] * cell.vertices[i][1];
-						at[2] += pw[i] * cell.vertices[i][2];
-						col[0] += pw[i] * cell.template.vertexColors[i][0];
-						col[1] += pw[i] * cell.template.vertexColors[i][1];
-						col[2] += pw[i] * cell.template.vertexColors[i][2];
-					}
-
+				let col = rgb2Uint32([1.0, 0.6, 0.5]);
+				for (const pt of yarn.pts) {
+					let at = gm.mul_mat4x3_vec4(xf, [...pt, 1]);
 					if (prev !== null) {
-						attrib(prev[0],prev[1],prev[2], rgb2Uint32(prevCol));
-						attrib(at[0],at[1],at[2], rgb2Uint32(col));
+						attrib(prev[0],prev[1],prev[2], col);
+						attrib(at[0],at[1],at[2], col);
 					}
-
 					prev = at;
-					prevCol = col;
 				}
 			}
 
-			for (const face of cell.template.faces) {
-				let center = new gm.Vec3(0.0);
-				for (let vi of face.indices) {
-					center = gm.add(center, cell.vertices[vi]);
+			//faces:
+			for (let fi = 0; fi < cell.template.faces.length; ++fi) {
+				if (!SHOW_INTERNAL_FACES) {
+					//skip faces which are connected tightly:
+					const connection = cell.connections[fi];
+					if (connection !== null) {
+						const ofs = gm.sub(connection.cell.centers[connection.face], cell.centers[fi]);
+						const length2 = gm.dot(ofs,ofs);
+						if (length2 < 0.1 * 0.1) {
+							continue;
+						}
+					}
 				}
-				center = gm.mul(1.0 / face.indices.length, center);
-				let port = [];
-				for (let i = 0; i < face.indices.length; ++i) {
-					let v = cell.vertices[face.indices[i]];
-					v = gm.mix(v, center, 0.5); //move toward center of face
-					port.push(v);
-				}
-				ports.push(port);
+				const face = cell.template.faces[fi];
+				const center = cell.centers[fi];
 				for (let i = 0; i < face.indices.length; ++i) {
 					let a = cell.vertices[face.indices[i]];
 					let b = cell.vertices[face.indices[(i+1)%face.indices.length]];
-					a = gm.add(gm.mul(0.9, gm.sub(a, center)), center);
-					b = gm.add(gm.mul(0.9, gm.sub(b, center)), center);
+					a = gm.add(gm.scale(0.9, gm.sub(a, center)), center);
+					b = gm.add(gm.scale(0.9, gm.sub(b, center)), center);
 					let col = css2Uint32(face.color);
-					attrib(a.x,a.y,a.z, col);
-					attrib(b.x,b.y,b.z, col);
-					if (i === 0) {
-						let c = gm.mul(0.5, gm.add(a,b));
-						c = gm.add(gm.mul(0.9, gm.sub(c, center)), center);
-						col = 0xffff00ff; //highlight "first edge"
-						attrib(a.x,a.y,a.z, col);
-						attrib(c.x,c.y,c.z, col);
-						attrib(c.x,c.y,c.z, col);
-						attrib(b.x,b.y,b.z, col);
+					attrib(a[0],a[1],a[2], col);
+					attrib(b[0],b[1],b[2], col);
+					if (i === 0 && face.type !== 'x') { //show "first edge" (for non-'x' face types)
+						let c = gm.scale(0.5, gm.add(a,b));
+						c = gm.add(gm.scale(0.9, gm.sub(c, center)), center);
+						attrib(a[0],a[1],a[2], col);
+						attrib(c[0],c[1],c[2], col);
+						attrib(c[0],c[1],c[2], col);
+						attrib(b[0],b[1],b[2], col);
 					}
 				}
 			}
-			cell.ports = ports;
-		}
 
-		//connections:
-		for (const cell of body.cells) {
+			//connections:
 			for (let fi = 0 ; fi < cell.connections.length; ++fi) {
 				const connection = cell.connections[fi];
-				if (connection === null) continue;
-				if (cell.template.faces[fi].type[0] !== '-') continue; //draw connectsions from '-' => '+'
+				if (connection === null) {
+					if (cell.template.faces[fi].type[0] !== 'x' && SHOW_MISSING_CONNECTIONS) {
+						const col = (cell.template.faces[fi].type[0] === '+' ? COLOR_OUTPUT_WARNING : COLOR_INPUT_WARNING);
+						for (let i = 0; i < cell.ports[fi].length; ++i) {
+							let a = cell.ports[fi][i];
+							let ca = gm.mix(a, cell.center, 0.1);
+							attrib(ca[0], ca[1], ca[2], col); attrib(a[0], a[1], a[2], col);
+						}
+					}
+					continue;
+				}
+				if (cell.template.faces[fi].type[0] !== '+') continue; //draw connectsions from '+' => '-'
 
-				for (let i = 0; i < cell.ports[fi].length; ++i) {
-					let ci = (cell.template.faces[fi].indices.length + 1 - i) % cell.template.faces[fi].indices.length;
+				let maxLength2 = 0;
+				const watermark = dataOffset;
+				sv.forAlignedIndices(cell.template.faces[fi], connection.cell.template.faces[connection.face], (i, ci) => {
+					let colOut = COLOR_OUTPUT;
+					let colIn = COLOR_INPUT;
+					if (!sv.canConnectFaces(cell.template.faces[fi], connection.cell.template.faces[connection.face])) {
+						//apparently somehow this connection got made though it shouldn't be allowed:
+						colOut = COLOR_OUTPUT_WARNING;
+						colIn = COLOR_INPUT_WARNING;
+					}
 					let a = cell.ports[fi][i];
 					let ca = gm.mix(a, cell.center, 0.1);
 					let b = connection.cell.ports[connection.face][ci];
 					let cb = gm.mix(b, connection.cell.center, 0.1);
-					attrib(ca.x, ca.y, ca.z, 0x888888ff); attrib(a.x, a.y, a.z, 0x888888ff);
-					attrib(a.x, a.y, a.z, 0x888888ff); attrib(b.x, b.y, b.z, 0xffffffff);
-					attrib(b.x, b.y, b.z, 0xffffffff); attrib(cb.x, cb.y, cb.z, 0xffffffff);
+					attrib(ca[0], ca[1], ca[2], colOut); attrib(a[0], a[1], a[2], colOut);
+					attrib(a[0], a[1], a[2], colOut); attrib(b[0], b[1], b[2], colIn);
+					attrib(b[0], b[1], b[2], colIn); attrib(cb[0], cb[1], cb[2], colIn);
+
+					if (!SHOW_TIGHT_CONNECTIONS) {
+						const ofs = gm.sub(b,a);
+						const length2 = gm.dot(ofs,ofs);
+						maxLength2 = Math.max(maxLength2, length2);
+					}
+				} );
+
+				if (!SHOW_TIGHT_CONNECTIONS) {
+					if (maxLength2 < 0.01 * 0.01) {
+						dataOffset = watermark;
+					}
 				}
 			}
 		}
 
+		
 		//remove temp stuff:
 		for (const cell of body.cells) {
-			delete cell.center;
-			delete cell.ports;
+			deleteCellDrawingInfo(cell);
 		}
 
 
-		console.assert(dataOffset === arrayBuffer.byteLength, `Bytes of attributes (${dataOffset}) matches allocated data size (${data.byteLength}).`);
+		//with various skipping may actually under-fill:
+		console.assert(dataOffset <= arrayBuffer.byteLength, `Bytes of attributes (${dataOffset}) matches allocated data size (${data.byteLength}).`);
 
-		this.count = arrayBuffer.byteLength / BYTES_PER_ATTRIB;
+		this.count = dataOffset / BYTES_PER_ATTRIB;
 
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
 		gl.bufferData(gl.ARRAY_BUFFER, arrayBuffer, gl.STATIC_DRAW);
@@ -1551,19 +1652,19 @@ class VisDebug extends Geometry {
 		let attribs = []; //x,y,z,color
 
 		function line(a,b,color) {
-			attribs.push(a.x,a.y,a.z,color);
-			attribs.push(b.x,b.y,b.z,color);
+			attribs.push(a[0],a[1],a[2],color);
+			attribs.push(b[0],b[1],b[2],color);
 		}
 
-		//----- make debug lines ----
+		//----- make debug/UI lines ----
 		
 		//mouse cursor:
 		if (MOUSE.x === MOUSE.x) {
 			const ray = mouseRay();
-			const r = camera.computeRight();
-			const u = camera.computeUp();
-			r.x *= 0.01; r.y *= 0.01; r.z *= 0.01;
-			u.x *= 0.01; u.y *= 0.01; u.z *= 0.01;
+			let r = camera.computeRight();
+			let u = camera.computeUp();
+			r = gm.scale(0.01, r);
+			u = gm.scale(0.01, u);
 			const c = gm.add(ray.origin, ray.direction);
 			line(gm.add(c,r), gm.sub(c,r), 0xffff00ff);
 			line(gm.add(c,u), gm.sub(c,u), 0xffff00ff);
@@ -1583,26 +1684,97 @@ class VisDebug extends Geometry {
 			const x = Math.floor(MOUSE.grid.x);
 			const y = Math.floor(MOUSE.grid.y);
 
-			line({x:x, y:y, z:0}, {x:x+1,y:y, z:0}, 0xff00ffff);
-			line({x:x+1, y:y, z:0}, {x:x+1,y:y+1, z:0}, 0xff00ffff);
-			line({x:x+1, y:y+1, z:0}, {x:x,y:y+1, z:0}, 0xff00ffff);
-			line({x:x, y:y+1, z:0}, {x:x,y:y, z:0}, 0xff00ffff);
+			line([x, y, 0], [x+1,y,0], 0xff00ffff);
+			line([x+1,y, 0], [x+1,y+1,0], 0xff00ffff);
+			line([x+1, y+1, 0], [x,y+1,0], 0xff00ffff);
+			line([x,y+1,0], [x,y,0], 0xff00ffff);
 		}
 
+		//preview cell addition:
 		const cell = previewCell();
-		if (cell !== null) { //preview cell addition:
-			for (let face of cell.template.faces) {
+		if (cell !== null) {
+			setCellDrawingInfo(cell);
+
+			//yarns:
+			const xf = cell.xform;
+			for (const yarn of cell.template.yarns) {
+				let prev = null;
+				let col = rgb2Uint32([1.0, 0.6, 0.5]);
+				for (const pt of yarn.pts) {
+					let at = gm.mul_mat4x3_vec4(xf, [...pt, 1]);
+					if (prev !== null) {
+						line(prev,at, col);
+					}
+					prev = at;
+				}
+			}
+
+			//faces:
+			for (let fi = 0; fi < cell.template.faces.length; ++fi) {
+				const face = cell.template.faces[fi];
+				const center = cell.centers[fi];
 				for (let i = 0; i < face.indices.length; ++i) {
-					line(cell.vertices[face.indices[i]], cell.vertices[face.indices[(i+1)%face.indices.length]], 0x888800ff);
+					let a = cell.vertices[face.indices[i]];
+					let b = cell.vertices[face.indices[(i+1)%face.indices.length]];
+					a = gm.add(gm.scale(0.9, gm.sub(a, center)), center);
+					b = gm.add(gm.scale(0.9, gm.sub(b, center)), center);
+					let col = css2Uint32(face.color);
+					line(a,b,col);
+					if (i === 0 && face.type !== 'x') { //decorate first edge
+						let c = gm.scale(0.5, gm.add(a,b));
+						c = gm.add(gm.scale(0.9, gm.sub(c, center)), center);
+						line(a,c,col);
+						line(c,b,col);
+					}
 				}
 			}
-			//offset yarns, but no other xform just yet:
-			const ofs = gm.sub(cell.vertices[0], cell.template.vertices[0]);
-			for (let yarn of cell.template.yarns) {
-				for (let i = 1; i < yarn.pts.length; ++i) {
-					line(gm.add(yarn.pts[i-1],ofs), gm.add(yarn.pts[i],ofs), 0xffffffff);
-				}
+
+			//compute drawing info for all connected cells:
+			for (const connection of cell.connections) {
+				if (connection !== null) setCellDrawingInfo(connection.cell);
 			}
+
+			//connections:
+			for (let fi = 0 ; fi < cell.connections.length; ++fi) {
+				const connection = cell.connections[fi];
+				if (connection === null) {
+					if (cell.template.faces[fi].type !== 'x') {
+						const col = (cell.template.faces[fi].type[0] === '+' ? COLOR_OUTPUT_WARNING : COLOR_INPUT_WARNING);
+						for (let i = 0; i < cell.ports[fi].length; ++i) {
+							let a = cell.ports[fi][i];
+							let ca = gm.mix(a, cell.center, 0.1);
+							line(ca, a, col);
+						}
+					}
+					continue;
+				}
+
+				sv.forAlignedIndices(cell.template.faces[fi], connection.cell.template.faces[connection.face], (i, ci) => {
+					let colOut = COLOR_OUTPUT;
+					let colIn = COLOR_INPUT;
+					if (cell.template.faces[fi].type[0] === '-') {
+						[colOut, colIn] = [colIn, colOut];
+					}
+					if (!sv.canConnectFaces(cell.template.faces[fi], connection.cell.template.faces[connection.face])) {
+						//apparently somehow this connection got made though it shouldn't be allowed:
+						colOut = COLOR_OUTPUT_WARNING;
+						colIn = COLOR_INPUT_WARNING;
+					}
+					let a = cell.ports[fi][i];
+					let ca = gm.mix(a, cell.center, 0.1);
+					let b = connection.cell.ports[connection.face][ci];
+					let cb = gm.mix(b, connection.cell.center, 0.1);
+					attribs.push(ca[0], ca[1], ca[2], colOut); attribs.push(a[0], a[1], a[2], colOut);
+					attribs.push(a[0], a[1], a[2], colOut); attribs.push(b[0], b[1], b[2], colIn);
+					attribs.push(b[0], b[1], b[2], colIn); attribs.push(cb[0], cb[1], cb[2], colIn);
+				} );
+			}
+
+			//remove temp drawing info:
+			for (const connection of cell.connections) {
+				if (connection !== null) deleteCellDrawingInfo(connection.cell);
+			}
+
 		}
 
 		//---- copy debug lines to buffer for drawing ----
@@ -1656,8 +1828,21 @@ function redraw() {
 		visBody.set(body);
 		delete visWire.dirty;
 	}
-
 	visDebug.update();
+
+	//update status line:
+	{
+		let info = "";
+		if (template !== null) {
+			info += `Template: ${template.signature()}`;
+		} else {
+			info += `No Template`;
+		}
+		if (MOUSE.over) {
+			info += `; Hovered: ${MOUSE.over.cell.template.signature()} / face: ${MOUSE.over.face} (${MOUSE.over.cell.template.faces[MOUSE.over.face].type})`;
+		}
+		STATUS_LINE.innerText = info;
+	}
 
 	gl.clearColor(0.1, 0.1, 0.1, 1.0);
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -1675,7 +1860,7 @@ function redraw() {
 	const lightDir = gm.normalize(gm.add(camera.computeUp(),camera.computeOut()));
 	gl.uniform3f(
 		colorProgram.uniformLocations.HEMI_DIRECTION,
-		lightDir.x, lightDir.y, lightDir.z
+		lightDir[0], lightDir[1], lightDir[2]
 	);
 	gl.uniform4f(
 		colorProgram.uniformLocations.TINT,
@@ -1748,7 +1933,7 @@ async function init() {
 
 	{
 		console.log(`Fetching body...`);
-		const request = await fetch('example.body');
+		const request = await fetch('cube-3x3.body');
 		const arrayBuffer = await request.arrayBuffer();
 		console.log(`  got ${arrayBuffer.byteLength} bytes.`);
 

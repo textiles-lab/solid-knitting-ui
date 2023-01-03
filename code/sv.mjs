@@ -1,5 +1,36 @@
 import * as gm from './gm.mjs';
 
+//helper to compute indices aligned by a connection between two faces:
+// NOTE: indices are into face.template.indices
+export function forAlignedIndices(face1, face2, func) {
+	if (face1.indices.length !== face2.indices.length) throw new Error("can't find corresponding indices for faces that are different sizes.");
+	if (face1.direction === face2.direction) {
+		//same order:
+		for (let i1 = 0; i1 < face1.indices.length; ++i1) {
+			const i2 = i1;
+			func(i1, i2);
+		}
+	} else {
+		//opposite order:
+		for (let i1 = 0; i1 < face1.indices.length; ++i1) {
+			const i2 =  (face1.indices.length + 1 - i1) % face1.indices.length;
+			func(i1, i2);
+		}
+	}
+}
+
+//helper for checking whether it makes sense to connect two faces:
+export function canConnectFaces(face1, face2) {
+	function compatibleTypes(a,b) {
+		if (a[0] === '-' && b[0] === '+') return a.substr(1) === b.substr(1);
+		if (a[0] === '+' && b[0] === '-') return a.substr(1) === b.substr(1);
+		return false;
+	}
+	//should have compatible type signatures (one is '+something' and the other is '-something')
+	//should also have opposite directions so cells don't overlap
+	return compatibleTypes(face1.type, face2.type) && face1.direction === -face2.direction;
+}
+
 export class Body {
 	constructor() {
 		this.cells = [];
@@ -12,7 +43,7 @@ export class Body {
 			cell.viBase = vertices.length;
 			for (const vertex of cell.vertices) {
 				merged.push(vertices.length);
-				vertices.push(new gm.Vec4(vertex, 1));
+				vertices.push(gm.vec4(vertex, 1));
 			}
 		}
 		//basic union-find for making sets of vertices:
@@ -36,9 +67,9 @@ export class Body {
 				const face2 = cell2.template.faces[connection.face];
 				const L = face.indices.length;
 				console.assert(L === face2.indices.length);
-				for (let i = 0; i < face.indices.length; ++i) {
-					union(cell.viBase + face.indices[i], cell2.viBase + face2.indices[(L + 1 - i) % L]);
-				}
+				forAlignedIndices( face, face2, (i, i2) => {
+					union(cell.viBase + face.indices[i], cell2.viBase + face2.indices[i2]);
+				});
 			}
 		}
 		//TODO: also connections to construction grid?
@@ -48,18 +79,19 @@ export class Body {
 			const s = find(v);
 			if (s === v) {
 				//last in set; divide
-				vertices[v].x /= vertices[v].a;
-				vertices[v].y /= vertices[v].a;
-				vertices[v].z /= vertices[v].a;
-				delete vertices[v].a; //mark division as already done
+				console.assert(vertices[v].length === 4);
+				vertices[v][0] /= vertices[v][3];
+				vertices[v][1] /= vertices[v][3];
+				vertices[v][2] /= vertices[v][3];
+				vertices[v].pop(); //mark division as already done
 			} else {
 				//accumulate
-				console.assert('a' in vertices[s]);
-				console.assert('a' in vertices[v]);
-				vertices[s].x += vertices[v].x;
-				vertices[s].y += vertices[v].y;
-				vertices[s].z += vertices[v].z;
-				vertices[s].a += vertices[v].a;
+				console.assert(vertices[s].length === 4);
+				console.assert(vertices[v].length === 4);
+				vertices[s][0] += vertices[v][0];
+				vertices[s][1] += vertices[v][1];
+				vertices[s][2] += vertices[v][2];
+				vertices[s][3] += vertices[v][3];
 			}
 		}
 
@@ -68,12 +100,13 @@ export class Body {
 			//copy vertices:
 			for (let vi = 0; vi < cell.vertices.length; ++vi) {
 				const target = vertices[find(cell.viBase + vi)];
-				cell.vertices[vi] = new gm.Vec3(target);
+				cell.vertices[vi] = gm.vec3(target);
 			}
 			const xf = gm.rigidTransform(cell.template.vertices, cell.vertices);
 			for (let vi = 0; vi < cell.vertices.length; ++vi) {
-				cell.vertices[vi] = gm.mul(xf, new gm.Vec4(cell.template.vertices[vi], 1));
+				cell.vertices[vi] = gm.mul_mat4x3_vec4(xf, gm.vec4(cell.template.vertices[vi], 1));
 			}
+			cell.xform = xf; //remember for yarn drawing later
 		}
 	}
 	check() { } //consistency check (connections point both directions)
@@ -116,42 +149,57 @@ export class Body {
 		if (!Array.isArray(data)) throw new Error("");
 		let body = new Body();
 
+		let dataToBody = [];
+
 		for (const cell of data) {
-			if (typeof cell.template !== 'string') throw new Error("Cell template should be a string.");
-			if (!(cell.template in library.templates)) throw new Error(`Cell template "${cell.template}" does not appear in the library.`);
-			let template = library.templates[cell.template];
-
-			if (!Array.isArray(cell.vertices)) throw new Error("Cell vertices should be an array.");
-			if (cell.vertices.length !== template.vertices.length) throw new Error("Cell should have same number of vertices as its template.");
-			let vertices = [];
-			for (const vertex of cell.vertices) {
-				vertices.push(toVec3(`cell vertex "${JSON.stringify(vertex)}"`, vertex));
-			}
-
-			if (!Array.isArray(cell.connections)) throw new Error("Cell connections should be an array.");
-			if (cell.connections.length !== template.faces.length) throw new Error("Cell should have same number of connections as its template's faces.");
-			let connections = [];
-			for (const connection of cell.connections) {
-				if (typeof connection !== 'object') throw new Error("Cell connections should be an object.");
-				if (connection === null) {
-					//not connected
-					connections.push(null);
-				} else {
-					//connected to something
-					if (typeof connection.cell !== 'number' || connection.cell >= data.length) throw new Error(`Connection.cell should be an index into cells list.`);
-					if (typeof connection.face !== 'number') throw new Error("connection face should be a number.");
-					connections.push({cell:connection.cell, face:connection.face});
+			try {
+				if (typeof cell.template !== 'string') throw new Error("Cell template should be a string.");
+				if (!(cell.template in library.templates)) throw new Error(`Cell template "${cell.template}" does not appear in the library.`);
+				let template = library.templates[cell.template];
+	
+				if (!Array.isArray(cell.vertices)) throw new Error("Cell vertices should be an array.");
+				if (cell.vertices.length !== template.vertices.length) throw new Error("Cell should have same number of vertices as its template.");
+				let vertices = [];
+				for (const vertex of cell.vertices) {
+					vertices.push(toVec3(`cell vertex "${JSON.stringify(vertex)}"`, vertex));
 				}
+				let xform = gm.rigidTransform(template.vertices, vertices);
+	
+				if (!Array.isArray(cell.connections)) throw new Error("Cell connections should be an array.");
+				if (cell.connections.length !== template.faces.length) throw new Error("Cell should have same number of connections as its template's faces.");
+				let connections = [];
+				for (const connection of cell.connections) {
+					if (typeof connection !== 'object') throw new Error("Cell connections should be an object.");
+					if (connection === null) {
+						//not connected
+						connections.push(null);
+					} else {
+						//connected to something
+						if (typeof connection.cell !== 'number' || connection.cell >= data.length) throw new Error(`Connection.cell should be an index into cells list.`);
+						if (typeof connection.face !== 'number') throw new Error("connection face should be a number.");
+						connections.push({cell:connection.cell, face:connection.face});
+					}
+				}
+	
+				dataToBody.push(body.cells.length);
+				body.cells.push(new Cell({template, vertices, connections, xform}));
+			} catch (e) {
+				console.warn(`Skipping cell in file: ${e}`);
+				dataToBody.push(null);
 			}
-
-			body.cells.push(new Cell({template, vertices, connections}));
 		}
 
 		//convert connections from indices -> references:
 		for (const cell of body.cells) {
-			for (const connection of cell.connections) {
+			for (let i = 0; i < cell.connections.length; ++i) {
+				const connection = cell.connections[i];
 				if (connection === null) continue;
-				connection.cell = body.cells[connection.cell];
+				if (dataToBody[connection.cell] === null) {
+					//skip connections to skipped cells.
+					cell.connections[i] = null;
+					continue;
+				}
+				connection.cell = body.cells[dataToBody[connection.cell]];
 				if (connection.face >= connection.cell.template.faces.length) throw new Error("connected face doesn't exist in neighbor.");
 			}
 		}
@@ -176,27 +224,31 @@ export class Cell {
 	constructor({
 		template,
 		vertices,
-		connections
+		connections,
+		xform
 	}) {
 		if (!(template instanceof Template)) throw new Error("Cell's template must be a Template");
 		if (!(template.vertices.length === vertices.length)) throw new Error("Should have as many vertices as template.");
 		if (!(template.faces.length === connections.length)) throw new Error("Should have as many connections as template.faces .");
+		if (!(Array.isArray(xform) && xform.length === 4*3)) throw new Error("Should have a 4x3 rigid xform.");
+
 
 		this.template = template;
 		this.vertices = vertices;
 		this.connections = connections; //connections have "cell" (reference) and "face" (index)
+		this.xform = xform;
 
 		//should be the case that:
 		//this.connections[0].block.connections[ this.connections[0].face ] === this
 
 	}
 	//generate from a template given some transform:
-	static fromTemplate(template, xform = new gm.Mat4x3(1)) {
+	static fromTemplate(template, xform = gm.mat4x3(1)) {
 
 		//vertices are a transformed copy of the template's vertices:
 		let vertices = [];
 		for (let vertex of template.vertices) {
-			vertices.push(gm.mul(xform, new gm.Vec4(vertex,1)));
+			vertices.push(gm.mul_mat4x3_vec4(xform, gm.vec4(vertex,1)));
 		}
 
 		//connections are a list of blank connections:
@@ -205,7 +257,9 @@ export class Cell {
 			connections.push(null);
 		}
 
-		return new Cell({template, vertices, connections});
+		const cell = new Cell({template, vertices, connections, xform:gm.mat4x3(xform)});
+
+		return cell;
 	}
 };
 
@@ -255,16 +309,16 @@ export class Template {
 		for (let i = 1; i < this.vertices.length; ++i) {
 			const a = this.vertices[i-1];
 			const b = this.vertices[i];
-			if (a.x < b.x
-			 || (a.x === b.x && a.y < b.y)
-			 || (a.x === b.x && a.y === b.y && a.z < b.z)) {
+			if (a[0] < b[0]
+			 || (a[0] === b[0] && a[1] < b[1])
+			 || (a[0] === b[0] && a[1] === b[1] && a[2] < b[2])) {
 				//great, a < b
 			} else {
 				throw new Error(`Vertices ${a} and ${b} are not ordered by x,y,z.`);
 			}
 		}
 
-		//faces should be objects with a 'type', 'indices', and 'color':
+		//faces should be objects with a 'type', 'indices', 'direction', and 'color':
 		if (!Array.isArray(faces)) throw new Error("LibraryBlock.faces should be an array.");
 		function isVertexArray(x) {
 			if (!Array.isArray(x)) return false;
@@ -277,6 +331,7 @@ export class Template {
 		}
 		for (let i = 0; i < faces.length; ++i) {
 			if (typeof faces[i].type !== 'string') throw new Error(`Template.faces[${i}].type should be a string.`);
+			if (!(faces[i].direction === 1 || faces[i].direction === -1)) throw new Error(`Template.faces[${i}].direction should be in {-1,1}.`);
 			if (!isVertexArray(faces[i].indices)) throw new Error(`Template.faces[${i}].indices (${faces[i].indices}) should be an array of vertex indices.`);
 			if (typeof faces[i].color !== 'string') throw new Error(`Template.faces[${i}].color should be a string.`);
 		}
@@ -305,13 +360,13 @@ export class Template {
 
 		//compute a normal direction + a center point for the faces (used when making yarn weights):
 		for (const face of this.faces) {
-			let center = new gm.Vec3(0);
+			let center = gm.vec3(0);
 			for (let i = 0; i < face.indices.length; ++i) {
 				center = gm.add(center, this.vertices[face.indices[i]]);
 			}
-			center = gm.mul(1 / face.indices.length, center);
+			center = gm.scale(1 / face.indices.length, center);
 			face.center = center;
-			let normal = new gm.Vec3(0);
+			let normal = gm.vec3(0);
 			for (let i = 0; i < face.indices.length; ++i) {
 				const a = this.vertices[face.indices[i]];
 				const b = this.vertices[face.indices[(i+1)%face.indices.length]];
@@ -321,7 +376,7 @@ export class Template {
 			face.normal = normal;
 		}
 
-		//yarns: format somewhat TBD at the moment
+		//yarns:
 		this.yarns = yarns;
 
 		for (let yarn of this.yarns) {
@@ -364,131 +419,13 @@ function initYarn(template,yarn) {
 		splineTo(toVec3(`cps[${i-2}]`, yarn.cps[i-2]), toVec3(`cps[${i-1}]`, yarn.cps[i-1]), toVec3(`cps[${i}]`, yarn.cps[i]));
 	}
 	yarn.pts = pts;
-
-	//also compute weights for the points -- i.e., their coordinates as a linear combination of the vertices.
-
-	
-	function normalizedDistanceWeights(dis) {
-		let prefixProduct = [];
-		let product = 1;
-		for (let i = 0; i < dis.length; ++i) {
-			product *= dis[i];
-			prefixProduct.push(product);
-		}
-
-		let suffixProduct = [];
-		product = 1;
-		for (let i = dis.length-1; i >= 0; --i) {
-			product *= dis[i];
-			suffixProduct.unshift(product);
-		}
-
-		let weights = [];
-		let sum = 0;
-		for (let i = 0; i < dis.length; ++i) {
-			//compute 1/d weights scaled by the product of the distances:
-			let weight = 1;
-			if (i > 0) weight *= prefixProduct[i-1];
-			if (i + 1 < dis.length) weight *= suffixProduct[i+1];
-
-			weights.push( weight );
-			sum += weight;
-		}
-		if (sum < 1e-3) {
-			console.log("Had case where two or more distances were nearly zero -- bailing out to equal weighting.");
-			sum = 0;
-			let min = Math.min(...dis);
-			for (let i = 0; i < dis.length; ++i) {
-				if (dis[i] == min) weights[i] = 1;
-				else weights[i] = 0;
-				sum += weights[i];
-			}
-		}
-		//now the normalization:
-		for (let i = 0; i < dis.length; ++i) {
-			weights[i] /= sum;
-		}
-		return weights;
-	}
-
-	function makeFaceWeights(face, pt) {
-		//per-edge distances:
-		let edgeDis = [];
-		let edgeAlong = [];
-		for (let i = 0; i < face.indices.length; ++i) {
-			const a = template.vertices[face.indices[i]];
-			const b = template.vertices[face.indices[(i+1)%face.indices.length]];
-			const ab = gm.sub(b,a);
-			const length2 = gm.dot(ab,ab);
-			const along = Math.max(0, Math.min(length2, gm.dot(gm.sub(pt,a),ab) )) / length2;
-			const close = gm.mix(a,b,along);
-			const dis = gm.length(close);
-			edgeDis.push(dis);
-			edgeAlong.push(along);
-		}
-		let edgeWeight = normalizedDistanceWeights(edgeDis);
-		let weights = [];
-		for (let i = 0; i < template.vertices.length; ++i) {
-			weights.push(0);
-		}
-		for (let i = 0; i < face.indices.length; ++i) {
-			const ai = face.indices[i];
-			const bi = face.indices[(i+1)%face.indices.length];
-			const along = edgeAlong[i];
-			const weight = edgeWeight[i];
-			weights[ai] += weight * (1 - along);
-			weights[bi] += weight * along;
-		}
-
-		return weights;
-	}
-
-	function makeWeights(pt) {
-		//per-face weights and a weighting factor:
-		let faceDis = [];
-		let faceWeights = [];
-		for (let f = 0; f < template.faces.length; ++f) {
-			const face = template.faces[f];
-			const dis = gm.dot(gm.sub(pt, face.center), face.normal);
-			const projected = gm.sub(pt, gm.mul(dis, face.normal));
-			faceDis.push(Math.abs(dis));
-			faceWeights.push(makeFaceWeights(face, pt));
-		}
-		let faceInvDis = normalizedDistanceWeights(faceDis);
-
-		//compute final weights:
-		let weights = [];
-		for (let i = 0; i < template.vertices.length; ++i) {
-			let w = 0;
-			for (let f = 0; f < faceWeights.length; ++f) {
-				w += faceInvDis[f] * faceWeights[f][i];
-			}
-			weights.push(w);
-		}
-
-		return weights;
-	}
-
-	let ptWeights = [];
-	for (const pt of pts) {
-		const weights = makeWeights(pt);
-		let sum = 0;
-		for (const w of weights) {
-			sum += w;
-		}
-		if (Math.abs(sum - 1.0) > 1e-3) {
-			console.log(`Weights sum to ${sum}, expected 1.0!`);
-		}
-		ptWeights.push(weights);
-	}
-	yarn.ptWeights = ptWeights;
 }
 
 function toVec3(what, val) {
 	if (!Array.isArray(val)
 	 || val.length !== 3
 	 || !val.every( (v) => typeof v === 'number' ) ) throw new Error(`${what} is not an array of 3 numbers.`);
-	return new gm.Vec3(val[0], val[1], val[2]);
+	return gm.vec3(val[0], val[1], val[2]);
 }
 
 

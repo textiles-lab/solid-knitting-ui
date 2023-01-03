@@ -59,54 +59,47 @@ function flatten(limit, args) {
 }
 
 //---- for adding aliases for particular elements to vector ---
-
-function addAliases(cls, dim) {
+/*
+function addAliases(obj, dim) {
+	//does this slow things down?
 	for (const NAMES of [ "xyzw", "rgba", "stpq" ]) {
 		for (let i = 0; i < dim; ++i) {
-			Object.defineProperty(cls.prototype, NAMES[i], {
+			Object.defineProperty(obj, NAMES[i], {
 				get() { return this[i]; },
 				set(v) { this[i] = v; }
 			});
 		}
 	}
 }
+*/
 
 //---- vector types ----
-//TODO: transition to "rest parameters" ( i.e., constructor(a,b,...from) )
+//all vector types are just Arrays -- no extra parameters or anything.
 
-class Vec extends Array {
-	constructor() {
-		super();
-		this.push(...arguments);
-	}
+export function vec2(...args) {
+	let ret = [...flatten(2, args)];
+	//addAliases(ret, 2);
+	return ret;
 }
+//addAliases(Vec2, 2);
 
-export class Vec2 extends Vec {
-	constructor() {
-		super(...flatten(2, arguments));
-	}
+export function vec3(...args) {
+	let ret = [...flatten(3, args)];
+	//addAliases(ret, 3);
+	return ret;
 }
-addAliases(Vec2, 2);
+//addAliases(Vec3, 3);
 
-export class Vec3 extends Vec {
-	constructor() {
-		super(...flatten(3, arguments));
-	}
+export function vec4(...args) {
+	let ret = [...flatten(4, args)];
+	//addAliases(ret, 4);
+	return ret;
 }
-addAliases(Vec3, 3);
-
-export class Vec4 extends Vec {
-	constructor() {
-		super(...flatten(4, arguments));
-	}
-}
-addAliases(Vec4, 4);
-
-const VEC = [undefined, undefined, Vec2, Vec3, Vec4]; //for promoting after multiplication
+//addAliases(Vec4, 4);
 
 //---- matrix types ----
-
 //matrices follow glsl in being stored in column-major order
+// (...but are just arrays and you need to remember the dimensions yourself!)
 
 class Mat extends Array {
 	constructor(columns, rows, ...data) {
@@ -117,75 +110,76 @@ class Mat extends Array {
 		Object.defineProperty(this, 'rows', { value:rows, writable:false });
 		this.push(...data);
 	};
-	//pretty-printable string (multi-line!):
-	toString() {
-		let out = [];
-		for (let r = 0; r < this.rows; ++r) {
-			out.push('[ ');
-		}
-		for (let c = 0; c < this.columns; ++c) {
-			let col = [];
-			let len = 0;
-			for (let r = 0; r < this.rows; ++r) {
-				const s = this[c * this.rows + r].toString();
-				col.push(s);
-				len = Math.max(len, s.length);
-			}
-			for (let r = 0; r < this.rows; ++r) {
-				let s = col[r];
-				while (s.length < len) s += ' ';
-				out[r] += s + ' ';
-			}
-		}
-		for (let r = 0; r < this.rows; ++r) {
-			out[r] += ']';
-		}
-		return out.join('\n');
-	}
-	//convert to a Quat that does the same thing as rotating by this matrix (must be a Mat3):
-	toQuat() {
-		if (!(this.rows == 3 && this.columns == 3)) throw new Error("Mat.toQuat only valid on Mat3!");
+}
 
-		//This is copied (without must thinking) from GLM:
-		// https://github.com/g-truc/glm/blob/fc8f4bb442b9540969f2f3f351c4960d91bca17a/glm/gtc/quaternion.inl#L81-L123
+//pretty-printable string (multi-line!):
+export function mat_to_string(rows,columns, m) {
+	let out = [];
+	for (let r = 0; r < rows; ++r) {
+		out.push('[ ');
+	}
+	for (let c = 0; c < columns; ++c) {
+		let col = [];
+		let len = 0;
+		for (let r = 0; r < rows; ++r) {
+			const s = m[c * rows + r].toString();
+			col.push(s);
+			len = Math.max(len, s.length);
+		}
+		for (let r = 0; r < rows; ++r) {
+			let s = col[r];
+			while (s.length < len) s += ' ';
+			out[r] += s + ' ';
+		}
+	}
+	for (let r = 0; r < rows; ++r) {
+		out[r] += ']';
+	}
+	return out.join('\n');
+}
+
+//convert to a Quat that does the same thing as rotating by this a 3x3 matrix:
+export function mat3_to_quat(m) {
+	if (!(m.length === 9)) throw new Error("mat3_to_quat only valid on mat3!");
+
+	//This is copied (without must thinking) from GLM:
+	// https://github.com/g-truc/glm/blob/fc8f4bb442b9540969f2f3f351c4960d91bca17a/glm/gtc/quaternion.inl#L81-L123
 	
-		const fourXSquaredMinus1 = this[0*3+0] - this[1*3+1] - this[2*3+2];
-		const fourYSquaredMinus1 = this[1*3+1] - this[0*3+0] - this[2*3+2];
-		const fourZSquaredMinus1 = this[2*3+2] - this[0*3+0] - this[1*3+1];
-		const fourWSquaredMinus1 = this[0*3+0] + this[1*3+1] + this[2*3+2];
+	const fourXSquaredMinus1 = m[0*3+0] - m[1*3+1] - m[2*3+2];
+	const fourYSquaredMinus1 = m[1*3+1] - m[0*3+0] - m[2*3+2];
+	const fourZSquaredMinus1 = m[2*3+2] - m[0*3+0] - m[1*3+1];
+	const fourWSquaredMinus1 = m[0*3+0] + m[1*3+1] + m[2*3+2];
 
-		let biggestIndex = 0;
-		let fourBiggestSquaredMinus1 = fourWSquaredMinus1;
+	let biggestIndex = 0;
+	let fourBiggestSquaredMinus1 = fourWSquaredMinus1;
 
-		if (fourXSquaredMinus1 > fourBiggestSquaredMinus1) {
-			fourBiggestSquaredMinus1 = fourXSquaredMinus1;
-			biggestIndex = 1;
-		}
-		if(fourYSquaredMinus1 > fourBiggestSquaredMinus1) {
-			fourBiggestSquaredMinus1 = fourYSquaredMinus1;
-			biggestIndex = 2;
-		}
-		if(fourZSquaredMinus1 > fourBiggestSquaredMinus1) {
-			fourBiggestSquaredMinus1 = fourZSquaredMinus1;
-			biggestIndex = 3;
-		}
-
-		const biggestVal = Math.sqrt(fourBiggestSquaredMinus1 + 1) * 0.5;
-		const mult = 0.25 / biggestVal;
-
-		switch(biggestIndex) {
-		case 0:
-			return new Quat((this[1*3+2] - this[2*3+1]) * mult, (this[2*3+0] - this[0*3+2]) * mult, (this[0*3+1] - this[1*3+0]) * mult, biggestVal);
-		case 1:
-			return new Quat(biggestVal, (this[0*3+1] + this[1*3+0]) * mult, (this[2*3+0] + this[0*3+2]) * mult, (this[1*3+2] - this[2*3+1]) * mult);
-		case 2:
-			return new Quat((this[0*3+1] + this[1*3+0]) * mult, biggestVal, (this[1*3+2] + this[2*3+1]) * mult, (this[2*3+0] - this[0*3+2]) * mult);
-		case 3:
-			return new Quat((this[2*3+0] + this[0*3+2]) * mult, (this[1*3+2] + this[2*3+1]) * mult, biggestVal, (this[0*3+1] - this[1*3+0]) * mult);
-		}
-		console.assert(false, "Should never reach this point.");
-
+	if (fourXSquaredMinus1 > fourBiggestSquaredMinus1) {
+		fourBiggestSquaredMinus1 = fourXSquaredMinus1;
+		biggestIndex = 1;
 	}
+	if(fourYSquaredMinus1 > fourBiggestSquaredMinus1) {
+		fourBiggestSquaredMinus1 = fourYSquaredMinus1;
+		biggestIndex = 2;
+	}
+	if(fourZSquaredMinus1 > fourBiggestSquaredMinus1) {
+		fourBiggestSquaredMinus1 = fourZSquaredMinus1;
+		biggestIndex = 3;
+	}
+
+	const biggestVal = Math.sqrt(fourBiggestSquaredMinus1 + 1) * 0.5;
+	const mult = 0.25 / biggestVal;
+
+	switch(biggestIndex) {
+	case 0:
+		return [(m[1*3+2] - m[2*3+1]) * mult, (m[2*3+0] - m[0*3+2]) * mult, (m[0*3+1] - m[1*3+0]) * mult, biggestVal];
+	case 1:
+		return [biggestVal, (m[0*3+1] + m[1*3+0]) * mult, (m[2*3+0] + m[0*3+2]) * mult, (m[1*3+2] - m[2*3+1]) * mult];
+	case 2:
+		return [(m[0*3+1] + m[1*3+0]) * mult, biggestVal, (m[1*3+2] + m[2*3+1]) * mult, (m[2*3+0] - m[0*3+2]) * mult];
+	case 3:
+		return [(m[2*3+0] + m[0*3+2]) * mult, (m[1*3+2] + m[2*3+1]) * mult, biggestVal, (m[0*3+1] - m[1*3+0]) * mult];
+	}
+	console.assert(false, "Should never reach this point.");
 }
 
 //helper:
@@ -207,7 +201,7 @@ function matFlatten(columns, rows, args) {
 		return rep;
 	}
 	//special case: copy matrix:
-	if (args.length === 1 && args[0] instanceof Mat) {
+	if (args.length === 1 && Array.isArray(args[0]) && ('rows' in args[0] && 'columns' in args[0])) {
 		const m = args[0];
 		let rep = new Array(columns * rows);
 		for (let col = 0; col < columns; ++col) {
@@ -228,8 +222,6 @@ function matFlatten(columns, rows, args) {
 		if (flat.length === limit) throw new Error("mat must have exactly the right amount of data in constructor");
 		if (typeof arg === 'number') {
 			flat.push(arg);
-		} else if (arg instanceof Mat) {
-			throw new Error("mat can't be flattened in matrix constructor");
 		} else if (typeof arg[Symbol.iterator] === 'function') {
 			for (const v of arg) {
 				if (flat.length === limit) throw new Error("mat must have exactly the right amount of data in constructor");
@@ -246,72 +238,46 @@ function matFlatten(columns, rows, args) {
 
 }
 
-export class Mat2x2 extends Mat {
-	constructor(...data) {
-		super(2,2, ...matFlatten(2,2,data));
-	}
+export function mat2x2(...data) {
+	return [...matFlatten(2,2,data)];
 }
 
-export const Mat2 = Mat2x2;
+export const mat2 = mat2x2;
 
-export class Mat2x3 extends Mat {
-	constructor(...data) {
-		super(2,3, ...matFlatten(2,3,data));
-	}
+export function mat2x3(...data) {
+	return [...matFlatten(2,3,data)];
 }
 
-export class Mat2x4 extends Mat {
-	constructor(...data) {
-		super(2,4, ...matFlatten(2,4,data));
-	}
+export function mat2x4(...data) {
+	return [...matFlatten(2,4,data)];
 }
 
-export class Mat3x2 extends Mat {
-	constructor(...data) {
-		super(3,2, ...matFlatten(3,2,data));
-	}
+export function mat3x2(...data) {
+	return [...matFlatten(3,2,data)];
 }
 
-export class Mat3x3 extends Mat {
-	constructor(...data) {
-		super(3,3, ...matFlatten(3,3,data));
-	}
+export function mat3x3(...data) {
+	return [...matFlatten(3,3,data)];
 }
 
-export const Mat3 = Mat3x3;
+export const mat3 = mat3x3;
 
-export class Mat3x4 extends Mat {
-	constructor(...data) {
-		super(3,4, ...matFlatten(3,4,data));
-	}
+export function mat3x4(...data) {
+	return [...matFlatten(3,4,data)];
 }
 
-export class Mat4x2 extends Mat {
-	constructor(...data) {
-		super(4,2, ...matFlatten(4,2,data));
-	}
+export function mat4x2(...data) {
+	return [...matFlatten(4,2,data)];
 }
 
-export class Mat4x3 extends Mat {
-	constructor(...data) {
-		super(4,3, ...matFlatten(4,3,data));
-	}
+export function mat4x3(...data) {
+	return [...matFlatten(4,3,data)];
 }
 
-export class Mat4x4 extends Mat {
-	constructor(...data) {
-		super(4,4, ...matFlatten(4,4,data));
-	}
+export function mat4x4(...data) {
+	return [...matFlatten(4,4,data)];
 }
-export const Mat4 = Mat4x4;
-
-const MAT = [
-	[], //0x
-	[], //1x
-	[undefined, undefined, Mat2, Mat2x3, Mat2x4],
-	[undefined, undefined, Mat3x2, Mat3, Mat3x4],
-	[undefined, undefined, Mat4x2, Mat4x3, Mat4]
-];
+export const mat4 = mat4x4;
 
 //matrix-specific functions:
 function transpose(m) {
@@ -327,118 +293,169 @@ function transpose(m) {
 	return new MAT[m.rows][m.columns](...data);
 }
 
-//---- quaternion types ----
-
-export class Quat extends Array {
-	constructor() {
-		super();
-		if (arguments.length === 0) {
-			this.push(0,0,0,1);
-		} else if (arguments.length === 4) {
-			for (let i = 0; i < 4; ++i) {
-				if (typeof arguments[i] !== 'number') throw new Error(`Expected number for ${"xyzw"[i]}; got ${arguments[i]} (${typeof arguments[i]}) instead.`);
-			}
-			this.push(...arguments);
-		} else {
-			throw new Error(`You must construct Quat from either zero arguments or four arguments (x,y,z,w)`);
+export function transpose_mat3(m) {
+	if (!(m.length === 9)) throw new Error(`The transpose_mat3() function only works on 9-element arrays.`);
+	const rows = 3;
+	const columns = 3;
+	//produce transposed data array:
+	let data = new Array(rows * columns);
+	for (let c = 0; c < columns; ++c) {
+		for (let r = 0; r < rows; ++r) {
+			data[r * columns + c] = m[c * rows + r];
 		}
 	}
-
-	//convert to a Mat3 that does the same thing as rotating by this quaternion:
-	toMat3() {
-		//based (very literally) on GLM's quaternion-to-mat3:
-		//  https://github.com/g-truc/glm/blob/fc8f4bb442b9540969f2f3f351c4960d91bca17a/glm/gtc/quaternion.inl#L46-L72
-
-		const qxx = this.x * this.x;
-		const qxy = this.x * this.y;
-		const qxz = this.x * this.z;
-		const qyy = this.y * this.y;
-		const qyz = this.y * this.z;
-		const qzz = this.z * this.z;
-		const qwx = this.w * this.x;
-		const qwy = this.w * this.y;
-		const qwz = this.w * this.z;
-
-		return new Mat3(
-			1 - 2 * (qyy + qzz),
-			2 * (qxy + qwz),
-			2 * (qxz - qwy),
-
-			2 * (qxy - qwz),
-			1 - 2 * (qxx + qzz),
-			2 * (qyz + qwx),
-
-			2 * (qxz + qwy),
-			2 * (qyz - qwx),
-			1 - 2 * (qxx + qyy)
-		);
-	}
+	return data
 }
 
-{ //add x,y,z,w aliases to Quat:
-	const NAMES = "xyzw";
-	for (let i = 0; i < 4; ++i) {
-		Object.defineProperty(Quat.prototype, NAMES[i], {
-			get() { return this[i]; },
-			set(v) { this[i] = v; }
-		});
-	}
-}
+//---- quaternion types ----
 
+//quaternions are in 'xyzw' order!
+
+//convert to a mat3 that does the same thing as rotating by a quaternion:
+function quat_to_mat3(q) {
+	//based (very literally) on GLM's quaternion-to-mat3:
+	//  https://github.com/g-truc/glm/blob/fc8f4bb442b9540969f2f3f351c4960d91bca17a/glm/gtc/quaternion.inl#L46-L72
+
+	const x = q[0];
+	const y = q[1];
+	const z = q[2];
+	const w = q[3];
+
+	const qxx = x * x;
+	const qxy = x * y;
+	const qxz = x * z;
+	const qyy = y * y;
+	const qyz = y * z;
+	const qzz = z * z;
+	const qwx = w * x;
+	const qwy = w * y;
+	const qwz = w * z;
+
+	return [
+		1 - 2 * (qyy + qzz),
+		2 * (qxy + qwz),
+		2 * (qxz - qwy),
+
+		2 * (qxy - qwz),
+		1 - 2 * (qxx + qzz),
+		2 * (qyz + qwx),
+
+		2 * (qxz + qwy),
+		2 * (qyz - qwx),
+		1 - 2 * (qxx + qyy)
+	];
+}
 
 //---- math functions ----
 export function min(a,b) {
-	if (a instanceof Vec && b instanceof Vec) {
-		if (a.length !== b.length) throw new Error(`Can't min vectors of length ${a.length} != ${b.length}.`);
-		const c = new a.constructor(a);
-		for (let i = 0; i < c.length; ++i) {
-			c[i] = Math.min(c[i], b[i]);
-		}
-		return c;
-	} else {
-		throw new Error(`Don't know how to min ${a.constructor.name} and ${b.constructor.name}.`);
+	if (a.length !== b.length) throw new Error(`Can't min items of length ${a.length} != ${b.length}.`);
+	const c = a.slice();
+	for (let i = 0; i < c.length; ++i) {
+		c[i] = Math.min(c[i], b[i]);
 	}
+	return c;
 }
 
 export function max(a,b) {
-	if (a instanceof Vec && b instanceof Vec) {
-		if (a.length !== b.length) throw new Error(`Can't max vectors of length ${a.length} != ${b.length}.`);
-		const c = new a.constructor(a);
-		for (let i = 0; i < c.length; ++i) {
-			c[i] = Math.max(c[i], b[i]);
-		}
-		return c;
-	} else {
-		throw new Error(`Don't know how to max ${a.constructor.name} and ${b.constructor.name}.`);
+	if (a.length !== b.length) throw new Error(`Can't max items of length ${a.length} != ${b.length}.`);
+	const c = a.slice();
+	for (let i = 0; i < c.length; ++i) {
+		c[i] = Math.max(c[i], b[i]);
 	}
+	return c;
 }
 
 export function add(a,b) {
-	if (a instanceof Vec && b instanceof Vec) {
-		if (a.length !== b.length) throw new Error(`Can't add vectors of length ${a.length} != ${b.length}.`);
-		const c = new a.constructor(a);
-		for (let i = 0; i < c.length; ++i) {
-			c[i] += b[i];
-		}
-		return c;
-	} else {
-		throw new Error(`Don't know how to add ${a.constructor.name} and ${b.constructor.name}.`);
+	if (a.length !== b.length) throw new Error(`Can't add items of length ${a.length} != ${b.length}.`);
+	const c = a.slice();
+	for (let i = 0; i < c.length; ++i) {
+		c[i] += b[i];
 	}
+	return c;
 }
 
 export function sub(a,b) {
-	if (a instanceof Vec && b instanceof Vec) {
-		if (a.length !== b.length) throw new Error(`Can't subtract vectors of length ${a.length} != ${b.length}.`);
-		const c = new a.constructor(a);
-		for (let i = 0; i < c.length; ++i) {
-			c[i] -= b[i];
-		}
-		return c;
-	} else {
-		throw new Error(`Don't know how to subtract ${a.constructor.name} and ${b.constructor.name}.`);
+	if (a.length !== b.length) throw new Error(`Can't subtract items of length ${a.length} != ${b.length}.`);
+	const c = a.slice();
+	for (let i = 0; i < c.length; ++i) {
+		c[i] -= b[i];
 	}
+	return c;
 }
 
+
+export function matmul(a_rows, a_columns, b_rows, b_columns, a,b) {
+	if (a.length !== (a_columns * a_rows) || b.length !== (b_columns * b_rows)) throw new Error("arguments should match their sizes");
+	if (a_columns !== b_rows) throw new Error(`Can't multiply ${a_rows}x${a_columns} by ${b_rows}x${b_columns}.`);
+
+	let data = [];
+	for (let col = 0; col < b_columns; ++col) {
+		for (let row = 0; row < a_rows; ++row) {
+			let val = 0;
+			for (let k = 0; k < a_columns; ++k) {
+				val += a[k * a_rows + row] * b[col * b_rows + k];
+			}
+			data.push(val);
+		}
+	}
+	return data;
+}
+
+
+export function transform(m_rows, m_columns, m,v) {
+	if (m.length !== (m_columns * m_rows)) throw new Error("arguments should match their sizes");
+	if (m_columns !== v.length) throw new Error(`Can't multiply ${a_rows}x${a_columns} by ${b.length}-vector.`);
+	
+	let data = [];
+	for (let row = 0; row < m_rows; ++row) {
+		let val = 0;
+		for (let k = 0; k < m_columns; ++k) {
+			val += m[k * m_rows + row] * v[k];
+		}
+		data.push(val);
+	}
+	return data;
+}
+
+export function mul_mat3_vec3(a,b) {
+	return transform(3,3, a,b);
+}
+
+
+export function mul_mat4x3_vec4(a,b) {
+	return transform(3,4, a,b);
+}
+
+
+
+export function mul_mat3(a,b) {
+	return matmul(3,3,3,3, a,b);
+}
+
+export function mul_quat(a,b) {
+	if (a.length !== 4 || b.length !== 4) throw new Error("arguments should match their sizes");
+	//as per GLM: https://github.com/g-truc/glm/blob/b3f87720261d623986f164b2a7f6a0a938430271/glm/detail/type_quat.inl#L282-L292
+	//(with modification because we use xyzw for quat construction and storage order)
+	return [
+		a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+		a[3] * b[1] + a[1] * b[3] + a[2] * b[0] - a[0] * b[2],
+		a[3] * b[2] + a[2] * b[3] + a[0] * b[1] - a[1] * b[0],
+		a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]
+	];
+}
+
+
+export function scale(s,a) {
+	const ret = a.slice();
+	for (let i = 0; i < ret.length; ++i) {
+		ret[i] *= s;
+	}
+	return ret;
+}
+
+
+
+/*
 export function mul(a,b) {
 	// mat * mat
 	if (a instanceof Mat && b instanceof Mat) {
@@ -509,55 +526,43 @@ export function mul(a,b) {
 		throw new Error(`Don't know how to multiply ${a.constructor.name} and ${b.constructor.name}.`);
 	}
 }
+*/
 
 export function mix(a,b,amt) {
-	if (a instanceof Vec && b instanceof Vec) {
-		if (a.length !== b.length) throw new Error(`Can't min vectors of length ${a.length} != ${b.length}.`);
-		const c = new a.constructor(a);
-		for (let i = 0; i < c.length; ++i) {
-			c[i] += (b[i] - c[i]) * amt;
-		}
-		return c;
-	} else {
-		throw new Error(`Don't know how to mix ${a.constructor.name} and ${b.constructor.name}.`);
+	if (a.length !== b.length) throw new Error(`Can't mix vectors of length ${a.length} != ${b.length}.`);
+	const c = a.slice();
+	for (let i = 0; i < c.length; ++i) {
+		c[i] += (b[i] - c[i]) * amt;
 	}
+	return c;
 }
 
-
 export function dot(a,b) {
-	if (a instanceof Vec && b instanceof Vec) {
-		if (a.length !== b.length) throw new Error(`Can't dot vectors of length ${a.length} != ${b.length}.`);
-		let result = 0;
-		for (let i = 0; i < a.length; ++i) {
-			result += a[i] * b[i];
-		}
-		return result;
-	} else if (a instanceof Quat && b instanceof Quat) {
-		let result = 0;
-		for (let i = 0; i < 4; ++i) {
-			result += a[i] * b[i];
-		}
-		return result;
-	} else {
-		throw new Error(`Don't know how to dot ${a.constructor.name} and ${b.constructor.name}.`);
+	if (a.length !== b.length) throw new Error(`Can't dot vectors of length ${a.length} != ${b.length}.`);
+	let result = 0;
+	for (let i = 0; i < a.length; ++i) {
+		result += a[i] * b[i];
 	}
+	return result;
 }
 
 export function cross(a,b) {
-	if (a instanceof Vec3 && b instanceof Vec3) {
-		return new Vec3(
-			a[1] * b[2] - a[2] * b[1],
-			a[2] * b[0] - a[0] * b[2],
-			a[0] * b[1] - a[1] * b[0]
-		);
-	} else {
-		throw new Error(`Don't know how to cross ${a.constructor.name} and ${b.constructor.name}.`);
-	}
+	if (!(a.length === 3 && b.length === 3)) new Error(`Don't know how to cross ${a.length} and ${b.length}.`);
+	return [
+		a[1] * b[2] - a[2] * b[1],
+		a[2] * b[0] - a[0] * b[2],
+		a[0] * b[1] - a[1] * b[0]
+	];
 }
 
 export function normalize(a) {
 	const len = Math.sqrt(dot(a,a));
-	return mul(1.0 / len, a);
+	const invLen = 1.0 / len;
+	let ret = a.slice();
+	for (let i = 0; i < a.length; ++i) {
+		ret[i] *= invLen;
+	}
+	return ret;
 }
 
 
@@ -566,7 +571,7 @@ export function length(a) {
 }
 
 export function svd(A_) {
-	if (!(A_ instanceof Mat && A_.rows === 3 && A_.columns === 3)) throw new Error("This svd code only works on 3x3 matricies.");
+	if (!(A_.length === 9)) throw new Error("This svd code only works on 3x3 matricies.");
 
 	//tolerances used to stop iteration (...well, okay, not in the current version, but someday)
 	const tol = 1e-4;
@@ -576,9 +581,9 @@ export function svd(A_) {
 	// based on the standard method described in the introductory sections of:
 	//  https://pages.cs.wisc.edu/~sifakis/project_pages/svd.html
 
-	let A = new Mat3(A_);
-	let S = mul(transpose(A), A);
-	let V = new Quat();
+	let A = A_.slice();
+	let S = mul_mat3(transpose_mat3(A), A);
+	let V = [0,0,0,1];
 
 	//Return c,s that diagonalize a symmetric matrix:
 	// [ c s ] * [a11 a12] * [c -s] = [ x 0 ]
@@ -596,7 +601,7 @@ export function svd(A_) {
 
 	//Iteratively reduce off-diagonals: (determines V)
 	for (let iter = 0; iter < 10; ++iter) {
-		const remain = mul( transpose(V.toMat3()), mul(S, V.toMat3()) );
+		const remain = mul_mat3( transpose_mat3(quat_to_mat3(V)), mul_mat3(S, quat_to_mat3(V)) );
 		//console.log(`remain:\n${remain.toString()}`); //DEBUG
 		const r01 = Math.abs(remain[0 * 3 + 1])
 		const r02 = Math.abs(remain[0 * 3 + 2])
@@ -605,34 +610,34 @@ export function svd(A_) {
 		if (r01 === 0 && r02 === 0 && r12 === 0) break;
 		if (r01 >= r02 && r01 >= r12) {
 			const {c,s} = givens_cs(remain[0*3+0], remain[0*3+1], remain[1*3+1]);
-			Q = new Mat3(
+			Q = [
 				c,  s, 0,
 				-s, c, 0,
 				0,  0, 1
-			);
+			];
 		} else if (r02 >= r12) {
 			const {c,s} = givens_cs(remain[0*3+0], remain[0*3+2], remain[2*3+2]);
-			Q = new Mat3(
+			Q = [
 				c,  0, s,
 				0,  1, 0,
 				-s, 0, c
-			);
+			];
 		} else { //r12 is largest off-diagonal.
 			const {c,s} = givens_cs(remain[1*3+1], remain[1*3+2], remain[2*3+2]);
-			Q = new Mat3(
+			Q = [
 				1, 0, 0,
 				0, c, s,
 				0,-s, c
-			);
+			];
 		}
-		V = normalize(mul(V, Q.toQuat()));
+		V = normalize(mul_quat(V, mat3_to_quat(Q)));
 		//console.log("remain:\n" + mul(transpose(V.toMat3()), mul(S, V.toMat3())).toString()); //DEBUG
 	}
-	//console.log(A.toString())
-	//console.log(mul(A, V.toMat3()).toString());
+	//console.log(A.toString()) //DEBUG
+	//console.log(mul(A, V.toMat3()).toString()); //DEBUG
 
 	{ //Sort the singular values:
-		let B = mul(A, V.toMat3());
+		let B = mul_mat3(A, quat_to_mat3(V));
 		//magnitudes of singular values are magnitudes of column vectors of B:
 		let s = [
 			B[0*3+0] * B[0*3+0] + B[0*3+1] * B[0*3+1] + B[0*3+2] * B[0*3+2],
@@ -646,7 +651,7 @@ export function svd(A_) {
 			// [ 1  0 0 ]
 			// [ 0  0 1 ]
 			//NOTE: by avoiding normalization could do this mul() much more efficiently!
-			V = mul(V, new Quat(0, 0, Math.SQRT1_2, Math.SQRT1_2));
+			V = mul_quat(V, [0, 0, Math.SQRT1_2, Math.SQRT1_2]);
 		}
 		//DEBUG: shouldn't need to recompute:
 		if (s[0] < s[2]) {
@@ -656,7 +661,7 @@ export function svd(A_) {
 			// [ 0 1  0 ]
 			// [-1 0  0 ]
 			//NOTE: by avoiding normalization could do this mul() much more efficiently!
-			V = mul(V, new Quat(0, Math.SQRT1_2, 0, Math.SQRT1_2));
+			V = mul_quat(V, [0, Math.SQRT1_2, 0, Math.SQRT1_2]);
 		}
 		if (s[1] < s[2]) {
 			[s[2], s[1]] = [s[1], s[2]];
@@ -665,9 +670,10 @@ export function svd(A_) {
 			// [ 0 0 -1 ]
 			// [ 0 1  0 ]
 			//NOTE: by avoiding normalization could do this mul() much more efficiently!
-			V = mul(V, new Quat(Math.SQRT1_2, 0, 0, Math.SQRT1_2));
+			V = mul_quat(V, [Math.SQRT1_2, 0, 0, Math.SQRT1_2]);
 		}
 		/*
+		//DEBUG:
 		B = mul(A, V.toMat3());
 		s = [
 			B[0*3+0] * B[0*3+0] + B[0*3+1] * B[0*3+1] + B[0*3+2] * B[0*3+2],
@@ -679,13 +685,13 @@ export function svd(A_) {
 	}
 
 	//figure out U factor:
-	let B = mul(A, V.toMat3());
-	//console.log(`before:\n${B}`);
+	let B = mul_mat3(A, quat_to_mat3(V));
+	//console.log(`before:\n${B}`); //DEBUG
 	function qr_cs(app, apq, aqq) {
 		const den2 = aqq*aqq + apq*apq;
 		if (den2 < tol2) {
 			//if very small, rotate so sign of aqq is positive, ignoring off-diagonal:
-			const c = (aqq >= 0 ? 1 : 0);
+			const c = (aqq >= 0 ? 1 : -1);
 			const s = 0;
 			return {c, s};
 		} else {
@@ -698,38 +704,38 @@ export function svd(A_) {
 	let Q;
 	{ //eliminate entry at c0 r1:
 		const {c,s} = qr_cs(B[1*3+1], B[0*3+1], B[0*3+0]);
-		Q = new Mat3(
+		Q = [
 			c,  s, 0,
 			-s, c, 0,
 			0,  0, 1
-		);
-		B = mul(transpose(Q), mul(A, V.toMat3()));
+		];
+		B = mul_mat3(transpose_mat3(Q), mul_mat3(A, quat_to_mat3(V)));
 	}
 	{ //eliminate entry at c0 r2:
 		const {c,s} = qr_cs(B[2*3+2], B[0*3+2], B[0*3+0]);
-		Q = mul(Q, new Mat3(
+		Q = mul_mat3(Q, [
 			c,  0, s,
 			0,  1, 0,
 			-s, 0, c
-		));
-		B = mul(transpose(Q), mul(A, V.toMat3()));
+		]);
+		B = mul_mat3(transpose_mat3(Q), mul_mat3(A, quat_to_mat3(V)));
 	}
 	{ //eliminate entry at c1 r2:
 		const {c,s} = qr_cs(B[2*3+2], B[1*3+2], B[1*3+1]);
-		Q = mul(Q, new Mat3(
+		Q = mul_mat3(Q, [
 			1, 0, 0,
 			0, c, s,
 			0,-s, c
-		));
-		B = mul(transpose(Q), mul(A, V.toMat3()));
+		]);
+		B = mul_mat3(transpose_mat3(Q), mul_mat3(A, quat_to_mat3(V)));
 	}
 
-	const U = normalize(Q.toQuat());
-	const Sigma = new Mat3(B[0*3+0],0,0, 0,B[1*3+1],0, 0,0,B[2*3+2]);
+	const U = normalize(mat3_to_quat(Q));
+	const Sigma = [B[0*3+0],0,0, 0,B[1*3+1],0, 0,0,B[2*3+2]];
 
-	//console.log(`A:\n${A}`);
-	//console.log(`U S Vt:\n${mul(mul(U.toMat3(), Sigma), transpose(V.toMat3()))}`);
-	//console.log(`U:\n${U.toMat3()}\nS:\n${Sigma}\nV:\n${V.toMat3()}`);
+	//console.log(`A:\n${A}`); //DEBUG
+	//console.log(`U S Vt:\n${mul(mul(U.toMat3(), Sigma), transpose(V.toMat3()))}`); //DEBUG
+	//console.log(`U:\n${U.toMat3()}\nS:\n${Sigma}\nV:\n${V.toMat3()}`); //DEBUG
 
 	return {U, Sigma, V};
 }
@@ -754,12 +760,12 @@ export function rigidTransform(A,B) {
 		A_mean = add(A_mean, A[i]);
 		B_mean = add(B_mean, B[i]);
 	}
-	A_mean = mul(1.0 / L, A_mean);
-	B_mean = mul(1.0 / L, B_mean);
+	A_mean = scale(1.0 / L, A_mean);
+	B_mean = scale(1.0 / L, B_mean);
 
 	//NOTE: for < 3 pts, could do some gentle regularization
 
-	let S = new Mat3(0);
+	let S = mat3(0);
 	for (let i = 0; i < L; ++i) {
 		const a = sub(A[i],A_mean);
 		const b = sub(B[i],B_mean);
@@ -777,19 +783,123 @@ export function rigidTransform(A,B) {
 	const {U, Sigma, V} = svd(S);
 
 	//NOTE: this multiplication would be more efficient betwixt U and V as quaternions:
-	//const rot = mul(V.toMat3(), transpose(U.toMat3()));
+	const rot = mul_mat3(quat_to_mat3(V), transpose_mat3(quat_to_mat3(U)));
+
+	//specifically bless as matrix so matFlatten doesn't complain (!!NOTE: should probably just ignore this!!)
+	rot.rows = 3;
+	rot.columns = 3;
 
 	//HACK: actually ignore rotation:
-	const rot = new Mat3(1);
+	//const rot = new Mat3(1);
 
-	const translation = sub(B_mean, mul(rot, A_mean));
+	const translation = sub(B_mean, mul_mat3_vec3(rot, A_mean));
 
 	//assemble the final transformation:
-	const xform = new Mat4x3(rot); //rotation part
+	const xform = mat4x3(rot); //rotation part
 	//translation part:
 	xform[3*3+0] = translation[0];
 	xform[3*3+1] = translation[1];
 	xform[3*3+2] = translation[2];
 
 	return xform;
+}
+
+
+async function test_svd() {
+	console.log("Testing svd function.");
+
+	const MersenneTwister = (await import('./mersenne-twister.js')).default;
+
+	const mt = new MersenneTwister(314159);
+	const iters = 50000;
+
+	const before = performance.now();
+
+	let max_delta_info = null;
+	let max_delta = -1.0;
+
+	function test(mat, iter=-1) {
+		const {U, Sigma:s, V} = svd(mat);
+
+		const recon = mul_mat3(quat_to_mat3(U), mul_mat3(s, transpose_mat3(quat_to_mat3(V))));
+
+		let delta = 0.0;
+		for (let i = 0; i < mat.length; ++i) {
+			delta = Math.max(delta, Math.abs(recon[i] - mat[i]));
+		}
+
+		if (delta > 1e-3) {
+			console.log(`iter ${iter}: delta is ${delta}`);
+		}
+
+		if (delta > max_delta) {
+			max_delta_info = {mat, U, s, V, recon};
+			max_delta = delta;
+		}
+	}
+
+	/* //this was especially a problem
+	test(new Mat3(
+		0.9, 0.0, 0.0,
+		0.0, 0.0, 0.91,
+		0.0, 0.05, 0.0
+	));
+	*/
+	for (let iter = 0; iter < iters; ++iter) {
+
+		//random matrix with entries in [-1,1]:
+		const mat = mat3(0);
+		for (let i = 0; i < mat.length; ++i) {
+			mat[i] = mt.random() * 2 - 1;
+		}
+
+		{ //add some zeros:
+			const zeros = Math.floor(mt.random() * mat.length);
+			const pattern = [];
+			for (let i = 0; i < zeros; ++i) {
+				pattern.push(0);
+			}
+			while (pattern.length < mat.length) {
+				pattern.push(1);
+			}
+			//shuffle zero pattern:
+			for (let i = 0; i < pattern.length; ++i) {
+				let sel = i + Math.floor(mt.random() * (pattern.length-i));
+				[pattern[i], pattern[sel]] = [pattern[sel], pattern[i]];
+			}
+			//enforce zeros:
+			for (let i = 0; i < pattern.length; ++i) {
+				mat[i] *= pattern[i];
+			}
+		}
+
+		test(mat,iter);
+	}
+
+	const after = performance.now();
+
+	console.log(`Over ${iters} random [-1,1] matrices have ${max_delta} as maximum reconstruction error.`);
+	//console.log(`${max_delta_info.mat}\n vs\n${max_delta_info.recon}`);
+	console.log(`Took ${(after-before)/iters}ms per iteration.`);
+
+}
+
+if (typeof process !== 'undefined') {
+
+
+	async function init() {
+		const url = await import('url');
+		const fs = await import('fs');
+		if (process.argv[1] !== url.fileURLToPath(import.meta.url)) return;
+		const ops = {
+			'test-svd':test_svd
+		};
+		if (process.argv.length !== 3 || !(process.argv[2] in ops)) {
+			console.log("Usage:\n\tnode gm.mjs <" + Object.keys(ops).join('|')+ ">");
+			process.exit(1);
+		}
+		const op = process.argv[2];
+		ops[op]();
+	}
+	init();
 }
