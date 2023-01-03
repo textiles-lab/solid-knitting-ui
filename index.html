@@ -720,20 +720,53 @@ function compatible(a,b) {
 	return false;
 }
 
-// BFS using Kahn's ? 
-function checkCellCorrectness(preview) {
+// Topological sort to check Cell correctness using BFS using Kahn's ? 
+function checkCellCorrectness(preview) {s
 	// Dictionary of visited cells {cell, visit #}
-	let visitedCells = new Map();
-	let visitN = 0; 
+	let inDegrees = new Map();
 
-	// Cells to visit, beginning with preview cell's potential connections.
-	let toVisit =  previewCell.connections.filter(connection => connection != null).map(connection => connection.cell);
-	
+	// Compute all in-degrees for every vertex. 
+	for (let u = 0; u < preview.connections.length(); u++) {
+		let currCell = preview.connections[u] // Current cell value.
+		let currLen = currCell.length() 
+		// Since preview cell is the initial cell. 
+		if (inDegrees.get(currCell) == null){
+			inDegrees.set(currCell, 1)
+		} else {
+			let val = inDegrees.get(currCell)
+			inDegree.set(currCell, val++)
+		}
+		// Calculate indegrees for all additional cells. 
+		for (let v = 0; v < currLen; v++){
+			let currCellAdj = currCell.connections[i]
+			if (inDegrees.get(currCell) == null){
+			inDegrees.set(currCell, 1)
+		} else {
+			let val = inDegrees.get(currCell)
+			inDegree.set(currCell, val++)
+		}
+		}
+	}
+	let visitN = 1; 
+
+	// Queue of cells to visit, beginning with preview cell's potential connections.
+	let toVisit =  [];
+
+	// Array to keep track of topological order. 
+	let topOrder = [];
+
+	// Topological ordering of vertices. 
 	while (toVisit != null){
 		// Shift topmost element: 
 		let currCell = toVisit.shift(); 
- 
-		if (visitedCells.get(currCell) != null) {
+		topOrder.push(currCell);
+
+		let currCellConnections = currCell.connections;
+		for (let v = 0; v < currCellConnections.length(); v++){
+			let currCellNeigh = v 
+		}
+
+		/*if (visitedCells.get(currCell) != null) {
 		// If cell has already been visited, then we check for correctness. 
 
 		} else{
@@ -743,15 +776,16 @@ function checkCellCorrectness(preview) {
 
 			// Push its neighbors into the current cells to visit. 
 			let newConnections = currCell.connections.filter(connection => connection != null).map(connection => connection.cell);
+			let outConnections = newConnections.length(); 
 			toVisit.push(newConnections)
-		}
+		}*/
 	}
 }
 
 /** checkGlobalCellCorrectness: 
  *  Checks that cells are appropriately connected globally. 
  *  Consider: Do BFS and make sure that graph is acyclic. */
-function checkGlobalCellCorrectness() {
+/**function checkGlobalCellCorrectness() {
 	let bodyLen = body.cells.length(); 
 	// Iterate accross all cell connections.
 	// Make sure that no path leads back to original cell body. 
@@ -762,7 +796,7 @@ function checkGlobalCellCorrectness() {
 
 		}
 	}
-}
+}**/
 
 /**
  * deleteCell (): 
