@@ -752,7 +752,7 @@ function addCell() {
 	// Run topological sort only from selected cell. (i.e. yarns should be acyclic). 
 	// Alternatively: checkGlobalCellCorrectness() assesses global correctness accross all possible blocks. 
 	// I think it's probably safe just to do one block at a time rather than checking the entire system all at once. 
-	checkCellCorrectness(preview);
+	print("Topological sort: " + Str(checkCellCorrectness(preview))); 
 
 
 	//update UI and redraw:
@@ -769,36 +769,36 @@ function compatible(a,b) {
 }
 
 // Topological sort to check Cell correctness using BFS using Kahn's ? 
-function checkCellCorrectness(preview) {s
+function checkCellCorrectness(preview) {
 	// Dictionary of visited cells {cell, visit #}
 	let inDegrees = new Map();
 
 	// Compute all in-degrees for every vertex. 
 	for (let u = 0; u < preview.connections.length(); u++) {
 		let currCell = preview.connections[u] // Current cell value.
-		let currLen = currCell.length() 
-		// Since preview cell is the initial cell. 
-		if (inDegrees.get(currCell) == null){
-			inDegrees.set(currCell, 1)
-		} else {
-			let val = inDegrees.get(currCell)
-			inDegree.set(currCell, val++)
-		}
-		// Calculate indegrees for all additional cells. 
-		for (let v = 0; v < currLen; v++){
-			let currCellAdj = currCell.connections[i]
-			if (inDegrees.get(currCell) == null){
-			inDegrees.set(currCell, 1)
-		} else {
-			let val = inDegrees.get(currCell)
-			inDegree.set(currCell, val++)
-		}
+		let currCellConLen = currCell.connections.length() 
+
+		// Assert that only yarn directions are taken into account. 
+		// Calculate indegrees for all adjacent/connected cells.
+		for (let v = 0; v < currCellConLen; v++){
+			let currCellAdj = currCell.connections[v]
+			// Only calculate topological sort for currCell and currCellAdj with corresponding faces for each other. 
+			if (compatible(currCellAdj.template.faces, currCell.template.faces) && (currCell.template.faces[1] == 'y')){
+				// Continue topological sort. 
+				if (inDegrees.get(currCell) == null){
+					inDegrees.set(currCell, 1)
+				} else {
+					let val = inDegrees.get(currCell)
+					inDegree.set(currCell, val++)
+				}
+			}
 		}
 	}
-	let visitN = 1; 
+	let count = 0; 
+	let expectedCount = inDegrees.size;
 
 	// Queue of cells to visit, beginning with preview cell's potential connections.
-	let toVisit =  [];
+	let toVisit =  [preview];
 
 	// Array to keep track of topological order. 
 	let topOrder = [];
@@ -811,23 +811,15 @@ function checkCellCorrectness(preview) {s
 
 		let currCellConnections = currCell.connections;
 		for (let v = 0; v < currCellConnections.length(); v++){
-			let currCellNeigh = v 
+			let currCellNeigh = v;
+			if (--inDegree.get(currCellNeigh) == 0){
+				toVisit.push(currCell);
+			}
 		}
-
-		/*if (visitedCells.get(currCell) != null) {
-		// If cell has already been visited, then we check for correctness. 
-
-		} else{
-			// Cell has not been visited, add it to dictionary. 
-			visitedCells.set(currCell, visitN); 
-			visitN++;
-
-			// Push its neighbors into the current cells to visit. 
-			let newConnections = currCell.connections.filter(connection => connection != null).map(connection => connection.cell);
-			let outConnections = newConnections.length(); 
-			toVisit.push(newConnections)
-		}*/
+		count++;
 	}
+
+	return count == expectedCount; 
 }
 
 /** checkGlobalCellCorrectness: 
@@ -841,6 +833,19 @@ function checkCellCorrectness(preview) {s
 		let cell = body.cells[i];
 		let connectionsLen = cell.connections.length();
 		for (let j = 0; j < connectionsLen; j++){
+		if (visitedCells.get(currCell) != null) {
+		// If cell has already been visited, then we check for correctness. 
+
+		} else{
+			// Cell has not been visited, add it to dictionary. 
+			visitedCells.set(currCell, visitN); 
+			visitN++;
+
+			// Push its neighbors into the current cells to visit. 
+			let newConnections = currCell.connections.filter(connection => connection != null).map(connection => connection.cell);
+			let outConnections = newConnections.length(); 
+			toVisit.push(newConnections)
+		}
 
 		}
 	}
