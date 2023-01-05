@@ -790,10 +790,11 @@ function checkGlobalCellCorrectness() {
 				
 				// Assert that only yarn directions are taken into account. 
 				if ((sv.canConnectFaces(currCell.template.faces[currFace], adjCell.template.faces[adjCellFace]) &&
-					(currCell.template.faces[currFace][1] === 'y'))){
+					(currCell.template.faces[currFace].type[1] == 'y'))){
 					// Increment inDegree calculation.
+					console.log("indegree incremented!");
 					let val = inDegrees.get(adjCell);
-					inDegree.set(adjCell, ++val);
+					inDegrees.set(adjCell, ++val);
 				}
 			}
 		}
@@ -802,7 +803,8 @@ function checkGlobalCellCorrectness() {
 	let count = 0; 
 
 	// Queue of cells to visit, based on cells with inDegree 0.
-	let toVisit =  body.cells.filter(cell => (inDegrees.get(cell) === 0));
+	let toVisit =  body.cells.filter(cell => (inDegrees.get(cell) == 0));
+	console.log("toVisit: ");
 	console.log(toVisit);
 	// Array to keep track of topological order. 
 	let topOrder = [];
@@ -827,16 +829,17 @@ function checkGlobalCellCorrectness() {
 				
 				// Assert that only yarn directions are taken into account. 
 				if ((sv.canConnectFaces(currCell.template.faces[currFace], adjCell.template.faces[adjCellFace]) &&
-					(currCell.template.faces[currFace][1] === 'y'))){
-					let val = inDegree.get(adjCell); 
+					(currCell.template.faces[currFace].type[1] == 'y'))){
+					console.log("pushed toVisit!");
+					let val = inDegrees.get(adjCell); 
 					if (--val == 0) toVisit.push(adjCell);
 				}
 			}
 		}
 		count++;
 	}
-
-	return count === bodyLen; 
+	console.log("Count: " + count.toString() + " Expected: " + bodyLen.toString());
+	return count == bodyLen; 
 }
 
 /**
