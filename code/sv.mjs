@@ -20,6 +20,10 @@ export function forAlignedIndices(face1, face2, func) {
 }
 
 //helper for checking whether it makes sense to connect two faces:
+
+//minor suggestion: This is also used for asserting overall yarn direction correctness. 
+//maybe rename to "areFacesCompatible"? 
+
 export function canConnectFaces(face1, face2) {
 	function compatibleTypes(a,b) {
 		if (a[0] === '-' && b[0] === '+') return a.substr(1) === b.substr(1);

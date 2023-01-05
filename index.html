@@ -577,7 +577,10 @@ window.addEventListener('keydown', function(evt){
 			startGrabCell(); //start drag
 		} else if (evt.code == 'KeyC') {
 			startConnectFace(); //start connection
-		} else if (evt.code == 'ArrowUp') {
+		} else if (evt.code == 'KeyU') {
+			// probably will change keycode. 
+			checkGlobalCellCorrectness(); // Run topological sort. 
+		}else if (evt.code == 'ArrowUp') {
 			prevTemplate();
 			requestRedraw();
 		} else if (evt.code == 'ArrowDown') {
@@ -748,108 +751,93 @@ function addCell() {
 	body.cells.push(preview);
 
 	// Check global correctness from preview cell. 
-	// (i.e. begins search from cell as a starting point)
-	// Run topological sort only from selected cell. (i.e. yarns should be acyclic). 
-	// Alternatively: checkGlobalCellCorrectness() assesses global correctness accross all possible blocks. 
-	// I think it's probably safe just to do one block at a time rather than checking the entire system all at once. 
-	print("Topological sort: " + Str(checkCellCorrectness(preview))); 
-
+	if (!checkGlobalCellCorrectness()) console.log("Warning: Topological sort shows a cycle in yarn directions!"); 
+	else console.log("Topological sort passes!");
 
 	//update UI and redraw:
 	mouseDirty();
 	bodyDirty();
 }
 
-// TODO: Perhaps this should be moved elsewhere. 
-// Temporarily moved this from setConnection() to be used for correctness checks, to avoid repeated code.
-function compatible(a,b) {
-	if (a[0] === '-' && b[0] === '+') return a.substr(1) === b.substr(1);
-	if (a[0] === '+' && b[0] === '-') return a.substr(1) === b.substr(1);
-	return false;
-}
 
-// Topological sort to check Cell correctness using BFS using Kahn's ? 
-function checkCellCorrectness(preview) {
+// Topological sort to check correctness using BFS using Kahn's accross entire implementation.
+// Overall complexity of O(|E| + |V).
+function checkGlobalCellCorrectness() {
 	// Dictionary of visited cells {cell, visit #}
 	let inDegrees = new Map();
 
-	// Compute all in-degrees for every vertex. 
-	for (let u = 0; u < preview.connections.length(); u++) {
-		let currCell = preview.connections[u] // Current cell value.
-		let currCellConLen = currCell.connections.length() 
+	// bodyLen == Expected count of elements in topological sort. (based on the indegree value) 
+	let bodyLen = body.cells.length;
 
-		// Assert that only yarn directions are taken into account. 
+	// Initialize all cells in body into dictionary.
+	for (let i = 0; i < bodyLen; i++) inDegrees.set(body.cells[i], 0);
+
+	// Iterate accross all cell connections.
+	// Make sure that no path leads back to original cell body. 
+	for (let i = 0; i < bodyLen; i++){
+		let currCell = body.cells[i]; /* cell */
+		let currCellCon = currCell.connections;
+		let currCellConLen = currCellCon.length;
+
 		// Calculate indegrees for all adjacent/connected cells.
 		for (let v = 0; v < currCellConLen; v++){
-			let currCellAdj = currCell.connections[v]
-			// Only calculate topological sort for currCell and currCellAdj with corresponding faces for each other. 
-			if (compatible(currCellAdj.template.faces, currCell.template.faces) && (currCell.template.faces[1] == 'y')){
-				// Continue topological sort. 
-				if (inDegrees.get(currCell) == null){
-					inDegrees.set(currCell, 1)
-				} else {
-					let val = inDegrees.get(currCell)
-					inDegree.set(currCell, val++)
+			let currFace = v; /*face*/
+			let adjCellCon = currCellCon[currFace]
+
+			if (adjCellCon != null){
+				let adjCellFace = adjCellCon.face /* toFace */
+				let adjCell = adjCellCon.cell /* toCell */
+				
+				// Assert that only yarn directions are taken into account. 
+				if ((sv.canConnectFaces(currCell.template.faces[currFace], adjCell.template.faces[adjCellFace]) &&
+					(currCell.template.faces[currFace][1] === 'y'))){
+					// Increment inDegree calculation.
+					let val = inDegrees.get(adjCell);
+					inDegree.set(adjCell, ++val);
 				}
 			}
 		}
 	}
+	
 	let count = 0; 
-	let expectedCount = inDegrees.size;
 
-	// Queue of cells to visit, beginning with preview cell's potential connections.
-	let toVisit =  [preview];
-
+	// Queue of cells to visit, based on cells with inDegree 0.
+	let toVisit =  body.cells.filter(cell => (inDegrees.get(cell) === 0));
+	console.log(toVisit);
 	// Array to keep track of topological order. 
 	let topOrder = [];
 
 	// Topological ordering of vertices. 
-	while (toVisit != null){
+	while (toVisit.length != 0){
 		// Shift topmost element: 
-		let currCell = toVisit.shift(); 
+		let currCell = toVisit.shift(); /* face */
 		topOrder.push(currCell);
 
-		let currCellConnections = currCell.connections;
-		for (let v = 0; v < currCellConnections.length(); v++){
-			let currCellNeigh = v;
-			if (--inDegree.get(currCellNeigh) == 0){
-				toVisit.push(currCell);
+		let currCellCon = currCell.connections;
+		let currCellConLen = currCellCon.length;
+
+		// Calculate indegrees for all adjacent/connected cells.
+		for (let v = 0; v < currCellConLen; v++){
+			let currFace = v; /*face*/
+			let adjCellCon = currCellCon[currFace]
+
+			if (adjCellCon != null){
+				let adjCellFace = adjCellCon.face /* toFace */
+				let adjCell = adjCellCon.cell /* toCell */
+				
+				// Assert that only yarn directions are taken into account. 
+				if ((sv.canConnectFaces(currCell.template.faces[currFace], adjCell.template.faces[adjCellFace]) &&
+					(currCell.template.faces[currFace][1] === 'y'))){
+					let val = inDegree.get(adjCell); 
+					if (--val == 0) toVisit.push(adjCell);
+				}
 			}
 		}
 		count++;
 	}
 
-	return count == expectedCount; 
+	return count === bodyLen; 
 }
-
-/** checkGlobalCellCorrectness: 
- *  Checks that cells are appropriately connected globally. 
- *  Consider: Do BFS and make sure that graph is acyclic. */
-/**function checkGlobalCellCorrectness() {
-	let bodyLen = body.cells.length(); 
-	// Iterate accross all cell connections.
-	// Make sure that no path leads back to original cell body. 
-	for (let i = 0; i < bodyLen; i++){
-		let cell = body.cells[i];
-		let connectionsLen = cell.connections.length();
-		for (let j = 0; j < connectionsLen; j++){
-		if (visitedCells.get(currCell) != null) {
-		// If cell has already been visited, then we check for correctness. 
-
-		} else{
-			// Cell has not been visited, add it to dictionary. 
-			visitedCells.set(currCell, visitN); 
-			visitN++;
-
-			// Push its neighbors into the current cells to visit. 
-			let newConnections = currCell.connections.filter(connection => connection != null).map(connection => connection.cell);
-			let outConnections = newConnections.length(); 
-			toVisit.push(newConnections)
-		}
-
-		}
-	}
-}**/
 
 /**
  * deleteCell (): 
@@ -876,6 +864,10 @@ function deleteCell() {
 
 	// Remove current cell from body. 
 	body.cells.splice(cellIndex, 1);
+
+	// Check global correctness from preview cell. 
+	if (!checkGlobalCellCorrectness()) console.log("Warning: Topological sort shows a cycle in yarn directions!"); 
+	else console.log("Topological sort passes!");
 
 	// Update UI and redraw:
 	mouseDirty();
