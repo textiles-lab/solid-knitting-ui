@@ -581,6 +581,7 @@ window.addEventListener('keydown', function(evt){
 			// probably will change keycode. 
 			// Run topological sort. 
 			if (!checkGlobalCellCorrectness()) console.log("Warning: Topological sort shows a cycle in yarn directions!");
+			else console.log("Topological sort passes!");
 		}else if (evt.code == 'ArrowUp') {
 			prevTemplate();
 			requestRedraw();
