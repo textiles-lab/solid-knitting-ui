@@ -579,7 +579,8 @@ window.addEventListener('keydown', function(evt){
 			startConnectFace(); //start connection
 		} else if (evt.code == 'KeyU') {
 			// probably will change keycode. 
-			checkGlobalCellCorrectness(); // Run topological sort. 
+			// Run topological sort. 
+			if (!checkGlobalCellCorrectness()) console.log("Warning: Topological sort shows a cycle in yarn directions!");
 		}else if (evt.code == 'ArrowUp') {
 			prevTemplate();
 			requestRedraw();
@@ -752,7 +753,6 @@ function addCell() {
 
 	// Check global correctness from preview cell. 
 	if (!checkGlobalCellCorrectness()) console.log("Warning: Topological sort shows a cycle in yarn directions!"); 
-	else console.log("Topological sort passes!");
 
 	//update UI and redraw:
 	mouseDirty();
@@ -796,7 +796,6 @@ function checkGlobalCellCorrectness() {
 					(currCell.template.faces[currFace].type[1] == 'y') &&
 					(currCell.template.faces[currFace].type[0] == '-')){
 					// Increment inDegree calculation.
-					console.log("indegree incremented!");
 					let val = inDegrees.get(adjCell);
 					inDegrees.set(adjCell, ++val);
 				}
@@ -808,8 +807,7 @@ function checkGlobalCellCorrectness() {
 
 	// Queue of cells to visit, based on cells with inDegree 0.
 	let toVisit =  body.cells.filter(cell => (inDegrees.get(cell) == 0));
-	console.log("toVisit: ");
-	console.log(toVisit);
+
 	// Array to keep track of topological order. 
 	let topOrder = [];
 
@@ -834,7 +832,6 @@ function checkGlobalCellCorrectness() {
 				if (sv.canConnectFaces(currCell.template.faces[currFace], adjCell.template.faces[adjCellFace]) &&
 					(currCell.template.faces[currFace].type[1] == 'y') &&
 					(currCell.template.faces[currFace].type[0] == '-')){
-					console.log("pushed toVisit!");
 					let val = inDegrees.get(adjCell); 
 					if (--val == 0) toVisit.push(adjCell);
 				}
@@ -842,7 +839,6 @@ function checkGlobalCellCorrectness() {
 		}
 		count++;
 	}
-	console.log("Count: " + count.toString() + " Expected: " + bodyLen.toString());
 	return count == bodyLen; 
 }
 
@@ -874,7 +870,6 @@ function deleteCell() {
 
 	// Check global correctness from preview cell. 
 	if (!checkGlobalCellCorrectness()) console.log("Warning: Topological sort shows a cycle in yarn directions!"); 
-	else console.log("Topological sort passes!");
 
 	// Update UI and redraw:
 	mouseDirty();
