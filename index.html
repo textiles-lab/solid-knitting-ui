@@ -773,7 +773,6 @@ function checkGlobalCellCorrectness() {
 	for (let i = 0; i < bodyLen; i++) inDegrees.set(body.cells[i], 0);
 
 	// Iterate accross all cell connections.
-	// Make sure that no path leads back to original cell body. 
 	for (let i = 0; i < bodyLen; i++){
 		let currCell = body.cells[i]; /* cell */
 		let currCellCon = currCell.connections;
@@ -789,8 +788,13 @@ function checkGlobalCellCorrectness() {
 				let adjCell = adjCellCon.cell /* toCell */
 				
 				// Assert that only yarn directions are taken into account. 
-				if ((sv.canConnectFaces(currCell.template.faces[currFace], adjCell.template.faces[adjCellFace]) &&
-					(currCell.template.faces[currFace].type[1] == 'y'))){
+				// Only one direction is taken into account, in this case were 
+				// assume the current cell (-y) connects with adjacent cell 
+				// (+y) to avoid double counting. 
+				// I.e. both (+y) -> (-y) and (-y) -> (+y). 
+				if (sv.canConnectFaces(currCell.template.faces[currFace], adjCell.template.faces[adjCellFace]) &&
+					(currCell.template.faces[currFace].type[1] == 'y') &&
+					(currCell.template.faces[currFace].type[0] == '-')){
 					// Increment inDegree calculation.
 					console.log("indegree incremented!");
 					let val = inDegrees.get(adjCell);
@@ -827,9 +831,9 @@ function checkGlobalCellCorrectness() {
 				let adjCellFace = adjCellCon.face /* toFace */
 				let adjCell = adjCellCon.cell /* toCell */
 				
-				// Assert that only yarn directions are taken into account. 
-				if ((sv.canConnectFaces(currCell.template.faces[currFace], adjCell.template.faces[adjCellFace]) &&
-					(currCell.template.faces[currFace].type[1] == 'y'))){
+				if (sv.canConnectFaces(currCell.template.faces[currFace], adjCell.template.faces[adjCellFace]) &&
+					(currCell.template.faces[currFace].type[1] == 'y') &&
+					(currCell.template.faces[currFace].type[0] == '-')){
 					console.log("pushed toVisit!");
 					let val = inDegrees.get(adjCell); 
 					if (--val == 0) toVisit.push(adjCell);
