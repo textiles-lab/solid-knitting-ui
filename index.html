@@ -251,8 +251,18 @@ document.getElementById("export").addEventListener('click', function(evt){
 function exportSolidKnitout(body) {
 	const cells = body.cells;
 	// Consider writing each line into a document as we go? It could get rather lengthy.
-	
-	var solidk = "";
+	// Creating Solid knitout for "starting" object. I.e. beginning at block type containing 'yarn-in'? 
+	const start = cells.find(cell => (cell != null)&&(cell.template.name == "yarn-in"))
+	var toVisit = start.connections; // Queue for block traversal
+
+	var solidk = start.template.machine; 
+	while (toVisit != null){
+		let currCell = toVisit.shift(); /* face */
+		solidk = solidk + currCell.template.machine; 
+		if (false){
+			// TODO: Push subsequent connections to Visit stack 
+		}
+	}
 	return solidk;
 }
 
