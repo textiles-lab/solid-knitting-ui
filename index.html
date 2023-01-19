@@ -580,8 +580,8 @@ window.addEventListener('keydown', function(evt){
 		} else if (evt.code == 'KeyU') {
 			// probably will change keycode. 
 			// Run topological sort. 
-			if (!checkGlobalCellCorrectness()) console.log("Warning: Topological sort shows a cycle in yarn directions!");
-			else console.log("Topological sort passes!");
+			if (!checkGlobalCellCorrectness()) console.log("Warning: There is exists a cycle in yarn directions!");
+			else console.log("No cycles detected in yarn directions");
 		}else if (evt.code == 'ArrowUp') {
 			prevTemplate();
 			requestRedraw();
@@ -753,7 +753,7 @@ function addCell() {
 	body.cells.push(preview);
 
 	// Check global correctness from preview cell. 
-	if (!checkGlobalCellCorrectness()) console.log("Warning: Topological sort shows a cycle in yarn directions!"); 
+	if (!checkGlobalCellCorrectness()) console.log("Warning: There is exists a cycle in yarn directions!");
 
 	//update UI and redraw:
 	mouseDirty();
@@ -870,7 +870,7 @@ function deleteCell() {
 	body.cells.splice(cellIndex, 1);
 
 	// Check global correctness from preview cell. 
-	if (!checkGlobalCellCorrectness()) console.log("Warning: Topological sort shows a cycle in yarn directions!"); 
+	if (!checkGlobalCellCorrectness()) console.log("Warning: There is exists a cycle in yarn directions!");
 
 	// Update UI and redraw:
 	mouseDirty();
