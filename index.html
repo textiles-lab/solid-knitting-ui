@@ -130,6 +130,8 @@ body {
 <!-- <button id="benchmark">benchmark</button>
 <span id="benchmark-result"></span> -->
 <button id="save" class="controlsButton">Save</button>
+
+<button id="export" class="controlsButton">Export Solid Knitout</button>
 </div>
 
 <!-- 3d view -->
@@ -237,6 +239,22 @@ document.getElementById("save").addEventListener('click', function(evt){
 	const text = JSON.stringify(body.toData());
 	fileSave(text, "solid-knitting.body");
 });
+
+// export machine code 
+document.getElementById("export").addEventListener('click', function(evt){
+	console.log("Exporting...");
+	const text = exportSolidKnitout(body); 
+	// .solidknitout, .sk, .solidk -- As a reference to the original knitout extension?
+	fileSave(text, "solid-knitting.sk");
+});
+
+function exportSolidKnitout(body) {
+	const cells = body.cells;
+	// Consider writing each line into a document as we go? It could get rather lengthy.
+	
+	var solidk = "";
+	return solidk;
+}
 
 //from knitout-live-visualizer:
 function fileSave(sourceText, fileIdentity) {
