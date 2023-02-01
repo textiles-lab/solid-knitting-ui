@@ -1884,26 +1884,37 @@ class VisTubes extends Geometry {
 				for (let iP = 0; iP+1 < yarn.pts.length; iP++) {
 					let prev = gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP], 1]);
 					let at = gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP+1], 1]);
-					let T = gm.normalize(gm.sub(at,prev));
-					let Tminus = T;
-					if (iP > 0) {
-						Tminus = gm.normalize(gm.sub(prev, gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP-1], 1])));
+					let T = gm.normalize(gm.sub(at,prev)); // tangent vector along prev-at edge
+
+					let Tprev; // tangent vector at prev
+					if (iP == 0) {
+						Tprev = snapAxisAligned(T); // HACK: try to line up tangents across cell boundaries
+					} else {
+						// compute tangent vector at prev by averaging T with tangent on previous edge
+						let Tbefore = gm.normalize(gm.sub(prev, gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP-1], 1])));
+						Tprev = gm.normalize(gm.add(Tbefore, T));
 					}
-					let Tplus = T;
-					if (iP + 2 < yarn.pts.length) {
-						Tplus = gm.normalize(gm.sub(gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP+2], 1]), at));
+
+					let Tat; // tanget vector at at
+					if (iP+2 == yarn.pts.length) {
+						Tat = snapAxisAligned(T);
+					} else {
+						// compute tanget vector at at by averaging T with tangent on next edge
+						let Tnext = gm.normalize(gm.sub(gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP+2], 1]), at));	
+						Tat = gm.normalize(gm.add(Tnext, T));
 					}
-					let axis = (Math.abs(T[0]) < 0.4) ? gm.vec3(1, 0, 0) : gm.vec3(0, 1, 0);
-					let Tprev = (iP > 0) ? gm.normalize(gm.add(Tminus, T)) : snapAxisAligned(T);
-					let xprev = axis;
-					xprev = gm.normalize(gm.sub(xprev, gm.scalarmul(gm.dot(xprev, Tprev),Tprev)));
+
+					// pick a starting direction for polygon. arbitrarily pick x axis, unless vector points mostly in x direction, then pick y axis
+					let axis = (Math.abs(T[0]) < 0.5) ? gm.vec3(1, 0, 0) : gm.vec3(0, 1, 0);
+
+					// find x and y directions at prev and at points by projecting axis onto orthogonal complement of vertex tangent vector, and taking 90 degree rotation
+					let xprev = gm.normalize(gm.sub(axis, gm.scalarmul(gm.dot(axis, Tprev),Tprev)));
 					let yprev = gm.cross(xprev, Tprev);
 
-					let Tat = (iP + 2 < yarn.pts.length) ? gm.normalize(gm.add(Tplus, T)) : snapAxisAligned(T);
-					let xat = axis;
-					xat = gm.normalize(gm.sub(xat, gm.scalarmul(gm.dot(xat, Tat),Tat)));
+					let xat = gm.normalize(gm.sub(axis, gm.scalarmul(gm.dot(axis, Tat),Tat)));
 					let yat = gm.cross(xat, Tat);
 
+					// finally emit cylinder by drawing circles in x-y planes and connecting them by quads
 					for (let i=0; i<this.resolution; i++) {
 						let j = (i+1)%this.resolution;
 						let si = (i / this.resolution) * 2 * Math.PI;
