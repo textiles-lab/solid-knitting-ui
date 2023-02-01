@@ -380,6 +380,8 @@ window.mouseDirty = mouseDirty;
 function bodyDirty() {
 	visBody.dirty = true;
 	visWire.dirty = true;
+	visWireCells.dirty = true;
+	visTubes.dirty = true;
 	requestRedraw();
 }
 window.bodyDirty = bodyDirty;
@@ -1629,6 +1631,313 @@ class VisWire extends Geometry {
 const visWire = new VisWire();
 window.visWire = visWire; //DEBUG
 
+
+class VisWireCells extends Geometry {
+	static BYTES_PER_ATTRIB = 4*3 + 1*4; //Position, Color
+	constructor() {
+		const BYTES_PER_ATTRIB = VisWireCells.BYTES_PER_ATTRIB;
+
+		const buffer = gl.createBuffer();
+
+		const attribs = {
+			Position:{buffer:buffer, size:3, type:gl.FLOAT, normalize:false, stride:BYTES_PER_ATTRIB, offset:0},
+			Normal:[0,0,1],
+			Color:{buffer:buffer, size:4, type:gl.UNSIGNED_BYTE, normalize:true, stride:BYTES_PER_ATTRIB, offset:4*3},
+		};
+
+		super(gl, attribs, gl.LINES, 0);
+
+		this.buffer = buffer; //needed for set()
+	}
+	set(blocks) {
+		const BYTES_PER_ATTRIB = VisWireCells.BYTES_PER_ATTRIB;
+
+		const SHOW_INTERNAL_FACES = false;
+		const SHOW_TIGHT_CONNECTIONS = false;
+		const SHOW_MISSING_CONNECTIONS = true;
+
+		//figure out how much space to allocate for attributes:
+		let totalAttribs = 0;
+		for (const cell of body.cells) {
+			for (let fi = 0; fi < cell.template.faces.length; ++fi) {
+				const face = cell.template.faces[fi];
+				totalAttribs += face.indices.length * 2 + 4;
+				const con = cell.connections[fi];
+				if (con !== null) totalAttribs += face.indices.length * 3;
+				else if (face.type !== 'x') totalAttribs += face.indices.length * 2;
+			}
+		}
+
+		const arrayBuffer = new ArrayBuffer(BYTES_PER_ATTRIB * totalAttribs);
+		const data = new DataView(arrayBuffer);
+		let dataOffset = 0;
+		function attrib(x,y,z, rgba) {
+			data.setFloat32(dataOffset, x, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, y, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, z, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+
+			data.setUint32(dataOffset, rgba, false); dataOffset += 4;
+		}
+
+		for (const cell of body.cells) {
+			setCellDrawingInfo(cell);
+		}
+
+		for (const cell of body.cells) {
+			//faces:
+			for (let fi = 0; fi < cell.template.faces.length; ++fi) {
+				if (!SHOW_INTERNAL_FACES) {
+					//skip faces which are connected tightly:
+					const connection = cell.connections[fi];
+					if (connection !== null) {
+						const ofs = gm.sub(connection.cell.centers[connection.face], cell.centers[fi]);
+						const length2 = gm.dot(ofs,ofs);
+						if (length2 < 0.1 * 0.1) {
+							continue;
+						}
+					}
+				}
+				const face = cell.template.faces[fi];
+				const center = cell.centers[fi];
+				for (let i = 0; i < face.indices.length; ++i) {
+					let a = cell.vertices[face.indices[i]];
+					let b = cell.vertices[face.indices[(i+1)%face.indices.length]];
+					a = gm.add(gm.scale(0.9, gm.sub(a, center)), center);
+					b = gm.add(gm.scale(0.9, gm.sub(b, center)), center);
+					let col = css2Uint32(face.color);
+					attrib(a[0],a[1],a[2], col);
+					attrib(b[0],b[1],b[2], col);
+					if (i === 0 && face.type !== 'x') { //show "first edge" (for non-'x' face types)
+						let c = gm.scale(0.5, gm.add(a,b));
+						c = gm.add(gm.scale(0.9, gm.sub(c, center)), center);
+						attrib(a[0],a[1],a[2], col);
+						attrib(c[0],c[1],c[2], col);
+						attrib(c[0],c[1],c[2], col);
+						attrib(b[0],b[1],b[2], col);
+					}
+				}
+			}
+
+			//connections:
+			for (let fi = 0 ; fi < cell.connections.length; ++fi) {
+				const connection = cell.connections[fi];
+				if (connection === null) {
+					if (cell.template.faces[fi].type[0] !== 'x' && SHOW_MISSING_CONNECTIONS) {
+						const col = (cell.template.faces[fi].type[0] === '+' ? COLOR_OUTPUT_WARNING : COLOR_INPUT_WARNING);
+						for (let i = 0; i < cell.ports[fi].length; ++i) {
+							let a = cell.ports[fi][i];
+							let ca = gm.mix(a, cell.center, 0.1);
+							attrib(ca[0], ca[1], ca[2], col); attrib(a[0], a[1], a[2], col);
+						}
+					}
+					continue;
+				}
+				if (cell.template.faces[fi].type[0] !== '+') continue; //draw connectsions from '+' => '-'
+
+				let maxLength2 = 0;
+				const watermark = dataOffset;
+				sv.forAlignedIndices(cell.template.faces[fi], connection.cell.template.faces[connection.face], (i, ci) => {
+					let colOut = COLOR_OUTPUT;
+					let colIn = COLOR_INPUT;
+					if (!sv.canConnectFaces(cell.template.faces[fi], connection.cell.template.faces[connection.face])) {
+						//apparently somehow this connection got made though it shouldn't be allowed:
+						colOut = COLOR_OUTPUT_WARNING;
+						colIn = COLOR_INPUT_WARNING;
+					}
+					let a = cell.ports[fi][i];
+					let ca = gm.mix(a, cell.center, 0.1);
+					let b = connection.cell.ports[connection.face][ci];
+					let cb = gm.mix(b, connection.cell.center, 0.1);
+					attrib(ca[0], ca[1], ca[2], colOut); attrib(a[0], a[1], a[2], colOut);
+					attrib(a[0], a[1], a[2], colOut); attrib(b[0], b[1], b[2], colIn);
+					attrib(b[0], b[1], b[2], colIn); attrib(cb[0], cb[1], cb[2], colIn);
+
+					if (!SHOW_TIGHT_CONNECTIONS) {
+						const ofs = gm.sub(b,a);
+						const length2 = gm.dot(ofs,ofs);
+						maxLength2 = Math.max(maxLength2, length2);
+					}
+				} );
+
+				if (!SHOW_TIGHT_CONNECTIONS) {
+					if (maxLength2 < 0.01 * 0.01) {
+						dataOffset = watermark;
+					}
+				}
+			}
+		}
+
+		
+		//remove temp stuff:
+		for (const cell of body.cells) {
+			deleteCellDrawingInfo(cell);
+		}
+
+
+		//with various skipping may actually under-fill:
+		console.assert(dataOffset <= arrayBuffer.byteLength, `Bytes of attributes (${dataOffset}) matches allocated data size (${data.byteLength}).`);
+
+		this.count = dataOffset / BYTES_PER_ATTRIB;
+
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+		gl.bufferData(gl.ARRAY_BUFFER, arrayBuffer, gl.STATIC_DRAW);
+	}
+}
+
+const visWireCells = new VisWireCells();
+window.visWireCells = visWireCells; //DEBUG
+
+class VisTubes extends Geometry {
+	static BYTES_PER_ATTRIB = 4*3 + 4*3 + 1*4; //Position, Normal, Color
+	constructor() {
+		const BYTES_PER_ATTRIB = VisTubes.BYTES_PER_ATTRIB;
+
+		const buffer = gl.createBuffer();
+
+		const attribs = {
+			Position:{buffer:buffer, size:3, type:gl.FLOAT, normalize:false, stride:BYTES_PER_ATTRIB, offset:0},
+			Normal:{buffer:buffer, size:3, type:gl.FLOAT, normalize:false, stride:BYTES_PER_ATTRIB, offset:4*3},
+			Color:{buffer:buffer, size:4, type:gl.UNSIGNED_BYTE, normalize:true, stride:BYTES_PER_ATTRIB, offset:4*3 + 4*3},
+		};
+
+		super(gl, attribs, gl.TRIANGLES, 0);
+
+		this.buffer = buffer; //needed for set()
+		this.resolution = 8;
+		this.radius = 0.08;
+	}
+	set(blocks) {
+		const BYTES_PER_ATTRIB = VisTubes.BYTES_PER_ATTRIB;
+
+		const SHOW_INTERNAL_FACES = false;
+		const SHOW_TIGHT_CONNECTIONS = false;
+		const SHOW_MISSING_CONNECTIONS = true;
+
+		//figure out how much space to allocate for attributes:
+		let totalAttribs = 0;
+		for (const cell of body.cells) {
+			for (const yarn of cell.template.yarns) {
+				totalAttribs += (yarn.pts.length-1) * 6 * this.resolution;
+			}
+		}
+
+		const arrayBuffer = new ArrayBuffer(BYTES_PER_ATTRIB * totalAttribs);
+		const data = new DataView(arrayBuffer);
+		let dataOffset = 0;
+		function attrib(x,y,z, nx,ny,nz, rgba) {
+			data.setFloat32(dataOffset, x, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, y, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, z, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+
+			data.setFloat32(dataOffset, nx, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, ny, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, nz, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+
+			data.setUint32(dataOffset, rgba, false); dataOffset += 4;
+		}
+
+		// TODO: smooth out normals, miter ends
+		function triangle(va,vb,vc, na,nb,nc, color) {
+			let shadeSmooth = true;
+			if (!shadeSmooth) {
+				let n = gm.normalize(gm.cross(gm.sub(vb, va), gm.sub(vc, va)));
+				na = n; nb = n; nc = n;
+			}
+
+			attrib(va[0],va[1],va[2], na[0],na[1],na[2], color);
+			attrib(vb[0],vb[1],vb[2], nb[0],nb[1],nb[2], color);
+			attrib(vc[0],vc[1],vc[2], nc[0],nc[1],nc[2], color);
+		}
+
+		function quad(a, na, b, nb, c, nc, d, nd,  color) {
+			triangle(a, b, c, na, nb, nc, color);
+			triangle(a, c, d, na, nc, nd, color);
+		}
+
+		function snapAxisAligned(T) {
+			if (T[0] > 0.5) {
+				return gm.vec3(1,0,0);
+			} else if (T[0] < -0.5) {
+				return gm.vec3(-1, 0, 0);
+			} else if (T[1] > 0.5) {
+				return gm.vec3(0, 1, 0);
+			} else if (T[1] < -0.5) {
+				return gm.vec3(0, -1, 0);
+			} else if (T[2] > 0.5) {
+				return gm.vec3(0, 0, 1);
+			} else {
+				return gm.vec3(0, 0, -1);
+			}
+		}
+
+		for (const cell of body.cells) {
+			setCellDrawingInfo(cell);
+		}
+
+		let col = rgb2Uint32([1.0, 0.6, 0.5]);
+		for (const cell of body.cells) {
+			//yarns:
+			const xf = cell.xform;
+			for (const yarn of cell.template.yarns) {
+
+				// generate cylinder
+				for (let iP = 0; iP+1 < yarn.pts.length; iP++) {
+					let prev = gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP], 1]);
+					let at = gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP+1], 1]);
+					let T = gm.normalize(gm.sub(at,prev));
+					let Tminus = T;
+					if (iP > 0) {
+						Tminus = gm.normalize(gm.sub(prev, gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP-1], 1])));
+					}
+					let Tplus = T;
+					if (iP + 2 < yarn.pts.length) {
+						Tplus = gm.normalize(gm.sub(gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP+2], 1]), at));
+					}
+					let axis = (Math.abs(T[0]) < 0.4) ? gm.vec3(1, 0, 0) : gm.vec3(0, 1, 0);
+					let Tprev = (iP > 0) ? gm.normalize(gm.add(Tminus, T)) : snapAxisAligned(T);
+					let xprev = axis;
+					xprev = gm.normalize(gm.sub(xprev, gm.scalarmul(gm.dot(xprev, Tprev),Tprev)));
+					let yprev = gm.cross(xprev, Tprev);
+
+					let Tat = (iP + 2 < yarn.pts.length) ? gm.normalize(gm.add(Tplus, T)) : snapAxisAligned(T);
+					let xat = axis;
+					xat = gm.normalize(gm.sub(xat, gm.scalarmul(gm.dot(xat, Tat),Tat)));
+					let yat = gm.cross(xat, Tat);
+
+					for (let i=0; i<this.resolution; i++) {
+						let j = (i+1)%this.resolution;
+						let si = (i / this.resolution) * 2 * Math.PI;
+						let sj = (j / this.resolution) * 2 * Math.PI;
+						let aprev = gm.add(gm.scalarmul(this.radius * Math.cos(si), xprev),  gm.scalarmul(this.radius * Math.sin(si), yprev));
+						let aat = gm.add(gm.scalarmul(this.radius * Math.cos(si), xat),  gm.scalarmul(this.radius * Math.sin(si), yat));
+						let bprev = gm.add(gm.scalarmul(this.radius * Math.cos(sj), xprev),  gm.scalarmul(this.radius * Math.sin(sj), yprev));
+						let bat = gm.add(gm.scalarmul(this.radius * Math.cos(sj), xat),  gm.scalarmul(this.radius * Math.sin(sj), yat));
+						quad(gm.add(prev, aprev), aprev, gm.add(at, aat), aat, gm.add(at, bat), bat, gm.add(prev, bprev), bprev, col);
+					}
+				}
+			}
+		}
+
+		
+		//remove temp stuff:
+		for (const cell of body.cells) {
+			deleteCellDrawingInfo(cell);
+		}
+
+
+		//with various skipping may actually under-fill:
+		console.assert(dataOffset <= arrayBuffer.byteLength, `Bytes of attributes (${dataOffset}) matches allocated data size (${data.byteLength}).`);
+
+		this.count = dataOffset / BYTES_PER_ATTRIB;
+
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+		gl.bufferData(gl.ARRAY_BUFFER, arrayBuffer, gl.STATIC_DRAW);
+	}
+}
+
+const visTubes = new VisTubes();
+window.visTubes = visTubes; //DEBUG
+
 class VisDebug extends Geometry {
 	static BYTES_PER_ATTRIB = 4*3 + 1*4; //Position, Color
 	constructor() {
@@ -1824,9 +2133,17 @@ function redraw() {
 		visWire.set(body);
 		delete visWire.dirty;
 	}
+	if (visWireCells.dirty) {
+		visWireCells.set(body);
+		delete visWireCells.dirty;
+	}
 	if (visBody.dirty) {
 		visBody.set(body);
-		delete visWire.dirty;
+		delete visBody.dirty;
+	}
+	if (visTubes.dirty) {
+		visTubes.set(body);
+		delete visTubes.dirty;
 	}
 	visDebug.update();
 
@@ -1874,8 +2191,10 @@ function redraw() {
 	gl.lineWidth(1.0 * pixelRatio);
 	grid.draw(colorProgram);
 
-	//visBody.draw(colorProgram);
-	visWire.draw(colorProgram);
+	// visBody.draw(colorProgram);
+	// visWire.draw(colorProgram);
+	visWireCells.draw(colorProgram);
+	visTubes.draw(colorProgram);
 
 	//show "hidden" debug lines also:
 

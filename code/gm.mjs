@@ -383,6 +383,13 @@ export function sub(a,b) {
 	return c;
 }
 
+export function scalarmul(s,v) {
+	const c = v.slice();
+	for (let i = 0; i < c.length; ++i) {
+		c[i] *= s;
+	}
+	return c;
+}
 
 export function matmul(a_rows, a_columns, b_rows, b_columns, a,b) {
 	if (a.length !== (a_columns * a_rows) || b.length !== (b_columns * b_rows)) throw new Error("arguments should match their sizes");
