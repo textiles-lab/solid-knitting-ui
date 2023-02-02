@@ -185,6 +185,16 @@ body {
 	<input type="radio" id="vis-block" name="viewmode-options" value="block">
 	<label for="block">Block</label>
 </div>
+
+<div id="layer-visibility-options">
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Layer Visibility:
+	<form id="layer-visibility-form" style="display:inline-block;">
+		<input type="checkbox" name="layer-visible" value="0" checked>0
+		<input type="checkbox" name="layer-visible" value="1" checked>1
+		<input type="checkbox" name="layer-visible" value="2" checked>2
+		<input type="checkbox" name="layer-visible" value="3" checked>3
+		<input type="checkbox" name="layer-visible" value="4" checked>4
+</div>
 </div>
 
 <!-- 3d view -->
@@ -1916,7 +1926,7 @@ window.visWireCells = visWireCells; //DEBUG
 
 class VisTubes extends Geometry {
 	static BYTES_PER_ATTRIB = 4*3 + 4*3 + 1*4; //Position, Normal, Color
-	constructor() {
+	constructor(solid=true) {
 		const BYTES_PER_ATTRIB = VisTubes.BYTES_PER_ATTRIB;
 
 		const buffer = gl.createBuffer();
@@ -1932,6 +1942,22 @@ class VisTubes extends Geometry {
 		this.buffer = buffer; //needed for set()
 		this.resolution = 6;
 		this.radius = 0.08;
+		this.solid = solid;
+		this.empty = false;
+	}
+	displayCell(cell) {
+		let zmax = null, zmin = null;
+		for (const v of cell.vertices) {
+			if (zmax == null || v[2] > zmax) zmax = v[2];
+			if (zmin == null || v[2] < zmin) zmin = v[2];
+		}
+
+		// const h = zmax - zmin;
+		const h = 1; //HACK: standardize height to 1?
+		const layer = Math.round((zmax + zmin) / (2 * h));
+		const layerVisibilityBoxes = document.getElementById("layer-visibility-form");
+		return !(layer >= 0 && layer < layerVisibilityBoxes.length) || layerVisibilityBoxes[layer].checked;
+
 	}
 	set(blocks) {
 		const BYTES_PER_ATTRIB = VisTubes.BYTES_PER_ATTRIB;
@@ -1939,10 +1965,12 @@ class VisTubes extends Geometry {
 		//figure out how much space to allocate for attributes:
 		let totalAttribs = 0;
 		for (const cell of body.cells) {
+			if (this.displayCell(cell) != this.solid) continue;
 			for (const yarn of cell.template.yarns) {
 				totalAttribs += (yarn.pts.length-1) * 6 * this.resolution;
 			}
 		}
+		this.empty = (totalAttribs == 0);
 
 		const arrayBuffer = new ArrayBuffer(BYTES_PER_ATTRIB * totalAttribs);
 		const data = new DataView(arrayBuffer);
@@ -2018,21 +2046,12 @@ class VisTubes extends Geometry {
 		}
 
 		const col_rgb = [1.0, 0.6, 0.5];
-		const col_transparent = rgba2Uint32([...col_rgb, 0.2]);
+		const col_transparent = rgba2Uint32([...col_rgb, 0.1]);
 		const col_opaque = rgb2Uint32(col_rgb);
 		for (const cell of body.cells) {
+			if (this.displayCell(cell) != this.solid) continue;
 
-			let zmax = null, zmin = null;
-			for (const v of cell.vertices) {
-				if (zmax == null || v[2] > zmax) zmax = v[2];
-				if (zmin == null || v[2] < zmin) zmin = v[2];
-			}
-
-			const h = zmax - zmin;
-			const layer = Math.round((zmax + zmin) / (2 * h));
-
-			// const col = (layer == 1) ? col_opaque : col_transparent;
-			const col = col_opaque;
+			const col = this.solid ? col_opaque : col_transparent;
 
 			//yarns:
 			const xf = cell.xform;
@@ -2130,8 +2149,10 @@ class VisTubes extends Geometry {
 	}
 }
 
-const visTubes = new VisTubes();
+const visTubes = new VisTubes(true);
+const visTransparentTubes = new VisTubes(false);
 window.visTubes = visTubes; //DEBUG
+window.visTransparentTubes = visTransparentTubes; //DEBUG
 
 class VisDebug extends Geometry {
 	static BYTES_PER_ATTRIB = 4*3 + 1*4; //Position, Color
@@ -2329,6 +2350,10 @@ document.getElementById("vis-tube").addEventListener('click', function(){setYarn
 document.getElementById("vis-wire").addEventListener('click', function(){setYarnVisMode("Wire")});
 document.getElementById("vis-block").addEventListener('click', function(){setYarnVisMode("Block")});
 
+for (const elem of document.getElementById('layer-visibility-form').children) {
+	elem.addEventListener('click', function() {bodyDirty();});
+}
+
 function redraw() {
 	const pixelRatio = window.devicePixelRatio;
 
@@ -2363,6 +2388,7 @@ function redraw() {
 	}
 	if (yarnVisMode == "Tube" && visTubes.dirty) {
 		visTubes.set(body);
+		visTransparentTubes.set(body);
 		delete visTubes.dirty;
 	}
 	visDebug.update();
@@ -2417,15 +2443,21 @@ function redraw() {
 	} else if (yarnVisMode == "Wire") {
 		visWire.draw(colorProgram);
 	} else if (yarnVisMode == "Tube") {
-		// TODO: figure out transparency
-		// gl.enable(gl.BLEND);
-		// gl.blendEquation(gl.FUNC_ADD);
-		// gl.disable(gl.DEPTH_TEST);
-		// gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-		// gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-		visTubes.draw(colorProgram);
-		// gl.disable(gl.BLEND);
-		// gl.enable(gl.DEPTH_TEST);
+		// draw opaque tubes
+		if (!visTubes.empty) {
+			visTubes.draw(colorProgram);
+		}
+
+		// draw transparent tubes per https://xem.github.io/articles/webgl-guide-part-2.html#1a
+		if (!visTransparentTubes.empty) {
+			gl.enable(gl.BLEND);
+			gl.blendEquation(gl.FUNC_ADD);
+			gl.disable(gl.DEPTH_TEST);
+			gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+			visTransparentTubes.draw(colorProgram);
+			gl.enable(gl.DEPTH_TEST);
+			gl.disable(gl.BLEND);
+		}
 	}
 
 	//show "hidden" debug lines also:
