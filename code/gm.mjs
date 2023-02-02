@@ -577,6 +577,10 @@ export function length(a) {
 	return Math.sqrt(dot(a,a));
 }
 
+export function length2(a) {
+	return dot(a,a);
+}
+
 export function svd(A_) {
 	if (!(A_.length === 9)) throw new Error("This svd code only works on 3x3 matricies.");
 

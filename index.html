@@ -1803,7 +1803,7 @@ class VisTubes extends Geometry {
 		super(gl, attribs, gl.TRIANGLES, 0);
 
 		this.buffer = buffer; //needed for set()
-		this.resolution = 8;
+		this.resolution = 6;
 		this.radius = 0.08;
 	}
 	set(blocks) {
@@ -1838,7 +1838,7 @@ class VisTubes extends Geometry {
 
 		// TODO: smooth out normals, miter ends
 		function triangle(va,vb,vc, na,nb,nc, color) {
-			let shadeSmooth = false;
+			let shadeSmooth = true;
 			if (!shadeSmooth) {
 				let n = gm.normalize(gm.cross(gm.sub(vb, va), gm.sub(vc, va)));
 				na = n; nb = n; nc = n;
@@ -1850,8 +1850,18 @@ class VisTubes extends Geometry {
 		}
 
 		function quad(a, na, b, nb, c, nc, d, nd,  color) {
-			triangle(a, b, c, na, nb, nc, color);
-			triangle(a, c, d, na, nc, nd, color);
+			// triangulate by shortest diagonal
+			const lac = gm.length2(gm.sub(c, a));
+			const lbd = gm.length2(gm.sub(b, d));
+
+			if (lac < lbd) {
+				triangle(a, b, c, na, nb, nc, color);
+				triangle(a, c, d, na, nc, nd, color);
+			} else {
+				triangle(a, b, d, na, nb, nd, color);
+				triangle(b, c, d, nb, nc, nd, color);
+			}
+
 		}
 
 		function snapAxisAligned(T) {
