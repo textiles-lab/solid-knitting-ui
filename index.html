@@ -97,7 +97,8 @@ body {
 #view-library {
 	grid-column: 2 ;
 	grid-row: 2 ;
-	/*background: #00f8 ;*/
+	overflow-y:scroll;
+/*	background: #00f8 ;*/
 }
 #view-library h1 {
 	font-size:20px;
@@ -113,8 +114,20 @@ body {
 }
 #library li {
 	display:block;
-	margin:0.5em 1.0em;
-	padding:0;
+	margin:0em 0.15em;
+	padding:0.15em 0.5em;
+	border-radius:0.2em;
+	cursor:pointer;
+	border: 2pt solid white;
+}
+#library li:hover {
+	background-color: #eef;
+	color: black;
+}
+#library .library-active-template {
+	background-color: #dde;
+	color: black;
+	border: 2pt solid black;
 }
 </style>
 </head>
@@ -598,6 +611,41 @@ window.addEventListener('keydown', function(evt){
 // TODO: Consider moving each script into its own module for the sake of code
 // clarity. 
 
+// https://stackoverflow.com/a/10800402
+function strip_spaces(str) {
+	return str.replace(/\s/g, '');
+}
+
+function list_templates(templates) {
+// <ul id="library">
+	const library_list = document.getElementById("library");
+	library_list.textContent = ''; // clear anything currently in list
+
+	// sort templates by signature
+	let signature_names = {}
+	for (const name of Object.keys(templates)) {
+		signature_names[templates[name].signature()] = name;
+	}
+	for (const signature of Object.keys(signature_names).sort()) {
+		const item = document.createElement('li');
+		item.innerHTML = signature_names[signature];
+		item.setAttribute('id', strip_spaces(signature));
+		item.onclick = function() {setTemplate(strip_spaces(signature));};
+		library_list.appendChild(item);
+	}
+}
+
+function highlight_template(template) {
+	const currently_highlighted = document.getElementsByClassName('library-active-template');
+	for (let elem of currently_highlighted) {
+		elem.classList.remove('library-active-template');
+	}
+	if (template) {
+		document.getElementById(strip_spaces(template.signature())).classList.add('library-active-template');
+	}
+}
+
+
 // Solid knitting interface code. 
 
 //select next template from library:
@@ -613,6 +661,7 @@ function nextTemplate() {
 		selected = t;
 	}
 	template = selected;
+	highlight_template(template);
 }
 
 //select previous template from library:
@@ -628,6 +677,18 @@ function prevTemplate() {
 		selected = t;
 	}
 	template = selected;
+	highlight_template(template);
+}
+
+function setTemplate(stripped_signature) {
+	let selected = null;
+	for (const t of Object.values(library.templates)) {
+		if (strip_spaces(t.signature()) == stripped_signature) {
+			selected = t;
+		}
+	}
+	template = selected;
+	highlight_template(template);
 }
 
 //return a cell built as if by pressing 'addCell' at this very location:
@@ -2296,9 +2357,12 @@ async function init() {
 		console.log(`  got ${arrayBuffer.byteLength} bytes.`);
 
 		window.library = sv.Library.fromArrayBuffer(arrayBuffer);
+		list_templates(window.library.templates);
+
 		//hack-y way of selecting first template:
 		window.template = null;
 		nextTemplate();
+
 
 		let info = 'Library contains:';
 		for (let name of Object.keys(library.templates).sort()) {
