@@ -35,7 +35,7 @@ body {
 	height:99vh;
 
 	grid-template-columns: 1fr auto ;
-	grid-template-rows: auto 1.0fr ;
+	grid-template-rows: auto 1.0fr;
 
 	/*background: #0008 ;*/
 }
@@ -97,20 +97,26 @@ body {
 #view-library {
 	grid-column: 2 ;
 	grid-row: 2 ;
-	overflow-y:scroll;
+
+	display:grid;
+	grid-template-rows: auto 1fr auto;
+	overflow:auto;
 /*	background: #00f8 ;*/
 }
 #view-library h1 {
+	grid-row: 1 ;
 	font-size:20px;
 	line-height:20px;
 	padding:0;
 	margin:0 5px;
 }
 #library {
-	display:block;
+	grid-row: 2 ;
 	list-style:none;
 	margin:0;
+	margin-bottom: 1em;
 	padding:0;
+	overflow-y:scroll;
 }
 #library li {
 	display:block;
@@ -128,6 +134,26 @@ body {
 	background-color: #dde;
 	color: black;
 	border: 2pt solid black;
+}
+
+#view-shortcuts summary {
+	font-size:20px;
+	line-height:20px;
+	padding:0;
+	margin:0 5px;
+}
+#shortcuts {
+	grid-row: 3 ;
+	margin:0;
+	padding:0;
+}
+#shortcuts li {
+	display:block;
+	margin:0em 0.15em;
+	padding:0.0em 0.5em;
+}
+#shortcuts .key {
+	font-family: monospace;
 }
 </style>
 </head>
@@ -156,6 +182,23 @@ body {
 <h1>Blocks:</h1>
 <ul id="library">
 </ul>
+
+<!-- also list shortcuts -->
+<div id="view-shortcuts">
+<details open>
+<summary>Commands:</summary>
+<ul id="shortcuts">
+	<li> <span class="key">space</span> or <span class="key">R</span>: relax shape</li>
+	<li> <span class="key">enter</span>: select hovered template</li>
+	<li> <span class="key">X</span>: delete cell</li>
+	<li> <span class="key">G</span>: grab cell</li>
+	<li> <span class="key">C</span>: start connection</li>
+	<li> <span class="key">U</span>: check for cycles</li>
+	<li> <span class="key">up</span>: prev template</li>
+	<li> <span class="key">down</span>: next template</li>
+</ul>
+</details>
+</div>
 </div>
 
 </div>
@@ -573,17 +616,17 @@ window.addEventListener('keydown', function(evt){
 	if (ACTION) {
 		if (ACTION.keydown) ACTION.keydown(evt);
 	} else {
-		if (evt.code === 'Space') {
+		if (evt.code === 'Space' || evt.code === 'KeyR') {
 			body.relax();
 			bodyDirty();
 		} else if (evt.code == 'KeyA') {
 			addCell();
 		} else if (evt.code == 'Enter') {
 			if (MOUSE.over) {
-				template = MOUSE.over.cell.template;
+				setActiveTemplate(MOUSE.over.cell.template);
 				requestRedraw();
 			} else {
-				template = null;
+				setActiveTemplate(null);
 				requestRedraw();
 			}
 		} else if (evt.code == 'KeyX') {
@@ -612,11 +655,11 @@ window.addEventListener('keydown', function(evt){
 // clarity. 
 
 // https://stackoverflow.com/a/10800402
-function strip_spaces(str) {
+function stripSpaces(str) {
 	return str.replace(/\s/g, '');
 }
 
-function list_templates(templates) {
+function listTemplates(templates) {
 // <ul id="library">
 	const library_list = document.getElementById("library");
 	library_list.textContent = ''; // clear anything currently in list
@@ -629,19 +672,20 @@ function list_templates(templates) {
 	for (const signature of Object.keys(signature_names).sort()) {
 		const item = document.createElement('li');
 		item.innerHTML = signature_names[signature];
-		item.setAttribute('id', strip_spaces(signature));
-		item.onclick = function() {setTemplate(strip_spaces(signature));};
+		item.setAttribute('id', stripSpaces(signature));
+		item.onclick = function() {setTemplateFromSignature(stripSpaces(signature));};
 		library_list.appendChild(item);
 	}
 }
 
-function highlight_template(template) {
+function setActiveTemplate(t) {
+	template = t;
 	const currently_highlighted = document.getElementsByClassName('library-active-template');
 	for (let elem of currently_highlighted) {
 		elem.classList.remove('library-active-template');
 	}
 	if (template) {
-		document.getElementById(strip_spaces(template.signature())).classList.add('library-active-template');
+		document.getElementById(stripSpaces(template.signature())).classList.add('library-active-template');
 	}
 }
 
@@ -660,8 +704,7 @@ function nextTemplate() {
 		console.assert(selected === null || selected.signature() != t.signature(), "All templates should have unique signatures.");
 		selected = t;
 	}
-	template = selected;
-	highlight_template(template);
+	setActiveTemplate(selected);
 }
 
 //select previous template from library:
@@ -676,19 +719,17 @@ function prevTemplate() {
 		console.assert(selected === null || selected.signature() != t.signature(), "All templates should have unique signatures.");
 		selected = t;
 	}
-	template = selected;
-	highlight_template(template);
+	setActiveTemplate(selected);
 }
 
-function setTemplate(stripped_signature) {
+function setTemplateFromSignature(stripped_signature) {
 	let selected = null;
 	for (const t of Object.values(library.templates)) {
-		if (strip_spaces(t.signature()) == stripped_signature) {
+		if (stripSpaces(t.signature()) == stripped_signature) {
 			selected = t;
 		}
 	}
-	template = selected;
-	highlight_template(template);
+	setActiveTemplate(selected);
 }
 
 //return a cell built as if by pressing 'addCell' at this very location:
@@ -2357,7 +2398,7 @@ async function init() {
 		console.log(`  got ${arrayBuffer.byteLength} bytes.`);
 
 		window.library = sv.Library.fromArrayBuffer(arrayBuffer);
-		list_templates(window.library.templates);
+		listTemplates(window.library.templates);
 
 		//hack-y way of selecting first template:
 		window.template = null;
