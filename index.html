@@ -1902,21 +1902,20 @@ class VisTubes extends Geometry {
 
 				// define frame
 				let frames = [];
+				let prev, at, Tprev;
 				for (let iP = 0; iP < yarn.pts.length; iP++) {
-					const at = gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP], 1]);
-
 					if (iP == 0) { // special case for first point
+						at = gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP], 1]);
 						const next = gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP+1], 1]);
-						const T = snapAxisAligned(gm.normalize(gm.sub(next,at))); // tangent vector along first edge
-						frames.push(snappedFrame(T));
+						Tprev = snapAxisAligned(gm.normalize(gm.sub(next,at))); // tangent vector along first edge
+						frames.push(snappedFrame(Tprev));
+						prev = at;
+						at = next;
 					} else if (iP + 1 == yarn.pts.length) { // special case for last point
-						const prev = gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP-1], 1]);
-						const T = snapAxisAligned(gm.normalize(gm.sub(at, prev))); // tangent vector along last edge
-						frames.push(snappedFrame(T));
+						const Tnext = snapAxisAligned(gm.normalize(gm.sub(at, prev))); // tangent vector along last edge
+						frames.push(snappedFrame(Tnext));
 					} else {
-						const prev = gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP-1], 1]);
 						const next = gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP+1], 1]);
-						const Tprev = gm.normalize(gm.sub(at, prev)); // tangent vector along prev edge
 						const Tnext = gm.normalize(gm.sub(next, at)); // tangent vector along prev edge
 						const T = gm.normalize(gm.add(Tprev, Tnext));
 
@@ -1928,34 +1927,50 @@ class VisTubes extends Geometry {
 						let y = gm.cross(Tprev, x);
 
 						frames.push({x: x, y: y});
+						prev = at;
+						at = next;
+						Tprev = Tnext;
 					}
 				}
 
 				// generate cylinder
-				for (let iP = 0; iP+1 < yarn.pts.length; iP++) {
-					const prev = gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP], 1]);
-					const at = gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP+1], 1]);
-					const x_prev = frames[iP].x;
-					const y_prev = frames[iP].y;
-					const x_at = frames[iP+1].x;
-					const y_at = frames[iP+1].y;
+				let x_prev, y_prev; // and still usng prev
+				for (let iP = 1; iP < yarn.pts.length; iP++) {
+					if (iP == 1) {
+						prev = gm.mul_mat4x3_vec4(xf, [...yarn.pts[0], 1]);
+						x_prev = frames[0].x;
+						y_prev = frames[0].y;
+					}
+					const at = gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP], 1]);
+					const x_at = frames[iP].x;
+					const y_at = frames[iP].y;
 					const cs = gm.dot(x_prev, x_at);
 					const sn = gm.dot(gm.normalize(gm.sub(at, prev)), gm.cross(x_at, x_prev));
 					const twist = Math.atan2(sn, cs);
 					const offset = Math.round(twist / (2 * Math.PI) * this.resolution) / this.resolution;
+
 					// finally emit cylinder by drawing circles in x-y planes and connecting them by quads
+					let pj_prev, pj_at;
 					for (let i=0; i<this.resolution; i++) {
-						let j = (i+this.resolution-1)%this.resolution;
-						let si_prev = (i / this.resolution) * 2 * Math.PI;
-						let sj_prev = (j / this.resolution) * 2 * Math.PI;
-						let si_at = (i / this.resolution + offset) * 2 * Math.PI;
-						let sj_at = (j / this.resolution + offset) * 2 * Math.PI;
-						let aprev = gm.add(gm.scalarmul(this.radius * Math.cos(si_prev), x_prev),  gm.scalarmul(this.radius * Math.sin(si_prev), y_prev));
-						let aat = gm.add(gm.scalarmul(this.radius * Math.cos(si_at), x_at),  gm.scalarmul(this.radius * Math.sin(si_at), y_at));
-						let bprev = gm.add(gm.scalarmul(this.radius * Math.cos(sj_prev), x_prev),  gm.scalarmul(this.radius * Math.sin(sj_prev), y_prev));
-						let bat = gm.add(gm.scalarmul(this.radius * Math.cos(sj_at), x_at),  gm.scalarmul(this.radius * Math.sin(sj_at), y_at));
-						quad(gm.add(prev, aprev), aprev, gm.add(at, aat), aat, gm.add(at, bat), bat, gm.add(prev, bprev), bprev, col);
+						if (i==0) {
+							const tj_prev = 2 * Math.PI * (this.resolution - 1) / this.resolution;
+							const tj_at = 2 * Math.PI * ((this.resolution - 1) / this.resolution + offset);
+
+							pj_prev = gm.add(gm.scalarmul(this.radius * Math.cos(tj_prev), x_prev),  gm.scalarmul(this.radius * Math.sin(tj_prev), y_prev));
+							pj_at = gm.add(gm.scalarmul(this.radius * Math.cos(tj_at), x_at),  gm.scalarmul(this.radius * Math.sin(tj_at), y_at));
+						}
+						const ti_prev = (i / this.resolution) * 2 * Math.PI;
+						const ti_at = (i / this.resolution + offset) * 2 * Math.PI;
+
+						const pi_prev = gm.add(gm.scalarmul(this.radius * Math.cos(ti_prev), x_prev),  gm.scalarmul(this.radius * Math.sin(ti_prev), y_prev));
+						const pi_at = gm.add(gm.scalarmul(this.radius * Math.cos(ti_at), x_at),  gm.scalarmul(this.radius * Math.sin(ti_at), y_at));
+						quad(gm.add(prev, pi_prev), pi_prev, gm.add(at, pi_at), pi_at, gm.add(at, pj_at), pj_at, gm.add(prev, pj_prev), pj_prev, col);
+						pj_prev = pi_prev; pj_at = pi_at;
 					}
+
+					prev = at;
+					x_prev = x_at;
+					y_prev = y_at;
 				}
 			}
 		}
