@@ -1919,8 +1919,8 @@ class VisTubes extends Geometry {
 						const Tnext = gm.normalize(gm.sub(next, at)); // tangent vector along prev edge
 						const T = gm.normalize(gm.add(Tprev, Tnext));
 
-						// pick a starting direction for polygon. arbitrarily pick x axis, unless vector points mostly in x direction, then pick y axis
-						let axis = (Math.abs(T[2]) < 0.9) ? gm.vec3(0, 0, 1) : gm.vec3(1, 0, 0);
+						// pick a starting direction for polygon. arbitrarily pick z axis, unless vector points mostly in z direction, then pick x axis
+						let axis = (Math.abs(T[2]) < 0.7) ? gm.vec3(0, 0, 1) : gm.vec3(1, 0, 0);
 
 						// find x and y directions at prev and at points by projecting axis onto orthogonal complement of vertex tangent vector, and taking 90 degree rotation
 						let x = gm.normalize(gm.sub(axis, gm.scalarmul(gm.dot(axis, T),T)));
