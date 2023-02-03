@@ -755,6 +755,15 @@ export function svd(A_) {
 	return {U, Sigma, V};
 }
 
+export function identityTransform() {
+	return [
+		1, 0, 0,
+		0, 1, 0,
+		0, 0, 1,
+		0, 0, 0
+	];
+}
+
 //rigid transform X such that minimizes ( X * [A[i],1] - B[i] ) ^ 2
 // that is, the translation + rotation that get points in A as close as possible to their corresponding points in B
 // return is a Mat4x3

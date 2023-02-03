@@ -174,16 +174,13 @@ body {
 <span id="benchmark-result"></span> -->
 <button id="save" class="controlsButton">Save</button>
 
-<div id="viewmode-selection" class="controls-section">
+<div id="yarn-vis-options" class="controls-section">
 	Yarn Visualization:
-	<input type="radio" id="vis-tube" name="viewmode-options" value="tube" checked>
-	<label for="tube">Tube</label>
-
-	<input type="radio" id="vis-wire" name="viewmode-options" value="wire">
-	<label for="wire">Wire</label>
-
-	<input type="radio" id="vis-block" name="viewmode-options" value="block">
-	<label for="block">Block</label>
+	<select id="select-yarn-vis-option">
+		<option value="Tube" selected>Tube</option>
+		<option value="Wire">Wire</option>
+		<option value="Block">Block</option>
+	</select>
 </div>
 
 <div id="layer-visibility-options" class="controls-section">
@@ -201,6 +198,14 @@ body {
 	<form id="show-yarn-direction-form" style="display:inline-block;">
 		<input type="checkbox" name="show-yarn-direction" value="0"> Show Yarn Direction
 	</form>
+</div>
+
+<div id="viewmode-options" class="controls-section">
+	View Mode:
+	<select id="select-viewmode-option">
+		<option value="Pattern" selected>Pattern</option>
+		<option value="Template">Template</option>
+	</select>
 </div>
 </div>
 
@@ -371,6 +376,13 @@ window.gl = gl; //DEBUG
 const STATUS_LINE = document.getElementById("status-line");
 window.STATUS_LINE = STATUS_LINE;
 
+// "enum" representing possible displays
+const ViewMode = {
+	Pattern: 'Pattern',
+	Template: 'Template'
+};
+let viewMode = ViewMode.Pattern;
+
 //------- camera -------
 const camera = {
 	target:gm.vec3(0),
@@ -474,6 +486,12 @@ function bodyDirty() {
 	requestRedraw();
 }
 window.bodyDirty = bodyDirty;
+
+function templateDirty() {
+	visTemplateTubes.dirty = true;
+	requestRedraw();
+}
+window.templateDirty = templateDirty;
 
 function setMouseOver() {
 	MOUSE.over = null;
@@ -720,6 +738,7 @@ function setActiveTemplate(t) {
 	if (template) {
 		document.getElementById(stripSpaces(template.signature())).classList.add('library-active-template');
 	}
+	templateDirty();
 }
 
 
@@ -1548,7 +1567,7 @@ class VisBody extends Geometry {
 
 		this.buffer = buffer; //needed for set()
 	}
-	set(blocks) {
+	set(body) {
 		const BYTES_PER_ATTRIB = VisBody.BYTES_PER_ATTRIB;
 
 		//figure out how much space to allocate for attributes:
@@ -1659,7 +1678,7 @@ class VisWire extends Geometry {
 
 		this.buffer = buffer; //needed for set()
 	}
-	set(blocks) {
+	set(body) {
 		const BYTES_PER_ATTRIB = VisWire.BYTES_PER_ATTRIB;
 
 		const SHOW_INTERNAL_FACES = false;
@@ -1833,7 +1852,7 @@ class VisWireCells extends Geometry {
 
 		this.buffer = buffer; //needed for set()
 	}
-	set(blocks) {
+	set(body) {
 		const BYTES_PER_ATTRIB = VisWireCells.BYTES_PER_ATTRIB;
 
 		const SHOW_INTERNAL_FACES = false;
@@ -2007,7 +2026,7 @@ class VisTubes extends Geometry {
 		return !(layer >= 0 && layer < layerVisibilityBoxes.length) || layerVisibilityBoxes[layer].checked;
 
 	}
-	set(blocks) {
+	set(body) {
 		const BYTES_PER_ATTRIB = VisTubes.BYTES_PER_ATTRIB;
 
 		//figure out how much space to allocate for attributes:
@@ -2219,8 +2238,10 @@ class VisTubes extends Geometry {
 
 const visTubes = new VisTubes(true);
 const visTransparentTubes = new VisTubes(false);
+const visTemplateTubes = new VisTubes(true);
 window.visTubes = visTubes; //DEBUG
 window.visTransparentTubes = visTransparentTubes; //DEBUG
+window.visTemplateTubes = visTemplateTubes; //DEBUG
 
 class VisDebug extends Geometry {
 	static BYTES_PER_ATTRIB = 4*3 + 1*4; //Position, Color
@@ -2397,26 +2418,32 @@ let yarnVisMode = "Tube";
 function setYarnVisMode(mode) {
 	if (mode == "Wire") {
 		yarnVisMode = "Wire";
-		visWire.set(body);
-		delete visWire.dirty;
 	} else if (mode == "Block") {
 		yarnVisMode = "Block";
-		visBody.set(body);
-		delete visBody.dirty;
 	} else if (mode == "Tube") {
 		yarnVisMode = "Tube";
-		visTubes.set(body);
-		delete visTubes.dirty;
 	} else {
 		console.log("Error, invalid vis mode ", mode);
+	}
+	bodyDirty();
+	requestRedraw()
+}
+
+function setViewMode(mode) {
+	if (mode == "Pattern") {
+		viewMode = ViewMode.Pattern;
+		bodyDirty();
+	} else if (mode == "Template") {
+		viewMode = ViewMode.Template;
+		templateDirty();
+	} else {
+		console.log("Error, invalid view mode ", mode);
 	}
 	requestRedraw()
 }
 
 // set up response to clicking on visualization options
-document.getElementById("vis-tube").addEventListener('click', function(){setYarnVisMode("Tube")});
-document.getElementById("vis-wire").addEventListener('click', function(){setYarnVisMode("Wire")});
-document.getElementById("vis-block").addEventListener('click', function(){setYarnVisMode("Block")});
+document.getElementById("select-yarn-vis-option").addEventListener("change", function() {setYarnVisMode(this.value);});
 
 for (const elem of document.getElementById('layer-visibility-form').children) {
 	elem.addEventListener('click', function() {bodyDirty();});
@@ -2426,22 +2453,10 @@ for (const elem of document.getElementById('show-yarn-direction-form').children)
 	elem.addEventListener('click', function() {bodyDirty();});
 }
 
-function redraw() {
-	const pixelRatio = window.devicePixelRatio;
+document.getElementById("select-viewmode-option").addEventListener("change", function() {setViewMode(this.value);});
+setViewMode(document.getElementById("select-viewmode-option").value);
 
-	//make sure canvas size matches element size:
-	(function resize() {
-		const style = getComputedStyle(canvas);
-		window.style = style;
-
-		const width = Math.round(parseFloat(style.width) * pixelRatio);
-		const height = Math.round(parseFloat(style.height) * pixelRatio);
-		canvas.width = width;
-		canvas.height = height;
-		gl.viewport(0,0,width,height);
-		camera.aspect = width / height;
-	})();
-
+function redrawPattern(pixelRatio) {
 	//update mouse info:
 	if (MOUSE.dirty) setMouseOver();
 
@@ -2462,7 +2477,9 @@ function redraw() {
 		visTubes.set(body);
 		visTransparentTubes.set(body);
 		delete visTubes.dirty;
+
 	}
+
 	visDebug.update();
 
 	//update status line:
@@ -2478,6 +2495,134 @@ function redraw() {
 		}
 		STATUS_LINE.innerText = info;
 	}
+
+
+	gl.lineWidth(2.0 * pixelRatio);
+	visDebug.draw(colorProgram);
+
+	gl.lineWidth(1.0 * pixelRatio);
+	grid.draw(colorProgram);
+
+	if (yarnVisMode == "Block") {
+		visBody.draw(colorProgram);
+	} else if (yarnVisMode == "Wire") {
+		visWire.draw(colorProgram);
+	} else if (yarnVisMode == "Tube") {
+		visWireCells.draw(colorProgram);
+
+		if (viewMode === ViewMode.Pattern) {
+			// draw opaque tubes
+			if (!visTubes.empty) {
+				visTubes.draw(textureProgram);
+			}
+
+			// draw transparent tubes per https://xem.github.io/articles/webgl-guide-part-2.html#1a
+			if (!visTransparentTubes.empty) {
+				gl.enable(gl.BLEND);
+				gl.blendEquation(gl.FUNC_ADD);
+				gl.disable(gl.DEPTH_TEST);
+				gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+				visTransparentTubes.draw(textureProgram);
+				gl.enable(gl.DEPTH_TEST);
+				gl.disable(gl.BLEND);
+			}
+		} else if (viewMode === ViewMode.Template) {
+			visTemplateTubes.draw(textureProgram);
+		}
+
+		gl.useProgram(colorProgram.program);
+	}
+
+	//show "hidden" debug lines also:
+
+	gl.enable(gl.BLEND);
+	gl.blendEquation(gl.FUNC_ADD);
+	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+	gl.uniform4f(
+		colorProgram.uniformLocations.TINT,
+		0.0, 0.0, 0.0, 0.1
+	);
+	gl.depthFunc(gl.GREATER);
+	gl.depthMask(false);
+	gl.lineWidth(2.0 * pixelRatio);
+	visDebug.draw(colorProgram);
+
+	gl.depthFunc(gl.LESS);
+	gl.depthMask(true);
+	gl.disable(gl.BLEND);
+}
+
+function redrawTemplate(pixelRatio) {
+	// update the geometry
+	if (visTemplateTubes.dirty) {
+		const selectedCell = sv.Cell.fromTemplate(template, gm.identityTransform());
+		visTemplateTubes.set({cells: [selectedCell]});
+		delete visTemplateTubes.dirty;
+	}
+
+	//update status line:
+	{
+		let info = "";
+		if (template !== null) {
+			info += `Template: ${template.signature()}`;
+		} else {
+			info += `No Template`;
+		}
+		STATUS_LINE.innerText = info;
+	}
+
+	visDebug.update();
+
+	gl.lineWidth(1.0 * pixelRatio);
+	grid.draw(colorProgram);
+
+	// TODO: support other visualization modes
+	if (yarnVisMode == "Block") {
+		console.error("Rendering a template in block mode not supported yet");
+	} else if (yarnVisMode == "Wire") {
+		console.error("Rendering a template in wire mode not supported yet");
+	} else if (yarnVisMode == "Tube") {
+		gl.useProgram(textureProgram.program);
+		
+		visTemplateTubes.draw(textureProgram);
+
+		gl.useProgram(colorProgram.program);
+	}
+
+	//show "hidden" debug lines also:
+
+	gl.enable(gl.BLEND);
+	gl.blendEquation(gl.FUNC_ADD);
+	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+	gl.uniform4f(
+		colorProgram.uniformLocations.TINT,
+		0.0, 0.0, 0.0, 0.1
+	);
+	gl.depthFunc(gl.GREATER);
+	gl.depthMask(false);
+	gl.lineWidth(2.0 * pixelRatio);
+	visDebug.draw(colorProgram);
+
+	gl.depthFunc(gl.LESS);
+	gl.depthMask(true);
+	gl.disable(gl.BLEND);
+}
+
+function redraw() {
+	const pixelRatio = window.devicePixelRatio;
+
+	//make sure canvas size matches element size:
+	(function resize() {
+		const style = getComputedStyle(canvas);
+		window.style = style;
+
+		const width = Math.round(parseFloat(style.width) * pixelRatio);
+		const height = Math.round(parseFloat(style.height) * pixelRatio);
+		canvas.width = width;
+		canvas.height = height;
+		gl.viewport(0,0,width,height);
+		camera.aspect = width / height;
+	})();
 
 	gl.clearColor(0.1, 0.1, 0.1, 1.0);
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -2502,19 +2647,8 @@ function redraw() {
 		1.0, 1.0, 1.0, 1.0
 	);
 
-
-	gl.lineWidth(2.0 * pixelRatio);
-	visDebug.draw(colorProgram);
-
-	gl.lineWidth(1.0 * pixelRatio);
-	grid.draw(colorProgram);
-
-	visWireCells.draw(colorProgram);
-	if (yarnVisMode == "Block") {
-		visBody.draw(colorProgram);
-	} else if (yarnVisMode == "Wire") {
-		visWire.draw(colorProgram);
-	} else if (yarnVisMode == "Tube") {
+	// if we're drawing tubes, set up the texture program as well
+	if (yarnVisMode == "Tube") {
 
 		gl.useProgram(textureProgram.program);
 		gl.uniformMatrix4fv(
@@ -2522,6 +2656,7 @@ function redraw() {
 			false,
 			computeMVP()
 		);
+		const lightDir = gm.normalize(gm.add(camera.computeUp(),camera.computeOut()));
 		gl.uniform3f(
 			textureProgram.uniformLocations.HEMI_DIRECTION,
 			lightDir[0], lightDir[1], lightDir[2]
@@ -2542,43 +2677,17 @@ function redraw() {
 		gl.activeTexture(gl.TEXTURE0);
 		gl.bindTexture(gl.TEXTURE_2D, window.arrowTexture);
 		gl.uniform1i(textureProgram.uniformLocations.uSampler, 0);
-
-		// draw opaque tubes
-		if (!visTubes.empty) {
-			visTubes.draw(textureProgram);
-		}
-
-		// draw transparent tubes per https://xem.github.io/articles/webgl-guide-part-2.html#1a
-		if (!visTransparentTubes.empty) {
-			gl.enable(gl.BLEND);
-			gl.blendEquation(gl.FUNC_ADD);
-			gl.disable(gl.DEPTH_TEST);
-			gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-			visTransparentTubes.draw(textureProgram);
-			gl.enable(gl.DEPTH_TEST);
-			gl.disable(gl.BLEND);
-		}
-
+		
 		gl.useProgram(colorProgram.program);
 	}
+	
+	if (viewMode === ViewMode.Pattern) {
+		redrawPattern(pixelRatio);
+	} else if (viewMode === ViewMode.Template) {
+		redrawTemplate(pixelRatio);
+	}
 
-	//show "hidden" debug lines also:
-
-	gl.enable(gl.BLEND);
-	gl.blendEquation(gl.FUNC_ADD);
-	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-	gl.uniform4f(
-		colorProgram.uniformLocations.TINT,
-		0.0, 0.0, 0.0, 0.1
-	);
-	gl.depthFunc(gl.GREATER);
-	gl.depthMask(false);
-	gl.lineWidth(2.0 * pixelRatio);
-	visDebug.draw(colorProgram);
-
-	gl.depthFunc(gl.LESS);
-	gl.depthMask(true);
-	gl.disable(gl.BLEND);
+	
 }
 
 function requestRedraw() {
