@@ -75,7 +75,7 @@ body {
 	box-shadow: 0 0 1px 0 #0008;
 }
 
-#viewmode-selection {
+.controls-section {
 	margin-left: 2em;
 }
 
@@ -174,7 +174,7 @@ body {
 <span id="benchmark-result"></span> -->
 <button id="save" class="controlsButton">Save</button>
 
-<div id="viewmode-selection">
+<div id="viewmode-selection" class="controls-section">
 	Yarn Visualization:
 	<input type="radio" id="vis-tube" name="viewmode-options" value="tube" checked>
 	<label for="tube">Tube</label>
@@ -186,14 +186,21 @@ body {
 	<label for="block">Block</label>
 </div>
 
-<div id="layer-visibility-options">
-	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Layer Visibility:
+<div id="layer-visibility-options" class="controls-section">
+	Layer Visibility:
 	<form id="layer-visibility-form" style="display:inline-block;">
 		<input type="checkbox" name="layer-visible" value="0" checked>0
 		<input type="checkbox" name="layer-visible" value="1" checked>1
 		<input type="checkbox" name="layer-visible" value="2" checked>2
 		<input type="checkbox" name="layer-visible" value="3" checked>3
 		<input type="checkbox" name="layer-visible" value="4" checked>4
+	</form>
+</div>
+
+<div id="yarn-direction-vis-options" class="controls-section">
+	<form id="show-yarn-direction-form" style="display:inline-block;">
+		<input type="checkbox" name="show-yarn-direction" value="0" checked> Show Yarn Direction
+	</form>
 </div>
 </div>
 
@@ -1365,6 +1372,7 @@ const textureProgram = new Program(gl,
 `,`
 	uniform highp vec3 HEMI_DIRECTION;
 	uniform lowp vec4 TINT;
+	uniform lowp float TEX_STRENGTH;
 	varying lowp vec4 color;
 	varying highp vec2 uv;
 	varying highp vec3 normal;
@@ -1376,7 +1384,7 @@ const textureProgram = new Program(gl,
 
 		// treat texture as a mask
       	lowp float mask = texture2D(uSampler, uv).r;
-      	mask = (1. + mask) / 2.;
+      	mask = (1.-TEX_STRENGTH) + TEX_STRENGTH * (1. + mask) / 2.;
 		gl_FragColor = TINT * vec4(mask * color.rgb * light, color.a);
 	}
 `);
@@ -2414,6 +2422,10 @@ for (const elem of document.getElementById('layer-visibility-form').children) {
 	elem.addEventListener('click', function() {bodyDirty();});
 }
 
+for (const elem of document.getElementById('show-yarn-direction-form').children) {
+	elem.addEventListener('click', function() {bodyDirty();});
+}
+
 function redraw() {
 	const pixelRatio = window.devicePixelRatio;
 
@@ -2517,6 +2529,12 @@ function redraw() {
 		gl.uniform4f(
 			textureProgram.uniformLocations.TINT,
 			1.0, 1.0, 1.0, 1.0
+		);
+
+		const show_texture = document.getElementById("show-yarn-direction-form")[0].checked;
+		gl.uniform1f(
+			textureProgram.uniformLocations.TEX_STRENGTH,
+			(show_texture ? 1 : 0)
 		);
 
 		// pass in texture
