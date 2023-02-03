@@ -158,6 +158,8 @@ export class Body {
 		for (const cell of data) {
 			try {
 				if (typeof cell.template !== 'string') throw new Error("Cell template should be a string.");
+				// let template = library.findPermutedSignature(cell.template);
+				// if (template === null) throw new Error(`Cell template "${cell.template}" does not appear in the library (even permuted).`);
 				if (!(cell.template in library.templates)) throw new Error(`Cell template "${cell.template}" does not appear in the library.`);
 				let template = library.templates[cell.template];
 	
@@ -290,6 +292,29 @@ export class Library {
 		const json = stripComments(text);
 		const data = JSON.parse(json);
 		return Library.fromData(data);
+	}
+	findPermutedSignature(sig) {
+		function signatureSet(signature) {
+			let tokens = signature.split(" ");
+			const name = tokens[0];
+			tokens.shift();
+			const tokenSet = new Set(tokens);
+			return { name:name, tokenSet:tokenSet };
+		}
+
+		function eqSigSet(sigSetA, sigSetB) {
+			return sigSetA.name === sigSetB.name && [...sigSetA.tokenSet].every(a => sigSetB.tokenSet.has(a));
+		}
+
+		const inputSignatureSet = signatureSet(sig);
+		for (template of Object.values(this.templates)) {
+			if (eqSigSet(signatureSet(template.signature()), inputSignatureSet)) {
+				console.log("matched", sig, "to", template)
+				console.log(signatureSet(template.signature()), inputSignatureSet);
+				return template;
+			}
+		}
+		return null;
 	}
 }
 
