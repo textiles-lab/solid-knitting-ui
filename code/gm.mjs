@@ -585,6 +585,10 @@ export function dist(a, b) {
 	return length(sub(b, a));
 }
 
+export function dist2(a, b) {
+	return length2(sub(b, a));
+}
+
 export function svd(A_) {
 	if (!(A_.length === 9)) throw new Error("This svd code only works on 3x3 matricies.");
 

@@ -234,6 +234,8 @@ body {
 	<li> <span class="key">U</span>: check for cycles</li>
 	<li> <span class="key">up</span>: prev template</li>
 	<li> <span class="key">down</span>: next template</li>
+	<li> <span class="key">K</span>: prev compatible template</li>
+	<li> <span class="key">J</span>: next compatible template</li>
 </ul>
 </details>
 </div>
@@ -694,11 +696,17 @@ window.addEventListener('keydown', function(evt){
 			// Run topological sort. 
 			if (!checkGlobalCellCorrectness()) console.log("Warning: There is exists a cycle in yarn directions!");
 			else console.log("No cycles detected in yarn directions");
-		}else if (evt.code == 'ArrowUp') {
+		} else if (evt.code == 'ArrowUp') {
 			prevTemplate();
 			requestRedraw();
 		} else if (evt.code == 'ArrowDown') {
 			nextTemplate();
+			requestRedraw();
+		} else if (evt.code == 'KeyJ') {
+			nextCompatibleTemplate();
+			requestRedraw();
+		} else if (evt.code == 'KeyK') {
+			prevCompatibleTemplate();
 			requestRedraw();
 		}
 		//console.log(evt.code); //when you want more keys
@@ -777,6 +785,48 @@ function prevTemplate() {
 	setActiveTemplate(selected);
 }
 
+//select next template from library:
+// (uses global 'library' and 'template' variables)
+function nextCompatibleTemplate() {
+	if (MOUSE.over === null) return null;
+
+	const cell = MOUSE.over.cell;
+	const face = MOUSE.over.face;
+
+	let selected = null;
+	for (const t of Object.values(library.templates)) {
+		//only consider templates with larger signature than current:
+		if (template !== null && t.signature() <= template.signature()) continue;
+		//of these, select the smallest:
+		if (selected !== null && selected.signature() < t.signature()) continue;
+		if (checkTemplateCompatible(cell, face, t) === null) continue;
+		console.assert(selected === null || selected.signature() != t.signature(), "All templates should have unique signatures.");
+		selected = t;
+	}
+	setActiveTemplate(selected);
+}
+
+//select previous template from library:
+// (uses global 'library' and 'template' variables)
+function prevCompatibleTemplate() {
+	if (MOUSE.over === null) return null;
+
+	const cell = MOUSE.over.cell;
+	const face = MOUSE.over.face;
+
+	let selected = null;
+	for (const t of Object.values(library.templates)) {
+		//only consider templates with smaller signature than current:
+		if (template !== null && t.signature() >= template.signature()) continue;
+		//of these, select the largest:
+		if (selected !== null && selected.signature() > t.signature()) continue;
+		if (checkTemplateCompatible(cell, face, t) === null) continue;
+		console.assert(selected === null || selected.signature() != t.signature(), "All templates should have unique signatures.");
+		selected = t;
+	}
+	setActiveTemplate(selected);
+}
+
 function setTemplateFromSignature(stripped_signature) {
 	let selected = null;
 	for (const t of Object.values(library.templates)) {
@@ -785,6 +835,87 @@ function setTemplateFromSignature(stripped_signature) {
 		}
 	}
 	setActiveTemplate(selected);
+}
+
+// if template can be attached to face of cell, return the resulting cell
+// otherwise, return null
+function checkTemplateCompatible(cell, face, template) {
+	// Cannot connect if hovered face is already connected. 
+	if (cell.connections[face]) return null;
+
+	let compat = [];
+	for (let f = 0; f < template.faces.length; ++f) {
+		if (sv.canConnectFaces(cell.template.faces[face], template.faces[f])) {
+			compat.push(f);
+		}
+	}
+
+	if (!compat.length) return null; //no compatible faces
+
+	const tf = compat[0];
+
+	console.assert(cell.template.faces[face].indices.length === template.faces[tf].indices.length, "Cell and connecting template face have same count of vertices.");
+
+	//vertex lists that should connect:
+	const cellVerts = [];
+	const templateVerts = [];
+	sv.forAlignedIndices(cell.template.faces[face], template.faces[tf], (i, ti) => {
+		const cv = cell.template.faces[face].indices[i];
+		const tv = template.faces[tf].indices[ti];
+		cellVerts.push(cell.vertices[cv]);
+		templateVerts.push(template.vertices[tv]);
+	});
+
+	const xform = gm.rigidTransform(templateVerts, cellVerts);
+
+	const preview = sv.Cell.fromTemplate(template, xform);
+
+	//record the fact that the connection exists:
+	// preview.connections[tf] = {cell:cell, face:face};
+
+	//see if there are other connections that might make sense:
+	let centers = [];
+	for (let fi = 0; fi < preview.template.faces.length; ++fi) {
+		const face = template.faces[fi];
+		let center = gm.vec3(0.0);
+		for (let vi of face.indices) {
+			center = gm.add(center, preview.vertices[vi]);
+		}
+		center = gm.scale(1.0 / face.indices.length, center);
+		centers.push(center);
+	}
+
+	//Check all faces with compatible types for overlapping centers:
+	//TODO: less brute force than this!
+	for (let cell of body.cells) {
+		for (let fi = 0; fi < cell.template.faces.length; ++fi) {
+			// if (cell.connections[fi] !== null) continue;
+			const face = cell.template.faces[fi];
+
+			// if (face.type === 'x') continue;
+			let center = gm.vec3(0.0);
+			for (let vi of face.indices) {
+				center = gm.add(center, cell.vertices[vi]);
+			}
+			center = gm.scale(1.0 / face.indices.length, center);
+
+			for (let pfi = 0; pfi < preview.template.faces.length; ++pfi) {
+				const dist2 = gm.dist2(center, centers[pfi]);
+
+				if (dist2 >= 0.1 * 0.1) continue;
+
+				// if the faces are adjacent but not compatible, this template is not compatible
+				if (preview.connections[pfi] != null || face.type ==='x' || cell.connections[fi] !== null || !sv.canConnectFaces(preview.template.faces[pfi], face)) {
+					return null;
+				}
+
+				// otherwise, we found a connection
+				preview.connections[pfi] = {cell:cell, face:fi};
+			}
+		}
+	}
+
+	return preview;
 }
 
 //return a cell built as if by pressing 'addCell' at this very location:
@@ -806,84 +937,9 @@ function previewCell() {
 
 	if (MOUSE.over !== null) {
 		const cell = MOUSE.over.cell;
-		const face = MOUSE.over.face; 
+		const face = MOUSE.over.face;
 
-		// Only connect if hovered face is not connected. 
-		if (!cell.connections[face]) {
-
-			let compat = [];
-			for (let f = 0; f < template.faces.length; ++f) {
-				if (sv.canConnectFaces(cell.template.faces[face], template.faces[f])) {
-					compat.push(f);
-				}
-			}
-			if (!compat.length) {
-				//console.log(" (no compatible faces)");
-			} else {
-				const tf = compat[0];
-
-				console.assert(cell.template.faces[face].indices.length === template.faces[tf].indices.length, "Cell and connecting template face have same count of vertices.");
-
-				//vertex lists that should connect:
-				const cellVerts = [];
-				const templateVerts = [];
-				sv.forAlignedIndices(cell.template.faces[face], template.faces[tf], (i, ti) => {
-					const cv = cell.template.faces[face].indices[i];
-					const tv = template.faces[tf].indices[ti];
-					cellVerts.push(cell.vertices[cv]);
-					templateVerts.push(template.vertices[tv]);
-				});
-
-				const xform = gm.rigidTransform(templateVerts, cellVerts);
-
-				const preview = sv.Cell.fromTemplate(template, xform);
-
-				//record the fact that the connection exists:
-				preview.connections[tf] = {cell:cell, face:face};
-
-				//see if there are other connections that might make sense:
-				let centers = [];
-				for (let fi = 0; fi < preview.template.faces.length; ++fi) {
-					const face = template.faces[fi];
-					let center = gm.vec3(0.0);
-					for (let vi of face.indices) {
-						center = gm.add(center, preview.vertices[vi]);
-					}
-					center = gm.scale(1.0 / face.indices.length, center);
-					centers.push(center);
-				}
-
-				//Check all faces with compatible types for overlapping centers:
-				//TODO: less brute force than this!
-				for (let cell of body.cells) {
-					for (let fi = 0; fi < cell.template.faces.length; ++fi) {
-						if (cell.connections[fi] !== null) continue;
-						const face = cell.template.faces[fi];
-						if (face.type === 'x') continue;
-						let center = null;
-						for (let pfi = 0; pfi < preview.template.faces.length; ++pfi) {
-							if (preview.connections[pfi] !== null) continue;
-							if (!sv.canConnectFaces(preview.template.faces[pfi], face)) continue;
-							if (center === null) {
-								center = gm.vec3(0.0);
-								for (let vi of face.indices) {
-									center = gm.add(center, cell.vertices[vi]);
-								}
-								center = gm.scale(1.0 / face.indices.length, center);
-							}
-							const ofs = gm.sub(center, centers[pfi]);
-							const length2 = gm.dot(ofs, ofs);
-							if (length2 < 0.1 * 0.1) {
-								preview.connections[pfi] = {cell:cell, face:fi};
-							}
-						}
-					}
-				}
-
-				return preview;
-			}
-		}
-
+		return checkTemplateCompatible(cell, face, template);
 	}
 
 	return null;
