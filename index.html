@@ -2131,6 +2131,7 @@ class VisTubes extends Geometry {
 			//yarns:
 			const xf = cell.xform;
 			for (const yarn of cell.template.yarns) {
+				const generate_uv = yarn["oriented"];
 
 				// define frame
 				let frames = [];
@@ -2199,16 +2200,16 @@ class VisTubes extends Geometry {
 						if (i==0) {
 							const tj_prev = -1. / this.resolution;
 							const tj_at = tj_prev + offset;
-							uvj_prev = gm.vec2(u, tj_prev + v_offset);
-							uvj_at = gm.vec2(u+du, tj_prev - angleShift + v_offset);
+							uvj_prev = generate_uv ? gm.vec2(u, tj_prev + v_offset) : gm.vec2(0, 0);
+							uvj_at = generate_uv ? gm.vec2(u+du, tj_prev - angleShift + v_offset) : gm.vec2(0, 0);
 
 							pj_prev = gm.add(gm.scalarmul(this.radius * Math.cos(2 * Math.PI * tj_prev), x_prev),  gm.scalarmul(this.radius * Math.sin(2 * Math.PI * tj_prev), y_prev));
 							pj_at = gm.add(gm.scalarmul(this.radius * Math.cos(2 * Math.PI * tj_at), x_at),  gm.scalarmul(this.radius * Math.sin(2 * Math.PI * tj_at), y_at));
 						}
 						const ti_prev = (i / this.resolution);
 						const ti_at = ti_prev + offset;
-						const uvi_prev = gm.vec2(u, ti_prev + v_offset);
-						const uvi_at = gm.vec2(u+du, ti_prev - angleShift + v_offset);
+						const uvi_prev = generate_uv ? gm.vec2(u, ti_prev + v_offset) : gm.vec2(0, 0);
+						const uvi_at = generate_uv ? gm.vec2(u+du, ti_prev - angleShift + v_offset) : gm.vec2(0, 0);
 
 						const pi_prev = gm.add(gm.scalarmul(this.radius * Math.cos(2 * Math.PI * ti_prev), x_prev),  gm.scalarmul(this.radius * Math.sin(2 * Math.PI * ti_prev), y_prev));
 						const pi_at = gm.add(gm.scalarmul(this.radius * Math.cos(2 * Math.PI * ti_at), x_at),  gm.scalarmul(this.radius * Math.sin(2 * Math.PI * ti_at), y_at));
@@ -2516,24 +2517,21 @@ function redrawPattern(pixelRatio) {
 	} else if (yarnVisMode == "Tube") {
 		visWireCells.draw(colorProgram);
 
-		if (viewMode === ViewMode.Pattern) {
-			// draw opaque tubes
-			if (!visTubes.empty) {
-				visTubes.draw(textureProgram);
-			}
+		gl.useProgram(textureProgram.program);
+		// draw opaque tubes
+		if (!visTubes.empty) {
+			visTubes.draw(textureProgram);
+		}
 
-			// draw transparent tubes per https://xem.github.io/articles/webgl-guide-part-2.html#1a
-			if (!visTransparentTubes.empty) {
-				gl.enable(gl.BLEND);
-				gl.blendEquation(gl.FUNC_ADD);
-				gl.disable(gl.DEPTH_TEST);
-				gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-				visTransparentTubes.draw(textureProgram);
-				gl.enable(gl.DEPTH_TEST);
-				gl.disable(gl.BLEND);
-			}
-		} else if (viewMode === ViewMode.Template) {
-			visTemplateTubes.draw(textureProgram);
+		// draw transparent tubes per https://xem.github.io/articles/webgl-guide-part-2.html#1a
+		if (!visTransparentTubes.empty) {
+			gl.enable(gl.BLEND);
+			gl.blendEquation(gl.FUNC_ADD);
+			gl.disable(gl.DEPTH_TEST);
+			gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+			visTransparentTubes.draw(textureProgram);
+			gl.enable(gl.DEPTH_TEST);
+			gl.disable(gl.BLEND);
 		}
 
 		gl.useProgram(colorProgram.program);
@@ -2559,25 +2557,29 @@ function redrawPattern(pixelRatio) {
 }
 
 function redrawTemplate(pixelRatio) {
+	function getTemplateBody(template) {
+		if (template) {
+			return {cells: [sv.Cell.fromTemplate(template, gm.identityTransform())]};
+		} else {
+			return {cells: []};
+		}
+	}
+
 	// update the geometry
 	if (yarnVisMode == "Wire" && visTemplateWire.dirty) {
-		const selectedCell = sv.Cell.fromTemplate(template, gm.identityTransform());
-		visTemplateWire.set({cells: [selectedCell]});
+		visTemplateWire.set(getTemplateBody(template));
 		delete visTemplateWire.dirty;
 	}
 	if (visTemplateWireCells.dirty) {
-		const selectedCell = sv.Cell.fromTemplate(template, gm.identityTransform());
-		visTemplateWireCells.set({cells: [selectedCell]});
+		visTemplateWireCells.set(getTemplateBody(template));
 		delete visTemplateWireCells.dirty;
 	}
 	if (yarnVisMode == "Body" && visTemplateBody.dirty) {
-		const selectedCell = sv.Cell.fromTemplate(template, gm.identityTransform());
-		visTemplateBody.set({cells: [selectedCell]});
+		visTemplateBody.set(getTemplateBody(template));
 		delete visTemplateBody.dirty;
 	}
 	if (yarnVisMode == "Tube" && visTemplateTubes.dirty) {
-		const selectedCell = sv.Cell.fromTemplate(template, gm.identityTransform());
-		visTemplateTubes.set({cells: [selectedCell]});
+		visTemplateTubes.set(getTemplateBody(template));
 		delete visTemplateTubes.dirty;
 	}
 

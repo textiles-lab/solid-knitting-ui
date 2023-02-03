@@ -55,85 +55,23 @@ for obj in blocks.objects:
 	face_first = [] #first vertex of first (lowest-y) edge in port coordinate system
 	face_direction = [] #sign indicates direction of first edge in port coordinate system
 
+	mesh_center = Vector([0,0,0])
+
 	for poly in mesh.polygons:
+		mesh_center = mesh_center + poly.center
 		face_centers.append(poly.center)
 		face_normals.append(poly.normal)
 		face_types.append(None)
 		face_first.append(None)
 		face_direction.append(None)
 
+	mesh_center /= len(face_centers)
+
 	yarns = []
 
+	# determine face types
 	for child in obj.children:
-		if child.type == 'CURVE':
-			to_parent = obj.matrix_world.inverted() @ child.matrix_world
-
-			MIRROR = False
-			if len(child.modifiers) == 0:
-				pass #nothing to do
-			elif len(child.modifiers) == 1 and child.modifiers[0].type == 'MIRROR':
-				print(f"  applying mirror modifier [assuming x] to {child.name}")
-				MIRROR = True
-
-			def append_yarn(cps):
-				for i in range(0, len(cps)):
-					cps[i] = to_parent @ cps[i]
-
-				yarn = dict()
-				yarn["cps"] = cps
-				begin = None
-				begin_dis = float('inf')
-				end = None
-				end_dis = float('inf')
-				for f in range(0, len(face_centers)):
-					test = abs( (cps[0] - face_centers[f]).dot(face_normals[f]) )
-					if test < 0.01: #if in the plane...
-						test = (cps[0] - face_centers[f]).length #...compute distance to center
-						if test < begin_dis:
-							begin_dis = test
-							begin = f
-					test = abs( (cps[-1] - face_centers[f]).dot(face_normals[f]) )
-					if test < 0.01: #if in the plane...
-						test = (cps[-1] - face_centers[f]).length #...compute distance to center
-						if test < end_dis:
-							end_dis = test
-							end = f
-				yarn["begin"] = begin
-				yarn["end"] = end
-				yarns.append(yarn)
-
-
-			for spline in child.data.splines:
-				if spline.type != 'BEZIER':
-					print(f"WARNING: {child.name} has {spline.type}-type spline -- skipping")
-					continue
-				cps = []
-				cps2 = None
-				for i in range(0, len(spline.bezier_points)):
-					cps.append(spline.bezier_points[i].handle_left)
-					cps.append(spline.bezier_points[i].co)
-					cps.append(spline.bezier_points[i].handle_right)
-				cps = cps[1:-1]
-
-				if MIRROR:
-					cps2 = []
-					for cp in reversed(cps):
-						cps2.append(Vector((-cp.x, cp.y, cp.z)))
-
-					#merge cps, cps2 if they meet at x=0:
-					if abs(cps[0].x) < 1e-3:
-						cps = cps2[:-1] + cps
-						cps2 = None
-					if abs(cps[-1].x) < 1e-3:
-						cps = cps + cps2[1:]
-						cps2 = None
-
-				append_yarn(cps)
-
-				if cps2 != None: append_yarn(cps2)
-
-
-		elif child.type == 'MESH':
+		if child.type == 'MESH':
 			#marker for side types
 			label = child.data.name
 			to_parent = obj.matrix_world.inverted() @ child.matrix_world
@@ -190,6 +128,137 @@ for obj in blocks.objects:
 					first_direction = direction
 			face_first[best] = first
 			face_direction[best] = first_direction
+
+	left_to_right = True
+	found_course_dir = False
+	for iF, face_type in enumerate(face_types):
+		if face_type == "x":
+			continue
+		if face_type[:2] == "-y": # yarn in
+			if not found_course_dir:
+				left_to_right = (face_centers[iF].x < mesh_center.x)
+				found_course_dir = True
+			elif left_to_right != (face_centers[iF].x < mesh_center.x): # disagreement between course faces
+				found_course_dir = False
+		elif face_type[:2] == "+y": #yarn out
+			if not found_course_dir:
+				left_to_right = (face_centers[iF].x > mesh_center.x)
+				found_course_dir = True
+			elif left_to_right != (face_centers[iF].x > mesh_center.x): # disagreement between course faces
+				found_course_dir = False
+
+	if not found_course_dir:
+		print(f"Warning: ambiguous face direction on {obj.name}")
+
+	# extract yarns, orienting the curves in the specified direction
+	for child in obj.children:
+		if child.type == 'CURVE':
+			to_parent = obj.matrix_world.inverted() @ child.matrix_world
+
+			MIRROR = False
+			if len(child.modifiers) == 0:
+				pass #nothing to do
+			elif len(child.modifiers) == 1 and child.modifiers[0].type == 'MIRROR':
+				print(f"  applying mirror modifier [assuming x] to {child.name}")
+				MIRROR = True
+
+			def append_yarn(cps):
+				for i in range(0, len(cps)):
+					cps[i] = to_parent @ cps[i]
+
+				yarn = dict()
+				yarn["cps"] = cps
+				begin = None
+				begin_dis = float('inf')
+				end = None
+				end_dis = float('inf')
+				for f in range(0, len(face_centers)):
+					test = abs( (cps[0] - face_centers[f]).dot(face_normals[f]) )
+					if test < 0.01: #if in the plane...
+						test = (cps[0] - face_centers[f]).length #...compute distance to center
+						if test < begin_dis:
+							begin_dis = test
+							begin = f
+					test = abs( (cps[-1] - face_centers[f]).dot(face_normals[f]) )
+					if test < 0.01: #if in the plane...
+						test = (cps[-1] - face_centers[f]).length #...compute distance to center
+						if test < end_dis:
+							end_dis = test
+							end = f
+				yarn["begin"] = begin
+				yarn["end"] = end
+
+				determined_orientation = False
+				# if yarn has course face, use that to orient
+				if face_types[begin][1] == "y" or (end is not None and face_types[end][1] == "y"):
+					if (face_types[begin][:2] == "+y" or (end is not None and face_types[end][:2] == "-y")):
+						# reverse if yarn goes in an out face or out an in face
+						yarn["cps"].reverse()
+						yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
+					determined_orientation = True
+				elif found_course_dir: # for other types of yarn, guess orientation if a block orientation is known
+					if end is not None and ((face_types[begin][1] == "+l" and face_types[end][1] == "+l") or (face_types[begin][1] == "-l" and face_types[end][1] == "-l")):
+						determined_orientation = False # can't orient l-l loops
+					elif face_types[begin][:2] == "-l": # ensure that -l yarn points in course direction
+						if (left_to_right and cps[0][0] > cps[-1][0]) or ((not left_to_right) and cps[0][0] < cps[-1][0]):
+							yarn["cps"].reverse()
+							yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
+						determined_orientation = True
+					elif end is not None and face_types[end][:2] == "+l": # ensure that -l yarn points in course direction
+						if (left_to_right and cps[0][0] < cps[-1][0]) or ((not left_to_right) and cps[0][0] > cps[-1][0]):
+							yarn["cps"].reverse()
+							yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
+						determined_orientation = True
+					elif face_types[begin][:2] == "+l": # ensure that +l yarns points opposite course direction
+						if (left_to_right and cps[0][0] < cps[-1][0]) or ((not left_to_right) and cps[0][0] > cps[-1][0]):
+							yarn["cps"].reverse()
+							yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
+						determined_orientation = True
+					elif end is not None and face_types[end][:2] == "-l": # ensure that +l yarns points opposite course direction
+						if (left_to_right and cps[0][0] > cps[-1][0]) or ((not left_to_right) and cps[0][0] < cps[-1][0]):
+							yarn["cps"].reverse()
+							yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
+						determined_orientation = True
+
+				if not determined_orientation:
+					print(f"failed to determine orientation on yarn {len(yarns)} of {obj.name}")
+				# 	print(face_types)
+				# 	print(begin)
+				# 	print(end)
+				yarn["oriented"] = determined_orientation
+				yarns.append(yarn)
+
+
+			for spline in child.data.splines:
+				if spline.type != 'BEZIER':
+					print(f"WARNING: {child.name} has {spline.type}-type spline -- skipping")
+					continue
+				cps = []
+				cps2 = None
+				for i in range(0, len(spline.bezier_points)):
+					cps.append(spline.bezier_points[i].handle_left)
+					cps.append(spline.bezier_points[i].co)
+					cps.append(spline.bezier_points[i].handle_right)
+				cps = cps[1:-1]
+
+				if MIRROR:
+					cps2 = []
+					for cp in reversed(cps):
+						cps2.append(Vector((-cp.x, cp.y, cp.z)))
+
+					#merge cps, cps2 if they meet at x=0:
+					if abs(cps[0].x) < 1e-3:
+						cps = cps2[:-1] + cps
+						cps2 = None
+					if abs(cps[-1].x) < 1e-3:
+						cps = cps + cps2[1:]
+						cps2 = None
+
+				append_yarn(cps)
+
+				if cps2 != None: append_yarn(cps2)
+
+
 
 	#re-order vertices for sorted constraint:
 	vertex_order = sorted(range(0,len(mesh.vertices)), key=lambda i: tuple(mesh.vertices[i].co))
@@ -259,7 +328,8 @@ for obj in blocks.objects:
 		else: info += f' "begin":{yarn["begin"]},'
 		if yarn["end"] == None: pass
 		else: info += f' "end":{yarn["end"]},'
-		info += f' "cps":[{",".join(cps)}] }}{comma}'
+		info += f' "cps":[{",".join(cps)}],'
+		info += f' "oriented": {"true" if yarn["oriented"] else "false"} }}{comma}'
 		out.append(info)
 		#was: out.append(f'\t\t{{ "begin":{yarn["begin"]}, "end":{yarn["end"]}, "cps":[{",".join(cps)}] }}{comma}')
 
