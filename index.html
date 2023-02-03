@@ -839,7 +839,7 @@ function setTemplateFromSignature(stripped_signature) {
 
 // if template can be attached to face of cell, return the resulting cell
 // otherwise, return null
-function checkTemplateCompatible(cell, face, template) {
+function checkTemplateCompatible(cell, face, template, verbose = false) {
 	// Cannot connect if hovered face is already connected. 
 	if (cell.connections[face]) return null;
 
@@ -874,6 +874,7 @@ function checkTemplateCompatible(cell, face, template) {
 	// preview.connections[tf] = {cell:cell, face:face};
 
 	//see if there are other connections that might make sense:
+	// TODO: center is a bad proxy for faces when we're looking at faces of different shapes
 	let centers = [];
 	for (let fi = 0; fi < preview.template.faces.length; ++fi) {
 		const face = template.faces[fi];
@@ -904,8 +905,20 @@ function checkTemplateCompatible(cell, face, template) {
 
 				if (dist2 >= 0.1 * 0.1) continue;
 
-				// if the faces are adjacent but not compatible, this template is not compatible
-				if (preview.connections[pfi] != null || face.type ==='x' || cell.connections[fi] !== null || !sv.canConnectFaces(preview.template.faces[pfi], face)) {
+				// check if faces are compatible
+				if (face.type ==='x' && preview.template.faces[pfi].type === 'x') {
+					// this case is okay
+				} else if (preview.connections[pfi] != null) {
+					if (verbose) console.log("preview connection already exists");
+					return null;
+				} else if (face.type ==='x' || preview.template.faces[pfi].type === 'x') {
+					if (verbose) console.log("face.type is x");
+					return null;
+				} else if (cell.connections[fi] !== null) {
+					if (verbose) console.log("cell connection already exists");
+					return null;
+				} else if (!sv.canConnectFaces(preview.template.faces[pfi], face)) {
+					if (verbose) console.log("faces incompatible");
 					return null;
 				}
 
