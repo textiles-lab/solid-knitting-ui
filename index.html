@@ -350,7 +350,7 @@ window.library = new sv.Library();
 window.template = null;
 window.body = new sv.Body();
 
-import {Geometry, Program} from './code/gl.mjs';
+import {Geometry, Program, loadTexture} from './code/gl.mjs';
 
 //-----------------------------------------------------------------------------
 // Adapted from yarn visualizer code (from smobj)
@@ -1343,6 +1343,45 @@ const colorProgram = new Program(gl,
 `);
 window.colorProgram = colorProgram; //DEBUG
 
+const textureProgram = new Program(gl,
+`
+	uniform mat4 LOCAL_TO_CLIP;
+
+	attribute vec4 Position;
+	attribute vec3 Normal;
+	attribute vec2 UV;
+	attribute vec4 Color;
+
+	varying vec4 color;
+	varying vec2 uv;
+	varying vec3 normal;
+
+	void main() {
+		gl_Position = LOCAL_TO_CLIP * Position;
+		color = Color;
+		uv = UV;
+		normal = Normal;
+	}
+`,`
+	uniform highp vec3 HEMI_DIRECTION;
+	uniform lowp vec4 TINT;
+	varying lowp vec4 color;
+	varying highp vec2 uv;
+	varying highp vec3 normal;
+    uniform sampler2D uSampler;
+	void main() {
+		highp vec3 n = normalize(normal);
+		//upper dome light:
+		highp vec3 light = mix(vec3(0.1), vec3(1.0), 0.5*dot(n, HEMI_DIRECTION)+0.5);
+
+		// treat texture as a mask
+      	lowp float mask = texture2D(uSampler, uv).r;
+      	mask = (1. + mask) / 2.;
+		gl_FragColor = TINT * vec4(mask * color.rgb * light, color.a);
+	}
+`);
+window.textureProgram = textureProgram; //DEBUG
+
 
 //when using a data view to store Float32 values, do they need to be marked as little endian?
 const FLOAT32_LITTLE_ENDIAN = function() {
@@ -1925,7 +1964,7 @@ const visWireCells = new VisWireCells();
 window.visWireCells = visWireCells; //DEBUG
 
 class VisTubes extends Geometry {
-	static BYTES_PER_ATTRIB = 4*3 + 4*3 + 1*4; //Position, Normal, Color
+	static BYTES_PER_ATTRIB = 4*3 + 4*3 + 4*2 + 4*1; //Position, Normal, UV, Color
 	constructor(solid=true) {
 		const BYTES_PER_ATTRIB = VisTubes.BYTES_PER_ATTRIB;
 
@@ -1934,7 +1973,8 @@ class VisTubes extends Geometry {
 		const attribs = {
 			Position:{buffer:buffer, size:3, type:gl.FLOAT, normalize:false, stride:BYTES_PER_ATTRIB, offset:0},
 			Normal:{buffer:buffer, size:3, type:gl.FLOAT, normalize:false, stride:BYTES_PER_ATTRIB, offset:4*3},
-			Color:{buffer:buffer, size:4, type:gl.UNSIGNED_BYTE, normalize:true, stride:BYTES_PER_ATTRIB, offset:4*3 + 4*3},
+			UV:{buffer:buffer, size:2, type:gl.FLOAT, normalize:false, stride:BYTES_PER_ATTRIB, offset:4*3 + 4*3},
+			Color:{buffer:buffer, size:4, type:gl.UNSIGNED_BYTE, normalize:true, stride:BYTES_PER_ATTRIB, offset:4*3 + 4*3 + 4*2},
 		};
 
 		super(gl, attribs, gl.TRIANGLES, 0);
@@ -1975,7 +2015,7 @@ class VisTubes extends Geometry {
 		const arrayBuffer = new ArrayBuffer(BYTES_PER_ATTRIB * totalAttribs);
 		const data = new DataView(arrayBuffer);
 		let dataOffset = 0;
-		function attrib(x,y,z, nx,ny,nz, rgba) {
+		function attrib(x,y,z, nx,ny,nz, u,v, rgba) {
 			data.setFloat32(dataOffset, x, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
 			data.setFloat32(dataOffset, y, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
 			data.setFloat32(dataOffset, z, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
@@ -1984,33 +2024,35 @@ class VisTubes extends Geometry {
 			data.setFloat32(dataOffset, ny, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
 			data.setFloat32(dataOffset, nz, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
 
+			data.setFloat32(dataOffset, 2.*u, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, 2.*v, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+
 			data.setUint32(dataOffset, rgba, false); dataOffset += 4;
 		}
 
-		// TODO: smooth out normals, miter ends
-		function triangle(va,vb,vc, na,nb,nc, color) {
+		function triangle(va,vb,vc, na,nb,nc, uva,uvb,uvc, color) {
 			let shadeSmooth = true;
 			if (!shadeSmooth) {
 				let n = gm.normalize(gm.cross(gm.sub(vb, va), gm.sub(vc, va)));
 				na = n; nb = n; nc = n;
 			}
 
-			attrib(va[0],va[1],va[2], na[0],na[1],na[2], color);
-			attrib(vb[0],vb[1],vb[2], nb[0],nb[1],nb[2], color);
-			attrib(vc[0],vc[1],vc[2], nc[0],nc[1],nc[2], color);
+			attrib(va[0],va[1],va[2], na[0],na[1],na[2], uva[0], uva[1], color);
+			attrib(vb[0],vb[1],vb[2], nb[0],nb[1],nb[2], uvb[0], uvb[1], color);
+			attrib(vc[0],vc[1],vc[2], nc[0],nc[1],nc[2], uvc[0], uvc[1], color);
 		}
 
-		function quad(a, na, b, nb, c, nc, d, nd,  color) {
+		function quad(a, na, uva, b, nb, uvb, c, nc, uvc, d, nd, uvd, color) {
 			// triangulate by shortest diagonal
 			const lac = gm.length2(gm.sub(c, a));
 			const lbd = gm.length2(gm.sub(b, d));
 
 			if (lac < lbd) {
-				triangle(a, b, c, na, nb, nc, color);
-				triangle(a, c, d, na, nc, nd, color);
+				triangle(a, b, c, na, nb, nc, uva, uvb, uvc, color);
+				triangle(a, c, d, na, nc, nd, uva, uvc, uvd, color);
 			} else {
-				triangle(a, b, d, na, nb, nd, color);
-				triangle(b, c, d, nb, nc, nd, color);
+				triangle(a, b, d, na, nb, nd, uva, uvb, uvd, color);
+				triangle(b, c, d, nb, nc, nd, uvb, uvc, uvd, color);
 			}
 
 		}
@@ -2060,6 +2102,7 @@ class VisTubes extends Geometry {
 				// define frame
 				let frames = [];
 				let prev, at, Tprev;
+				let yarnLength = 0;
 				for (let iP = 0; iP < yarn.pts.length; iP++) {
 					if (iP == 0) { // special case for first point
 						at = gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP], 1]);
@@ -2071,6 +2114,7 @@ class VisTubes extends Geometry {
 					} else if (iP + 1 == yarn.pts.length) { // special case for last point
 						const Tnext = snapAxisAligned(gm.normalize(gm.sub(at, prev))); // tangent vector along last edge
 						frames.push(snappedFrame(Tnext));
+						yarnLength += gm.dist(prev, at);
 					} else {
 						const next = gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP+1], 1]);
 						const Tnext = gm.normalize(gm.sub(next, at)); // tangent vector along prev edge
@@ -2084,14 +2128,22 @@ class VisTubes extends Geometry {
 						let y = gm.cross(Tprev, x);
 
 						frames.push({x: x, y: y});
+						yarnLength += gm.dist(prev, at);
 						prev = at;
 						at = next;
 						Tprev = Tnext;
 					}
 				}
 
+				// scale length to nearest integer
+				// TODO: pick a good length scale
+				const roundLength = Math.round(yarnLength);
+				const uScale = roundLength / yarnLength;
+
 				// generate cylinder
-				let x_prev, y_prev; // and still usng prev
+				let x_prev, y_prev; // and still using prev
+				let u = 0;
+				let v_offset = 0;
 				for (let iP = 1; iP < yarn.pts.length; iP++) {
 					if (iP == 1) {
 						prev = gm.mul_mat4x3_vec4(xf, [...yarn.pts[0], 1]);
@@ -2103,28 +2155,36 @@ class VisTubes extends Geometry {
 					const y_at = frames[iP].y;
 					const cs = gm.dot(x_prev, x_at);
 					const sn = gm.dot(gm.normalize(gm.sub(at, prev)), gm.cross(x_at, x_prev));
-					const twist = Math.atan2(sn, cs);
-					const offset = Math.round(twist / (2 * Math.PI) * this.resolution) / this.resolution;
+					const twist = Math.atan2(sn, cs) / (2 * Math.PI);
+					const offset = Math.round(twist * this.resolution) / this.resolution;
+					const angleShift = (twist - offset);
+					const du = gm.length(gm.sub(prev, at)) * uScale;
 
 					// finally emit cylinder by drawing circles in x-y planes and connecting them by quads
-					let pj_prev, pj_at;
+					let pj_prev, pj_at, uvj_prev, uvj_at;
 					for (let i=0; i<this.resolution; i++) {
 						if (i==0) {
-							const tj_prev = 2 * Math.PI * (this.resolution - 1) / this.resolution;
-							const tj_at = 2 * Math.PI * ((this.resolution - 1) / this.resolution + offset);
+							const tj_prev = -1. / this.resolution;
+							const tj_at = tj_prev + offset;
+							uvj_prev = gm.vec2(u, tj_prev + v_offset);
+							uvj_at = gm.vec2(u+du, tj_prev - angleShift + v_offset);
 
-							pj_prev = gm.add(gm.scalarmul(this.radius * Math.cos(tj_prev), x_prev),  gm.scalarmul(this.radius * Math.sin(tj_prev), y_prev));
-							pj_at = gm.add(gm.scalarmul(this.radius * Math.cos(tj_at), x_at),  gm.scalarmul(this.radius * Math.sin(tj_at), y_at));
+							pj_prev = gm.add(gm.scalarmul(this.radius * Math.cos(2 * Math.PI * tj_prev), x_prev),  gm.scalarmul(this.radius * Math.sin(2 * Math.PI * tj_prev), y_prev));
+							pj_at = gm.add(gm.scalarmul(this.radius * Math.cos(2 * Math.PI * tj_at), x_at),  gm.scalarmul(this.radius * Math.sin(2 * Math.PI * tj_at), y_at));
 						}
-						const ti_prev = (i / this.resolution) * 2 * Math.PI;
-						const ti_at = (i / this.resolution + offset) * 2 * Math.PI;
+						const ti_prev = (i / this.resolution);
+						const ti_at = ti_prev + offset;
+						const uvi_prev = gm.vec2(u, ti_prev + v_offset);
+						const uvi_at = gm.vec2(u+du, ti_prev - angleShift + v_offset);
 
-						const pi_prev = gm.add(gm.scalarmul(this.radius * Math.cos(ti_prev), x_prev),  gm.scalarmul(this.radius * Math.sin(ti_prev), y_prev));
-						const pi_at = gm.add(gm.scalarmul(this.radius * Math.cos(ti_at), x_at),  gm.scalarmul(this.radius * Math.sin(ti_at), y_at));
-						quad(gm.add(prev, pi_prev), pi_prev, gm.add(at, pi_at), pi_at, gm.add(at, pj_at), pj_at, gm.add(prev, pj_prev), pj_prev, col);
-						pj_prev = pi_prev; pj_at = pi_at;
+						const pi_prev = gm.add(gm.scalarmul(this.radius * Math.cos(2 * Math.PI * ti_prev), x_prev),  gm.scalarmul(this.radius * Math.sin(2 * Math.PI * ti_prev), y_prev));
+						const pi_at = gm.add(gm.scalarmul(this.radius * Math.cos(2 * Math.PI * ti_at), x_at),  gm.scalarmul(this.radius * Math.sin(2 * Math.PI * ti_at), y_at));
+						quad(gm.add(prev, pi_prev), pi_prev, uvi_prev, gm.add(at, pi_at), pi_at, uvi_at, gm.add(at, pj_at), pj_at, uvj_at, gm.add(prev, pj_prev), pj_prev, uvj_prev, col);
+						pj_prev = pi_prev; pj_at = pi_at; uvj_prev = uvi_prev; uvj_at = uvi_at;
 					}
 
+					u += du;
+					v_offset -= offset + angleShift;
 					prev = at;
 					x_prev = x_at;
 					y_prev = y_at;
@@ -2443,9 +2503,31 @@ function redraw() {
 	} else if (yarnVisMode == "Wire") {
 		visWire.draw(colorProgram);
 	} else if (yarnVisMode == "Tube") {
+
+		gl.useProgram(textureProgram.program);
+		gl.uniformMatrix4fv(
+			textureProgram.uniformLocations.LOCAL_TO_CLIP,
+			false,
+			computeMVP()
+		);
+		gl.uniform3f(
+			textureProgram.uniformLocations.HEMI_DIRECTION,
+			lightDir[0], lightDir[1], lightDir[2]
+		);
+		gl.uniform4f(
+			textureProgram.uniformLocations.TINT,
+			1.0, 1.0, 1.0, 1.0
+		);
+
+		// pass in texture
+		// https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Using_textures_in_WebGL
+		gl.activeTexture(gl.TEXTURE0);
+		gl.bindTexture(gl.TEXTURE_2D, window.arrowTexture);
+		gl.uniform1i(textureProgram.uniformLocations.uSampler, 0);
+
 		// draw opaque tubes
 		if (!visTubes.empty) {
-			visTubes.draw(colorProgram);
+			visTubes.draw(textureProgram);
 		}
 
 		// draw transparent tubes per https://xem.github.io/articles/webgl-guide-part-2.html#1a
@@ -2454,10 +2536,12 @@ function redraw() {
 			gl.blendEquation(gl.FUNC_ADD);
 			gl.disable(gl.DEPTH_TEST);
 			gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-			visTransparentTubes.draw(colorProgram);
+			visTransparentTubes.draw(textureProgram);
 			gl.enable(gl.DEPTH_TEST);
 			gl.disable(gl.BLEND);
 		}
+
+		gl.useProgram(colorProgram.program);
 	}
 
 	//show "hidden" debug lines also:
@@ -2525,6 +2609,15 @@ async function init() {
 		console.log(`  got ${arrayBuffer.byteLength} bytes.`);
 
 		window.body = sv.Body.fromArrayBuffer(arrayBuffer, library);
+	}
+
+	{
+		console.log(`Loading textures...`)
+		// Load texture
+		window.arrowTexture = loadTexture(gl, "images/arrow.png");
+		// Flip image pixels into the bottom-to-top order that WebGL expects.
+		gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
 	}
 
 	bodyDirty();
