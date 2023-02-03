@@ -62,8 +62,8 @@ for obj in blocks.objects:
 	if obj.parent != None: continue
 	print(f"Doing block: {obj.name}")
 
-	if "alt" in obj.name:
-		print(f"WARNING: skipping block {obj.name}, since it is an alt-block, which does not affect the signature")
+	if "same" in obj.name:
+		print(f"WARNING: skipping block {obj.name}, since it is an same-block, which does not affect the signature")
 		continue
 
 	mesh = obj.data
