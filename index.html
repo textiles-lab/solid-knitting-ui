@@ -1998,7 +1998,7 @@ window.visWireCells = visWireCells; //DEBUG
 
 class VisTubes extends Geometry {
 	static BYTES_PER_ATTRIB = 4*3 + 4*3 + 4*2 + 4*1; //Position, Normal, UV, Color
-	constructor(solid=true) {
+	constructor(solid=true, respect_visibility=true) {
 		const BYTES_PER_ATTRIB = VisTubes.BYTES_PER_ATTRIB;
 
 		const buffer = gl.createBuffer();
@@ -2016,9 +2016,12 @@ class VisTubes extends Geometry {
 		this.resolution = 6;
 		this.radius = 0.08;
 		this.solid = solid;
+		this.respect_visibility = respect_visibility;
 		this.empty = false;
 	}
 	displayCell(cell) {
+		if (!this.respect_visibility) return true;
+
 		let zmax = null, zmin = null;
 		for (const v of cell.vertices) {
 			if (zmax == null || v[2] > zmax) zmax = v[2];
@@ -2245,7 +2248,7 @@ class VisTubes extends Geometry {
 
 const visTubes = new VisTubes(true);
 const visTransparentTubes = new VisTubes(false);
-const visTemplateTubes = new VisTubes(true);
+const visTemplateTubes = new VisTubes(true, false);
 window.visTubes = visTubes; //DEBUG
 window.visTransparentTubes = visTransparentTubes; //DEBUG
 window.visTemplateTubes = visTemplateTubes; //DEBUG
