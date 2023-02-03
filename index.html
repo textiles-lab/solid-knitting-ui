@@ -179,7 +179,7 @@ body {
 	<select id="select-yarn-vis-option">
 		<option value="Tube" selected>Tube</option>
 		<option value="Wire">Wire</option>
-		<option value="Block">Block</option>
+		<option value="Body">Body</option>
 	</select>
 </div>
 
@@ -488,7 +488,10 @@ function bodyDirty() {
 window.bodyDirty = bodyDirty;
 
 function templateDirty() {
+	visTemplateBody.dirty = true;
+	visTemplateWire.dirty = true;
 	visTemplateTubes.dirty = true;
+	visTemplateWireCells.dirty = true;
 	requestRedraw();
 }
 window.templateDirty = templateDirty;
@@ -1620,6 +1623,7 @@ class VisBody extends Geometry {
 	}
 }
 const visBody = new VisBody();
+const visTemplateBody = new VisBody();
 window.visBody = visBody; //DEBUG
 
 //compute cell center point, face centers, and port vertices (used for drawing stuff):
@@ -1832,6 +1836,7 @@ class VisWire extends Geometry {
 }
 
 const visWire = new VisWire();
+const visTemplateWire = new VisWire();
 window.visWire = visWire; //DEBUG
 
 
@@ -1988,6 +1993,7 @@ class VisWireCells extends Geometry {
 }
 
 const visWireCells = new VisWireCells();
+const visTemplateWireCells = new VisWireCells();
 window.visWireCells = visWireCells; //DEBUG
 
 class VisTubes extends Geometry {
@@ -2418,8 +2424,8 @@ let yarnVisMode = "Tube";
 function setYarnVisMode(mode) {
 	if (mode == "Wire") {
 		yarnVisMode = "Wire";
-	} else if (mode == "Block") {
-		yarnVisMode = "Block";
+	} else if (mode == "Body") {
+		yarnVisMode = "Body";
 	} else if (mode == "Tube") {
 		yarnVisMode = "Tube";
 	} else {
@@ -2444,6 +2450,7 @@ function setViewMode(mode) {
 
 // set up response to clicking on visualization options
 document.getElementById("select-yarn-vis-option").addEventListener("change", function() {setYarnVisMode(this.value);});
+setYarnVisMode(document.getElementById("select-yarn-vis-option").value);
 
 for (const elem of document.getElementById('layer-visibility-form').children) {
 	elem.addEventListener('click', function() {bodyDirty();});
@@ -2469,7 +2476,7 @@ function redrawPattern(pixelRatio) {
 		visWireCells.set(body);
 		delete visWireCells.dirty;
 	}
-	if (yarnVisMode == "Block" && visBody.dirty) {
+	if (yarnVisMode == "Body" && visBody.dirty) {
 		visBody.set(body);
 		delete visBody.dirty;
 	}
@@ -2477,7 +2484,6 @@ function redrawPattern(pixelRatio) {
 		visTubes.set(body);
 		visTransparentTubes.set(body);
 		delete visTubes.dirty;
-
 	}
 
 	visDebug.update();
@@ -2503,7 +2509,7 @@ function redrawPattern(pixelRatio) {
 	gl.lineWidth(1.0 * pixelRatio);
 	grid.draw(colorProgram);
 
-	if (yarnVisMode == "Block") {
+	if (yarnVisMode == "Body") {
 		visBody.draw(colorProgram);
 	} else if (yarnVisMode == "Wire") {
 		visWire.draw(colorProgram);
@@ -2554,7 +2560,22 @@ function redrawPattern(pixelRatio) {
 
 function redrawTemplate(pixelRatio) {
 	// update the geometry
-	if (visTemplateTubes.dirty) {
+	if (yarnVisMode == "Wire" && visTemplateWire.dirty) {
+		const selectedCell = sv.Cell.fromTemplate(template, gm.identityTransform());
+		visTemplateWire.set({cells: [selectedCell]});
+		delete visTemplateWire.dirty;
+	}
+	if (visTemplateWireCells.dirty) {
+		const selectedCell = sv.Cell.fromTemplate(template, gm.identityTransform());
+		visTemplateWireCells.set({cells: [selectedCell]});
+		delete visTemplateWireCells.dirty;
+	}
+	if (yarnVisMode == "Body" && visTemplateBody.dirty) {
+		const selectedCell = sv.Cell.fromTemplate(template, gm.identityTransform());
+		visTemplateBody.set({cells: [selectedCell]});
+		delete visTemplateBody.dirty;
+	}
+	if (yarnVisMode == "Tube" && visTemplateTubes.dirty) {
 		const selectedCell = sv.Cell.fromTemplate(template, gm.identityTransform());
 		visTemplateTubes.set({cells: [selectedCell]});
 		delete visTemplateTubes.dirty;
@@ -2577,15 +2598,15 @@ function redrawTemplate(pixelRatio) {
 	grid.draw(colorProgram);
 
 	// TODO: support other visualization modes
-	if (yarnVisMode == "Block") {
-		console.error("Rendering a template in block mode not supported yet");
+	if (yarnVisMode == "Body") {
+		visTemplateBody.draw(colorProgram);
 	} else if (yarnVisMode == "Wire") {
-		console.error("Rendering a template in wire mode not supported yet");
+		visTemplateWire.draw(colorProgram);
 	} else if (yarnVisMode == "Tube") {
-		gl.useProgram(textureProgram.program);
-		
-		visTemplateTubes.draw(textureProgram);
+		visTemplateWireCells.draw(colorProgram);
 
+		gl.useProgram(textureProgram.program);
+		visTemplateTubes.draw(textureProgram);
 		gl.useProgram(colorProgram.program);
 	}
 
@@ -2677,7 +2698,7 @@ function redraw() {
 		gl.activeTexture(gl.TEXTURE0);
 		gl.bindTexture(gl.TEXTURE_2D, window.arrowTexture);
 		gl.uniform1i(textureProgram.uniformLocations.uSampler, 0);
-		
+
 		gl.useProgram(colorProgram.program);
 	}
 	
