@@ -372,8 +372,11 @@ import {Geometry, Program, loadTexture} from './code/gl.mjs';
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Getting_started_with_WebGL
 
 const canvas = document.getElementById("canvas");
-const gl = canvas.getContext('webgl', {alpha:false});
+const gl = canvas.getContext('webgl', {alpha:false, antialias:false});
 window.gl = gl; //DEBUG
+
+//enable extensions:
+const ext_WEBGL_depth_texture = gl.getExtension("WEBGL_depth_texture"); //used for postprocessing
 
 const STATUS_LINE = document.getElementById("status-line");
 window.STATUS_LINE = STATUS_LINE;
@@ -2536,6 +2539,176 @@ for (const elem of document.getElementById('show-yarn-direction-form').children)
 document.getElementById("select-viewmode-option").addEventListener("change", function() {setViewMode(this.value);});
 setViewMode(document.getElementById("select-viewmode-option").value);
 
+const postprocessProgram = new Program(gl,
+`
+	attribute vec2 Position;
+	attribute vec2 TexCoord;
+	varying vec2 texCoord;
+	void main() {
+		gl_Position = vec4(Position,0,1);
+		texCoord = TexCoord;
+	}
+`,`
+	uniform sampler2D TEX;
+	uniform sampler2D DEPTH;
+	uniform highp vec2 PX;
+	varying highp vec2 texCoord;
+	void main() {
+		//gl_FragColor = vec4(1,0,1,1);
+		//gl_FragColor = vec4(texCoord,1,1);
+		//gl_FragColor = texture2D(TEX, gl_FragCoord.xy/1000.0);
+		//gl_FragColor = vec4(texture2D(TEX, texCoord).r, texCoord, 1);
+		mediump vec3 color = texture2D(TEX, texCoord).rgb;
+
+		//this is taken from autoknit:
+		highp float ref = texture2D(DEPTH, texCoord).r;
+		highp float z = min(0.9999, ref);
+		//over from depth component space -> projected z value:
+		z = 2.0 * (z - 0.5);
+		//from projected z value to world z value:
+		#define NEAR 0.1
+		z = (2.0 * NEAR) / (z - 1.0);
+		//z is now in range [-inf, -NEAR]
+		z += 0.5; //depth offset for maximum shade
+		//back to projected space:
+		z = 1.0 + (2.0 * NEAR) / z;
+		z = 0.5 * z + 0.5;
+		highp float amt = 1.0 / (z - ref);
+
+		#define DO(X,Y) { \
+			highp float val = texture2D(DEPTH, texCoord+vec2(X,Y)*PX).r; \
+			tint += clamp((val - ref) * amt, 0.0, 1.0); \
+		}
+		highp float tint = 0.0;
+		           DO(-1,  2) DO( 0,  2) DO( 1,  2)          
+		DO(-2,  1) DO(-1,  1) DO( 0,  1) DO( 1,  1) DO(2,  1)
+		DO(-2,  0) DO(-1,  0)            DO( 1,  0) DO(2,  0)
+		DO(-2, -1) DO(-1, -1) DO( 0, -1) DO( 1, -1) DO(2, -1)
+		           DO(-1, -2) DO( 0, -2) DO( 1, -2)          
+		tint = 1.0 - (tint / 20.0);
+		color *= tint;
+		gl_FragColor = vec4(color,1);
+	}
+`);
+window.postprocessProgram = postprocessProgram;
+
+
+//Because lack of gl_VertexID in WEBGL1's GLSL means we can't do the lazy fullscreen-triangle-generated-by-vertex-shader trick:
+class FullscreenTriangle extends Geometry {
+	constructor() {
+		const buffer = gl.createBuffer();
+		const attribs = {
+			Position:{buffer:buffer, size:2, type:gl.FLOAT, normalize:false, stride:4*4, offset:0},
+			TexCoord:{buffer:buffer, size:2, type:gl.FLOAT, normalize:false, stride:4*4, offset:2*4}
+		};
+		super(gl, attribs, gl.TRIANGLES, 0);
+		let data = new Float32Array([ -1,-1, 0,0,   3,-1, 2,0,  -1,3, 0,2 ]);
+		this.buffer = buffer;
+		this.count = 3;
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+		gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+	}
+}
+const fullscreenTriangle = new FullscreenTriangle();
+window.fullscreenTriangle = fullscreenTriangle; //DEBUG
+
+class Postprocess {
+	constructor() {
+		this.w = 0;
+		this.h = 0;
+		if (ext_WEBGL_depth_texture) {
+			console.log("Postprocessing enabled.");
+			this.enabled = true;
+		} else {
+			console.log("Don't have WEBGL_depth_texture; postprocessing disabled.");
+			this.enabled = false;
+		}
+	}
+	resize(w,h) {
+		if (!this.enabled) return;
+		if (w === this.w && h === this.h) return;
+		this.w = w;
+		this.h = h;
+
+		if (!('depth_tex' in this)) this.depth_tex = gl.createTexture();
+		gl.bindTexture(gl.TEXTURE_2D, this.depth_tex);
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, w, h, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.bindTexture(gl.TEXTURE_2D, null);
+
+		if (!('color_tex' in this)) this.color_tex = gl.createTexture();
+		gl.bindTexture(gl.TEXTURE_2D, this.color_tex);
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, w, h, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.bindTexture(gl.TEXTURE_2D, null);
+
+		if (!('fb' in this)) {
+			this.fb = gl.createFramebuffer();
+			gl.bindFramebuffer(gl.FRAMEBUFFER, this.fb);
+			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.color_tex, 0);
+			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.depth_tex, 0);
+			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+		}
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.fb);
+		const complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+		if (complete !== gl.FRAMEBUFFER_COMPLETE) {
+			console.log(`Failed to resize postprocessing framebuffer: ${complete}`);
+		}
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+	}
+	//call before rendering that you want to postprocess:
+	begin() {
+		if (!this.enabled) return;
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.fb);
+	}
+	//call to copy post-processed stuff back to the screen:
+	end() {
+		if (!this.enabled) return;
+
+		//for DEBUG purposes:
+		if (!('check_tex' in this)) {
+			this.check_tex = gl.createTexture();
+			gl.bindTexture(gl.TEXTURE_2D, this.check_tex);
+			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 2, 2, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([
+				255,255,255,255,  0,0,0,255,
+				0,0,0,255,   255,255,255,255
+			]));
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+			gl.bindTexture(gl.TEXTURE_2D, 0);
+		}
+
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+		gl.activeTexture(gl.TEXTURE1);
+		gl.bindTexture(gl.TEXTURE_2D, this.depth_tex);
+
+		gl.activeTexture(gl.TEXTURE0);
+		gl.bindTexture(gl.TEXTURE_2D, this.color_tex);
+
+		gl.useProgram(postprocessProgram.program);
+		gl.uniform1i(postprocessProgram.uniformLocations.TEX, 0);
+		gl.uniform1i(postprocessProgram.uniformLocations.DEPTH, 1);
+		gl.uniform2f(postprocessProgram.uniformLocations.PX, 1 / canvas.width, 1 / canvas.height);
+
+		gl.disable(gl.DEPTH_TEST);
+		gl.disable(gl.BLEND);
+		console.log("drawing");
+		gl.clearColor(0.5,0.5,0.5,1.0);
+		gl.clear(gl.COLOR_BUFFER_BIT);
+		fullscreenTriangle.draw(postprocessProgram);
+	}
+}
+const postprocess = new Postprocess();
+window.postprocess = postprocess; //DEBUG
+
 function redrawPattern(pixelRatio) {
 	//update mouse info:
 	if (MOUSE.dirty) setMouseOver();
@@ -2574,7 +2747,6 @@ function redrawPattern(pixelRatio) {
 		}
 		STATUS_LINE.innerText = info;
 	}
-
 
 	gl.lineWidth(2.0 * pixelRatio);
 	visDebug.draw(colorProgram);
@@ -2719,6 +2891,10 @@ function redraw() {
 		camera.aspect = width / height;
 	})();
 
+	//- - - - - - - - - - - - - - - - - - - -
+	postprocess.resize(canvas.width, canvas.height);
+	postprocess.begin();
+
 	gl.clearColor(0.1, 0.1, 0.1, 1.0);
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	gl.enable(gl.DEPTH_TEST);
@@ -2781,6 +2957,9 @@ function redraw() {
 	} else if (viewMode === ViewMode.Template) {
 		redrawTemplate(pixelRatio);
 	}
+
+	postprocess.end();
+	//- - - - - - - - - - - - - - - - - - - -
 
 	
 }
