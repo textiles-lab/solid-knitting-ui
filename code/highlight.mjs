@@ -9,7 +9,7 @@ function tokenize(line) {
 			regex : /^;.*$/
 		}, {
 			token : "location",
-			regex : /^((h(f|b)[0-9]*,[0-9]*)|(f|b[0-9]*))/
+			regex : /^((h(f|b)[0-9]*,[0-9]*)|((f|b)[0-9]*))/
 		}, {
 			token : "string",
 			regex : /^"[^"]*"/
