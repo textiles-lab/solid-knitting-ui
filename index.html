@@ -31,7 +31,7 @@ body {
 
 #views {
 	display:grid;
-	width:99vw;
+/*	width:99vw;*/
 	height:99vh;
 
 	grid-template-columns: 1fr auto ;
@@ -63,7 +63,7 @@ body {
 	line-height:1;
 	border: none;
 	border-radius:2px;
-	height:100%;
+/*	height:100%;*/
 	font-size:inherit;
 }
 
@@ -98,29 +98,39 @@ body {
 	bottom:0;
 	background:#fff8;
 }
-#view-library {
+#sidebar {
 	grid-column: 2 ;
 	grid-row: 2 ;
 
 	display:grid;
-	grid-template-rows: auto 1fr auto;
-	overflow:auto;
+	grid-template-rows: 1fr min-content;
+	overflow-y:auto;
+	grid-row-gap: 0.25em;
+	font-size: 12pt;
+	width: 24em;
 /*	background: #00f8 ;*/
 }
-#view-library h1 {
-	grid-row: 1 ;
+#sidebar h2, summary {
 	font-size:20px;
+	font-weight: bold;
 	line-height:20px;
 	padding:0;
 	margin:0 5px;
 }
 #library {
-	grid-row: 2 ;
-	list-style:none;
+/*	grid-row: 2 ;*/
 	margin:0;
-	margin-bottom: 1em;
+	padding:0;
+	overflow: auto;
+}
+#library-list {
+/*	grid-row: 2 ;*/
+	margin:0;
 	padding:0;
 	overflow-y:scroll;
+}
+#library ul {
+	list-style:none;
 }
 #library li {
 	display:block;
@@ -140,12 +150,6 @@ body {
 	border: 2pt solid black;
 }
 
-#view-shortcuts summary {
-	font-size:20px;
-	line-height:20px;
-	padding:0;
-	margin:0 5px;
-}
 #shortcuts {
 	grid-row: 3 ;
 	margin:0;
@@ -158,6 +162,37 @@ body {
 }
 #shortcuts .key {
 	font-family: monospace;
+}
+#view-knitout {
+	margin: 0;
+	padding: 1em;
+	overflow: auto;
+	font-family: monospace;
+}
+#view-knitout .line {
+} 
+#view-knitout .line:empty:before {
+	content: "\200b"; /* zero width space to keep line height, per https://stackoverflow.com/a/29354766*/
+}
+
+/* code styling */
+#view-knitout .comment {
+	color: #74705D;
+}
+#view-knitout .location {
+	color: #A6E42C;
+}
+#view-knitout .direction {
+	color: #AC7DFF;
+}
+#view-knitout .keyword {
+	color: #FF2275;
+}
+#view-knitout .carrier {
+	color: #EEEEEE;
+}
+#view-knitout .string {
+	color: #EDE277;
 }
 </style>
 </head>
@@ -207,6 +242,14 @@ body {
 		<option value="Template">Template</option>
 	</select>
 </div>
+
+<div id="sidebar-options" class="controls-section">
+	View Mode:
+	<select id="select-sidebar-option">
+		<option value="Library" selected>Library</option>
+		<option value="Knitout">Knitout</option>
+	</select>
+</div>
 </div>
 
 <!-- 3d view -->
@@ -216,14 +259,20 @@ body {
 </div>
 
 <!-- library panel -->
-<div id="view-library">
-<h1>Blocks:</h1>
-<ul id="library">
+<div id="sidebar">
+<div id="library">
+<h2>Blocks:</h2>
+<ul id="library-list">
 </ul>
+</div>
+
+<!-- preview generated knitout -->
+<!-- Use the monokai background color by default - prevents white background jumping jarringly to dark gray -->
+<div id="view-knitout" style="background-color: #272822; color:white;">
+</div>
 
 <!-- also list shortcuts -->
-<div id="view-shortcuts">
-<details open>
+<details id="view-shortcuts" open>
 <summary>Commands:</summary>
 <ul id="shortcuts">
 	<li> <span class="key">space</span> or <span class="key">R</span>: relax shape</li>
@@ -239,9 +288,8 @@ body {
 </ul>
 </details>
 </div>
-</div>
 
-</div>
+
 
 <!-- full-window drop target -->
 <div id="dropTarget"></div>
@@ -365,6 +413,7 @@ window.template = null;
 window.body = new sv.Body();
 
 import {Geometry, Program, loadTexture} from './code/gl.mjs';
+import {writeHighlightedCode} from './code/highlight.mjs';
 
 //-----------------------------------------------------------------------------
 // Adapted from yarn visualizer code (from smobj)
@@ -723,7 +772,7 @@ function stripSpaces(str) {
 
 function listTemplates(templates) {
 // <ul id="library">
-	const library_list = document.getElementById("library");
+	const library_list = document.getElementById("library-list");
 	library_list.textContent = ''; // clear anything currently in list
 
 	// sort templates by signature
@@ -2520,6 +2569,19 @@ function setViewMode(mode) {
 	}
 	requestRedraw()
 }
+function setSidebar(mode) {
+	const library = document.getElementById("library");
+	const knitout = document.getElementById("view-knitout");
+	if (mode == "Library") {
+		library.style.display="block";
+		knitout.style.display="none";
+	} else if (mode == "Knitout") {
+		library.style.display="none";
+		knitout.style.display="block";
+	} else {
+		console.log("Error, invalid sidebar mode ", mode);
+	}
+}
 
 // set up response to clicking on visualization options
 document.getElementById("select-yarn-vis-option").addEventListener("change", function() {setYarnVisMode(this.value);});
@@ -2535,6 +2597,215 @@ for (const elem of document.getElementById('show-yarn-direction-form').children)
 
 document.getElementById("select-viewmode-option").addEventListener("change", function() {setViewMode(this.value);});
 setViewMode(document.getElementById("select-viewmode-option").value);
+
+document.getElementById("select-sidebar-option").addEventListener("change", function() {setSidebar(this.value);});
+setSidebar(document.getElementById("select-sidebar-option").value);
+
+writeHighlightedCode(`;!solid-knitout-VERSION
+;;<Machine details>
+;;Carriers: 1
+
+;; 3x3x3.block solid knitout
+
+; =============================
+;          First Layer      
+; =============================
+
+; cast on / first row
+tuck + hf1,4 1
+tuck + hf2,4 1
+tuck + hf3,4 1
+
+pause "Please set up caston on machine"
+
+knit - b3 hf3,4 1
+knit - b2 hf2,4 1
+knit - b1 hf1,4 1
+
+release f
+
+; second row
+tuck + hf1,5 1
+tuck + hf2,5 1
+tuck + hf3,5 1
+
+xfer b1 hf1,5
+xfer b2 hf2,5
+xfer b3 hf3,5
+
+knit + b1 hf1,5 1
+knit + b2 hf2,5 1
+knit + b3 hf3,5 1
+
+release f
+
+; third row
+tuck - hf3,6 1
+tuck - hf2,6 1
+tuck -  hf1,6 1
+
+xfer b3 hf3,6
+xfer b2 hf2,6
+xfer b1 hf1,6
+
+knit - b3 hf3,6 1
+knit - b2 hf2,6 1
+knit - b1 hf1,6 1
+
+release f
+
+; xfer the final row
+
+xfer b1 hf1,7
+xfer b2 hf2,7
+xfer b3 hf3,7
+
+; =============================
+;          Second Layer      
+; =============================
+
+; first row
+tuck + hb1,4 1
+tuck + hb2,4 1
+tuck + hb3,4 1
+
+xfer hf1,7 f1
+xfer hf2,7 f2
+xfer hf3,7 f3
+
+xfer f1 hb1,4 
+xfer f2 hb2,4 
+xfer f3 hb3,4 
+
+xfer hf1,6 f1
+xfer hf2,6 f2
+xfer hf3,6 f3
+
+knit + f1 hb1,4 1
+knit + f2 hb2,4 1
+knit + f3 hb3,4 1
+
+release b
+
+; second row
+tuck - hb3,5 1
+tuck - hb2,5 1
+tuck - hb1,5 1
+
+xfer f3 hb3,5
+xfer f2 hb2,5
+xfer f1 hb1,5
+
+xfer hf3,5 f3
+xfer hf2,5 f2
+xfer hf1,5 f1
+
+knit - f3 hb3,5 1
+knit - f2 hb2,5 1
+knit - f1 hb1,5 1
+
+release b
+
+; third row
+tuck + hb1,6 1
+tuck + hb2,6 1
+tuck + hb3,6 1
+
+xfer f1 hb1,6 
+xfer f2 hb2,6 
+xfer f3 hb3,6 
+
+xfer hf1,4 f1
+xfer hf2,4 f2
+xfer hf3,4 f3
+
+knit + f1 hb1,6 1
+knit + f2 hb2,6 1
+knit + f3 hb3,6 1
+
+release b
+
+;xfer the final row
+xfer f3 hb2,7
+xfer f2 hb2,7
+xfer f1 hb1,7
+
+
+; ============================
+;          Third Layer      
+; ============================
+
+; first row
+tuck - hf3,4 1
+tuck - hf2,4 1
+tuck - hf1,4 1
+
+xfer hb3,7 b3
+xfer hb2,7 b2
+xfer hb1,7 b1
+
+xfer b3 hf3,4 
+xfer b2 hf2,4 
+xfer b1 hf1,4 
+
+xfer hb3,6 b3
+xfer hb2,6 b2
+xfer hb1,6 b1
+
+knit - b3 hf3,4 1
+knit - b2 hf2,4 1
+knit - b1 hf1,4 1
+
+release f
+
+; second row
+tuck + hf1,5 1
+tuck + hf2,5 1
+tuck + hf3,5 1
+
+xfer b1 hf1,5 
+xfer b2 hf2,5 
+xfer b3 hf3,5 
+
+xfer hb1,5 b1
+xfer hb2,5 b2
+xfer hb3,5 b3
+
+knit + b1 hf1,5 1
+knit + b2 hf2,5 1
+knit + b3 hf3,5 1
+
+release f
+
+; third row
+tuck - hf3,6 1
+tuck - hf2,6 1
+tuck - hf1,6 1
+
+xfer b3 hf3,6 
+xfer b2 hf2,6 
+xfer b1 hf1,6 
+
+xfer hb3,4 b3
+xfer hb2,4 b2
+xfer hb1,4 b1
+
+knit - b3 hf3,6 1
+Knit - b2 hb2,6 1
+knit - b1 hf1,6 1
+
+release f
+
+;; xfer the final row
+
+xfer b1 hf1,7 
+xfer b2 hf2,7 
+xfer b3 hf3,7`,
+document.getElementById("view-knitout"));
+
+// writeHighlightedCode(`tuck + hf1,4 1
+// `,
+// document.getElementById("view-knitout"));
 
 function redrawPattern(pixelRatio) {
 	//update mouse info:
@@ -2850,5 +3121,6 @@ async function init() {
 init();
 
 </script>
+
 </body>
 </html>
