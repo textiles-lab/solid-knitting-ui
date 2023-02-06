@@ -21,7 +21,7 @@ function tokenize(line) {
 			regex : /^(\+|-)/
 		}, {
 			token : "carrier",
-			regex : /^\s(\w+)$/
+			regex : /^(\w+)$/
 		}, {
 			token : "text",
 			regex : /^\s+/
