@@ -2663,14 +2663,14 @@ xfer b3 hf3,7
 ;          Second Layer      
 ; =============================
 
+xfer hf1,7 f1
+xfer hf2,7 f2
+xfer hf3,7 f3
+
 ; first row
 tuck + hb1,4 1
 tuck + hb2,4 1
 tuck + hb3,4 1
-
-xfer hf1,7 f1
-xfer hf2,7 f2
-xfer hf3,7 f3
 
 xfer f1 hb1,4 
 xfer f2 hb2,4 
@@ -2734,14 +2734,14 @@ xfer f1 hb1,7
 ;          Third Layer      
 ; ============================
 
+xfer hb3,7 b3
+xfer hb2,7 b2
+xfer hb1,7 b1
+
 ; first row
 tuck - hf3,4 1
 tuck - hf2,4 1
 tuck - hf1,4 1
-
-xfer hb3,7 b3
-xfer hb2,7 b2
-xfer hb1,7 b1
 
 xfer b3 hf3,4 
 xfer b2 hf2,4 
