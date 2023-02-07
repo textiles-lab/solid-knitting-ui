@@ -57,7 +57,6 @@ export function writeHighlightedCode(code, target, consolidate=true) {
 	target.textContent = ''; // clear anything currently in target
 
 	const orderedCode = consolidate ? groupPasses(code) : code;
-	console.log(orderedCode);
 
 	const lines = orderedCode.split("\n");
 	for (let line of lines) {
@@ -78,10 +77,10 @@ export function writeHighlightedCode(code, target, consolidate=true) {
 			span.innerHTML = token.text;
 			span.classList.add(token.token);
 
-			const tooltip = document.createElement('div');
-			tooltip.innerHTML = token.token;
-			tooltip.classList.add("tooltiptext");
-			span.appendChild(tooltip);
+			// const tooltip = document.createElement('div');
+			// tooltip.innerHTML = token.token;
+			// tooltip.classList.add("tooltiptext");
+			// span.appendChild(tooltip);
 
 			item.appendChild(span);
 		}
