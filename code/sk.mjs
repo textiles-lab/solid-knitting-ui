@@ -1,7 +1,8 @@
 'use strict'; //likely to be redundant since this is a module
 
-// inspired by ace highlighting https://github.com/ajaxorg/ace/blob/master/src/mode/text_highlight_rules.js
+// "solid knitout" tools
 
+// inspired by ace highlighting https://github.com/ajaxorg/ace/blob/master/src/mode/text_highlight_rules.js
 function tokenize(line) {
 
 	const rules = [ {
@@ -70,4 +71,10 @@ export function writeHighlightedCode(code, target) {
 	}
 }
 
+export function groupBlocks() {
 
+}
+
+export function groupPasses() {
+	
+}

@@ -65,6 +65,7 @@ body {
 	border-radius:2px;
 /*	height:100%;*/
 	font-size:inherit;
+	font-family: sans-serif;
 }
 
 .controlsButton:hover {
@@ -207,6 +208,7 @@ body {
 <!-- <button id="benchmark">benchmark</button>
 <span id="benchmark-result"></span> -->
 <button id="save" class="controlsButton">Save</button>
+<button id="save-yarn-path" class="controlsButton">Save Yarn Path</button>
 
 <div id="yarn-vis-options" class="controls-section">
 	Yarn Visualization:
@@ -380,6 +382,29 @@ document.getElementById("save").addEventListener('click', function(evt){
 	const text = JSON.stringify(body.toData());
 	fileSave(text, "solid-knitting.body");
 });
+document.getElementById("save-yarn-path").addEventListener('click', function(evt){
+	console.log("Saving yarn path");
+	let text = "";
+	let iV = 1;
+	for (const cell of body.cells) {
+		const xf = cell.xform;
+		for (const yarn of cell.template.yarns) {
+			for (let iP=0; iP<yarn.pts.length; ++iP) {
+				const pt = yarn.pts[iP];
+				let at = gm.mul_mat4x3_vec4(xf, [...pt, 1]);
+				text += "v " + at[0]  + " " + at[1] + " " + at[2] + "\n";
+			}
+			text += "l ";
+			for (let iP=0; iP<yarn.pts.length; ++iP) {
+				text += iV + " ";
+				++iV;
+			}
+			text += "\n";
+		}
+
+	}
+	fileSave(text, "solid-knitting-yarn-path.obj");
+});
 
 //from knitout-live-visualizer:
 function fileSave(sourceText, fileIdentity) {
@@ -412,7 +437,7 @@ window.template = null;
 window.body = new sv.Body();
 
 import {Geometry, Program, loadTexture} from './code/gl.mjs';
-import {writeHighlightedCode} from './code/highlight.mjs';
+import {writeHighlightedCode, groupBlocks, groupPasses} from './code/sk.mjs';
 
 //-----------------------------------------------------------------------------
 // Adapted from yarn visualizer code (from smobj)
@@ -2799,7 +2824,9 @@ release f
 
 xfer b1 hf1,7 
 xfer b2 hf2,7 
-xfer b3 hf3,7`,
+xfer b3 hf3,7
+
+pause "Please bind off the final row"`,
 document.getElementById("view-knitout"));
 
 // writeHighlightedCode(`tuck + hf1,4 1
