@@ -21,7 +21,7 @@ function tokenize(line) {
 			token : "direction",
 			regex : /^(\+|-)/
 		}, {
-			token : "witespace",
+			token : "whitespace",
 			regex : /^\s+/
 		}, { // for now, assume that anything else is a carrier. TODO: match carriers from carrier list at the top of the file
 			token : "carrier",
@@ -66,10 +66,23 @@ export function writeHighlightedCode(code, target, consolidate=true) {
 		const item = document.createElement('div');
 		// item.innerHTML = line;
 		item.classList.add("line");
+		if (tokens.length === 0) {
+			const span = document.createElement('span');
+			span.classList.add("whitespace");
+			span.innerHTML = " "; // add space to keep line height
+
+			item.appendChild(span);
+		}
 		for (let token of tokens) {
-			const span = document.createElement('pre'); // use pre to preserve whitespace
+			const span = document.createElement('span');
 			span.innerHTML = token.text;
 			span.classList.add(token.token);
+
+			const tooltip = document.createElement('div');
+			tooltip.innerHTML = token.token;
+			tooltip.classList.add("tooltiptext");
+			span.appendChild(tooltip);
+
 			item.appendChild(span);
 		}
 		target.appendChild(item);

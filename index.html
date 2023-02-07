@@ -168,18 +168,30 @@ body {
 	padding: 1em;
 	overflow: auto;
 	font-family: monospace;
-}
-#view-knitout .line {
-} 
-#view-knitout .line:empty:before {
-	content: "\200b"; /* zero width space to keep line height, per https://stackoverflow.com/a/29354766*/
+	background-color: #272822;
+	color: white;
 }
 
 /* code styling */
-#view-knitout pre { /* use pre to preserve whitespace */
-	display: inline;
-	margin: 0;
-	padding: 0;
+#view-knitout span {
+	position: relative; /* for tooltips */
+	white-space: pre; /* preserve whitespace */
+}
+#view-knitout span .tooltiptext {
+	/* https://www.w3schools.com/css/css_tooltip.asp */
+	visibility: hidden;
+	position: absolute;
+	z-index: 1;
+	background-color: #202010;
+	padding: 0.5em 1em;
+	color: white;
+	top: 0;
+	left: 4em;
+	border: 1pt solid #555;
+	border-radius: 0.25em;
+}
+#view-knitout span:hover .tooltiptext {
+	visibility: visible;
 }
 #view-knitout .comment {
 	color: #74705D;
@@ -281,7 +293,7 @@ body {
 
 <!-- preview generated knitout -->
 <!-- Use the monokai background color by default - prevents white background jumping jarringly to dark gray -->
-<div id="view-knitout" style="background-color: #272822; color:white;">
+<div id="view-knitout">
 </div>
 
 <!-- also list shortcuts -->
