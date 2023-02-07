@@ -251,6 +251,13 @@ body {
 		<option value="Knitout">Knitout</option>
 	</select>
 </div>
+
+<div class="controls-section">
+	<form id="group-knitout-passes-form" style="display:inline-block;">
+		<label for="group-knitout-passes">Group knitout passes:</label>
+		<input type="checkbox" name="group-knitout-passes" checked>
+	</form>
+</div>
 </div>
 
 <!-- 3d view -->
@@ -2625,11 +2632,12 @@ setViewMode(document.getElementById("select-viewmode-option").value);
 document.getElementById("select-sidebar-option").addEventListener("change", function() {setSidebar(this.value);});
 setSidebar(document.getElementById("select-sidebar-option").value);
 
-writeHighlightedCode(`;!solid-knitout-VERSION
+
+const cubeKnitout = `;!solid-knitout-VERSION
 ;;<Machine details>
 ;;Carriers: 1
 
-;; 3x3x3.block solid knitout
+; 3x3x3.block solid knitout
 
 ; =============================
 ;          First Layer      
@@ -2650,30 +2658,30 @@ release f
 
 ; second row
 tuck + hf1,5 1
-tuck + hf2,5 1
-tuck + hf3,5 1
-
 xfer b1 hf1,5
-xfer b2 hf2,5
-xfer b3 hf3,5
-
 knit + b1 hf1,5 1
+
+tuck + hf2,5 1
+xfer b2 hf2,5
 knit + b2 hf2,5 1
+
+tuck + hf3,5 1
+xfer b3 hf3,5
 knit + b3 hf3,5 1
 
 release f
 
 ; third row
 tuck - hf3,6 1
-tuck - hf2,6 1
-tuck -  hf1,6 1
-
 xfer b3 hf3,6
-xfer b2 hf2,6
-xfer b1 hf1,6
-
 knit - b3 hf3,6 1
+
+tuck - hf2,6 1
+xfer b2 hf2,6
 knit - b2 hf2,6 1
+
+tuck - hf1,6 1
+xfer b1 hf1,6
 knit - b1 hf1,6 1
 
 release f
@@ -2694,57 +2702,54 @@ xfer hf3,7 f3
 
 ; first row
 tuck + hb1,4 1
-tuck + hb2,4 1
-tuck + hb3,4 1
-
 xfer f1 hb1,4 
-xfer f2 hb2,4 
-xfer f3 hb3,4 
-
 xfer hf1,6 f1
-xfer hf2,6 f2
-xfer hf3,6 f3
-
 knit + f1 hb1,4 1
+
+tuck + hb2,4 1
+xfer f2 hb2,4
+xfer hf2,6 f2
 knit + f2 hb2,4 1
+
+tuck + hb3,4 1
+xfer f3 hb3,4 
+xfer hf3,6 f3
 knit + f3 hb3,4 1
 
 release b
 
 ; second row
 tuck - hb3,5 1
-tuck - hb2,5 1
-tuck - hb1,5 1
-
 xfer f3 hb3,5
-xfer f2 hb2,5
-xfer f1 hb1,5
-
 xfer hf3,5 f3
-xfer hf2,5 f2
-xfer hf1,5 f1
-
 knit - f3 hb3,5 1
+
+tuck - hb2,5 1
+xfer f2 hb2,5
+xfer hf2,5 f2
 knit - f2 hb2,5 1
+
+tuck - hb1,5 1
+xfer f1 hb1,5
+xfer hf1,5 f1
 knit - f1 hb1,5 1
 
 release b
 
 ; third row
 tuck + hb1,6 1
-tuck + hb2,6 1
-tuck + hb3,6 1
-
 xfer f1 hb1,6 
-xfer f2 hb2,6 
-xfer f3 hb3,6 
-
 xfer hf1,4 f1
-xfer hf2,4 f2
-xfer hf3,4 f3
-
 knit + f1 hb1,6 1
+
+tuck + hb2,6 1
+xfer f2 hb2,6 
+xfer hf2,4 f2
 knit + f2 hb2,6 1
+
+tuck + hb3,6 1
+xfer f3 hb3,6
+xfer hf3,4 f3
 knit + f3 hb3,6 1
 
 release b
@@ -2765,57 +2770,54 @@ xfer hb1,7 b1
 
 ; first row
 tuck - hf3,4 1
-tuck - hf2,4 1
-tuck - hf1,4 1
-
 xfer b3 hf3,4 
-xfer b2 hf2,4 
-xfer b1 hf1,4 
-
 xfer hb3,6 b3
-xfer hb2,6 b2
-xfer hb1,6 b1
-
 knit - b3 hf3,4 1
+
+tuck - hf2,4 1
+xfer b2 hf2,4 
+xfer hb2,6 b2
 knit - b2 hf2,4 1
+
+tuck - hf1,4 1
+xfer b1 hf1,4 
+xfer hb1,6 b1
 knit - b1 hf1,4 1
 
 release f
 
 ; second row
 tuck + hf1,5 1
-tuck + hf2,5 1
-tuck + hf3,5 1
-
 xfer b1 hf1,5 
-xfer b2 hf2,5 
-xfer b3 hf3,5 
-
 xfer hb1,5 b1
-xfer hb2,5 b2
-xfer hb3,5 b3
-
 knit + b1 hf1,5 1
+
+tuck + hf2,5 1
+xfer b2 hf2,5 
+xfer hb3,5 b3
 knit + b2 hf2,5 1
+
+tuck + hf3,5 1
+xfer b3 hf3,5 
+xfer hb2,5 b2
 knit + b3 hf3,5 1
 
 release f
 
 ; third row
 tuck - hf3,6 1
-tuck - hf2,6 1
-tuck - hf1,6 1
-
 xfer b3 hf3,6 
-xfer b2 hf2,6 
-xfer b1 hf1,6 
-
 xfer hb3,4 b3
-xfer hb2,4 b2
-xfer hb1,4 b1
-
 knit - b3 hf3,6 1
-knit - b2 hb2,6 1
+
+tuck - hf2,6 1
+xfer b2 hf2,6 
+xfer hb2,4 b2
+knit - b2 hf2,6 1
+
+tuck - hf1,6 1
+xfer b1 hf1,6 
+xfer hb1,4 b1
 knit - b1 hf1,6 1
 
 release f
@@ -2826,8 +2828,14 @@ xfer b1 hf1,7
 xfer b2 hf2,7 
 xfer b3 hf3,7
 
-pause "Please bind off the final row"`,
-document.getElementById("view-knitout"));
+pause "Please bind off the final row"`;
+
+
+const groupKnitoutPassesCheckbox = document.getElementById('group-knitout-passes-form').children[1];
+writeHighlightedCode(cubeKnitout, document.getElementById("view-knitout"), groupKnitoutPassesCheckbox.checked);
+groupKnitoutPassesCheckbox.addEventListener('click', function() {
+	writeHighlightedCode(cubeKnitout, document.getElementById("view-knitout"), groupKnitoutPassesCheckbox.checked);
+});
 
 // writeHighlightedCode(`tuck + hf1,4 1
 // `,
