@@ -176,6 +176,11 @@ body {
 }
 
 /* code styling */
+#view-knitout pre { /* use pre to preserve whitespace */
+	display: inline;
+	margin: 0;
+	padding: 0;
+}
 #view-knitout .comment {
 	color: #74705D;
 }
@@ -255,7 +260,7 @@ body {
 <div class="controls-section">
 	<form id="group-knitout-passes-form" style="display:inline-block;">
 		<label for="group-knitout-passes">Group knitout passes:</label>
-		<input type="checkbox" name="group-knitout-passes" checked>
+		<input type="checkbox" name="group-knitout-passes">
 	</form>
 </div>
 </div>
@@ -2657,17 +2662,17 @@ knit - b1 hf1,4 1
 release f
 
 ; second row
-tuck + hf1,5 1
-xfer b1 hf1,5
-knit + b1 hf1,5 1
+tuck + hf1,5 1    ; block 1
+xfer b1 hf1,5     ; block 1
+knit + b1 hf1,5 1 ; block 1
 
-tuck + hf2,5 1
-xfer b2 hf2,5
-knit + b2 hf2,5 1
+tuck + hf2,5 1    ; block 2
+xfer b2 hf2,5     ; block 2
+knit + b2 hf2,5 1 ; block 2
 
-tuck + hf3,5 1
-xfer b3 hf3,5
-knit + b3 hf3,5 1
+tuck + hf3,5 1    ; block 3
+xfer b3 hf3,5     ; block 3
+knit + b3 hf3,5 1 ; block 3
 
 release f
 

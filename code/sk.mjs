@@ -21,15 +21,16 @@ function tokenize(line) {
 			token : "direction",
 			regex : /^(\+|-)/
 		}, {
-			token : "carrier",
-			regex : /^(\w+)$/
-		}, {
-			token : "text",
+			token : "witespace",
 			regex : /^\s+/
+		}, { // for now, assume that anything else is a carrier. TODO: match carriers from carrier list at the top of the file
+			token : "carrier",
+			regex : /^\w/
 		}
 	];
 
 	let tokens = [];
+	const origLine = line;
 	while (line.length > 0) {
 		let matched = false;
 		for (let rule of rules) {
@@ -45,6 +46,7 @@ function tokenize(line) {
 		}
 		if (!matched) {
 			tokens.push({token: "unmatched_text", text:line});
+			console.log("failed to match ", line, " from ", origLine);
 			break;
 		}
 	}
@@ -65,7 +67,7 @@ export function writeHighlightedCode(code, target, consolidate=true) {
 		// item.innerHTML = line;
 		item.classList.add("line");
 		for (let token of tokens) {
-			const span = document.createElement('span');
+			const span = document.createElement('pre'); // use pre to preserve whitespace
 			span.innerHTML = token.text;
 			span.classList.add(token.token);
 			item.appendChild(span);
@@ -124,7 +126,7 @@ export function groupPasses(code) {
 					// if line starts with whitespace followed by xfer h, it's an xfer from a holder
 					// TODO: do we care about xfers between holders?
 					xfersFromHolder.push(line);
-				} else if (/h(f|b)[0-9]*,[0-9]\s*$/.test(line)) {
+				} else if (/h(f|b)[0-9]*,[0-9]\s*($|;)/.test(line)) {
 					// if the line ends with a holder location followed by whitespace, it's an xfer to a holder
 					xfersToHolder.push(line);
 				} else {
