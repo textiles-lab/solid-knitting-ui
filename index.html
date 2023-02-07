@@ -227,6 +227,7 @@ body {
 <span id="benchmark-result"></span> -->
 <button id="save" class="controlsButton">Save</button>
 <button id="save-yarn-path" class="controlsButton">Save Yarn Path</button>
+<button id="save-knitout" class="controlsButton">Save Knitout</button>
 
 <div id="yarn-vis-options" class="controls-section">
 	Yarn Visualization:
@@ -463,6 +464,14 @@ window.body = new sv.Body();
 
 import {Geometry, Program, loadTexture} from './code/gl.mjs';
 import {writeHighlightedCode, groupBlocks, groupPasses} from './code/sk.mjs';
+
+document.getElementById("save-knitout").addEventListener('click', function(evt){
+	if (groupKnitoutPassesCheckbox.checked) {
+		fileSave(groupPasses(cubeKnitout), "solid-knitting-pattern.sk");
+	} else {
+		fileSave(cubeKnitout, "solid-knitting-pattern.sk");	
+	}
+});
 
 //-----------------------------------------------------------------------------
 // Adapted from yarn visualizer code (from smobj)
