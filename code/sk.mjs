@@ -10,13 +10,16 @@ function tokenize(line) {
 			regex : /^;.*$/
 		}, {
 			token : "location",
-			regex : /^((h(f|b)[0-9]*,[0-9]*)|((f|b)[0-9]*))/
+			regex : /^((h(f|b)[0-9\*]*,[0-9]*)|((f|b)[0-9]*))/
 		}, {
 			token : "string",
 			regex : /^"[^"]*"/
 		}, {
 			token : "keyword",
-			regex : /^(tuck)|(knit)|(xfer)|(release)|(pause)|(drop)/
+			regex : /^(tuck)|(knit)|(xfer)|(release)|(drop)|(roll)/
+		},  {
+			token : "pause",
+			regex : /^pause(\s+)(.*)\s*$/ // parentheses capture the whitespace and the string part of the command
 		},  {
 			token : "direction",
 			regex : /^(\+|-)/
@@ -35,10 +38,14 @@ function tokenize(line) {
 		let matched = false;
 		for (let rule of rules) {
 			const match = rule.regex.exec(line);
-			// console.log(rule.token, match);
 			if (match !== null) {
-				// console.log(match[0]);
-				tokens.push({token: rule.token, text: match[0]});
+				if (rule.token === "pause") { // handle pause specially to format string
+					tokens.push({token: "keyword", text: "pause"});
+					tokens.push({token: "whitespace", text: match[1]});
+					tokens.push({token: "string", text: match[2]});
+				} else {
+					tokens.push({token: rule.token, text: match[0]});
+				}
 				line = line.substring(match[0].length);
 				matched = true;
 				break;
