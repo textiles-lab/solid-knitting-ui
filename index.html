@@ -687,6 +687,7 @@ function setMouseOver() {
 	}
 
 	for (const cell of body.cells) {
+		if (!checkCellVisible(cell)) continue;
 		{ //ray vs bounding box of cell:
 			let min = gm.vec3(Infinity);
 			let max = gm.vec3(-Infinity);
@@ -1763,6 +1764,19 @@ function rgba2Uint32(color) {
 	return val;
 }
 
+function checkCellVisible(cell) {
+	let zmax = null, zmin = null;
+	for (const v of cell.vertices) {
+		if (zmax == null || v[2] > zmax) zmax = v[2];
+		if (zmin == null || v[2] < zmin) zmin = v[2];
+	}
+
+	// const h = zmax - zmin;
+	const h = 1; //HACK: standardize height to 1?
+	const layer = Math.round((zmax + zmin) / (2 * h));
+	const layerVisibilityBoxes = document.getElementById("layer-visibility-form");
+	return !(layer >= 0 && layer < layerVisibilityBoxes.length) || layerVisibilityBoxes[layer].checked;
+}
 
 class VisBody extends Geometry {
 	static BYTES_PER_ATTRIB = 4*3 + 4*3 + 1*4; //Position, Normal, Color
@@ -2053,7 +2067,7 @@ window.visWire = visWire; //DEBUG
 
 class VisWireCells extends Geometry {
 	static BYTES_PER_ATTRIB = 4*3 + 1*4; //Position, Color
-	constructor() {
+	constructor(respectVisibility=true) {
 		const BYTES_PER_ATTRIB = VisWireCells.BYTES_PER_ATTRIB;
 
 		const buffer = gl.createBuffer();
@@ -2067,6 +2081,7 @@ class VisWireCells extends Geometry {
 		super(gl, attribs, gl.LINES, 0);
 
 		this.buffer = buffer; //needed for set()
+		this.respectVisibility = respectVisibility;
 	}
 	set(body) {
 		const BYTES_PER_ATTRIB = VisWireCells.BYTES_PER_ATTRIB;
@@ -2078,6 +2093,7 @@ class VisWireCells extends Geometry {
 		//figure out how much space to allocate for attributes:
 		let totalAttribs = 0;
 		for (const cell of body.cells) {
+			if (this.respectVisibility && (!checkCellVisible(cell))) continue;
 			for (let fi = 0; fi < cell.template.faces.length; ++fi) {
 				const face = cell.template.faces[fi];
 				totalAttribs += face.indices.length * 2 + 4;
@@ -2103,6 +2119,7 @@ class VisWireCells extends Geometry {
 		}
 
 		for (const cell of body.cells) {
+			if (this.respectVisibility && (!checkCellVisible(cell))) continue;
 			//faces:
 			for (let fi = 0; fi < cell.template.faces.length; ++fi) {
 				if (!SHOW_INTERNAL_FACES) {
@@ -2203,13 +2220,14 @@ class VisWireCells extends Geometry {
 	}
 }
 
-const visWireCells = new VisWireCells();
-const visTemplateWireCells = new VisWireCells();
+const visWireCells = new VisWireCells(false);
+const visTemplateWireCells = new VisWireCells(false);
 window.visWireCells = visWireCells; //DEBUG
+
 
 class VisTubes extends Geometry {
 	static BYTES_PER_ATTRIB = 4*3 + 4*3 + 4*2 + 4*1; //Position, Normal, UV, Color
-	constructor(solid=true, respect_visibility=true) {
+	constructor(solid=true, respectVisibility=true) {
 		const BYTES_PER_ATTRIB = VisTubes.BYTES_PER_ATTRIB;
 
 		const buffer = gl.createBuffer();
@@ -2227,24 +2245,8 @@ class VisTubes extends Geometry {
 		this.resolution = 6;
 		this.radius = 0.08;
 		this.solid = solid;
-		this.respect_visibility = respect_visibility;
+		this.respectVisibility = respectVisibility;
 		this.empty = false;
-	}
-	displayCell(cell) {
-		if (!this.respect_visibility) return true;
-
-		let zmax = null, zmin = null;
-		for (const v of cell.vertices) {
-			if (zmax == null || v[2] > zmax) zmax = v[2];
-			if (zmin == null || v[2] < zmin) zmin = v[2];
-		}
-
-		// const h = zmax - zmin;
-		const h = 1; //HACK: standardize height to 1?
-		const layer = Math.round((zmax + zmin) / (2 * h));
-		const layerVisibilityBoxes = document.getElementById("layer-visibility-form");
-		return !(layer >= 0 && layer < layerVisibilityBoxes.length) || layerVisibilityBoxes[layer].checked;
-
 	}
 	set(body) {
 		const BYTES_PER_ATTRIB = VisTubes.BYTES_PER_ATTRIB;
@@ -2252,12 +2254,12 @@ class VisTubes extends Geometry {
 		//figure out how much space to allocate for attributes:
 		let totalAttribs = 0;
 		for (const cell of body.cells) {
-			if (this.displayCell(cell) != this.solid) continue;
+			if (this.respectVisibility && (checkCellVisible(cell) !== this.solid)) continue;
 			for (const yarn of cell.template.yarns) {
 				totalAttribs += (yarn.pts.length-1) * 6 * this.resolution;
 			}
 		}
-		this.empty = (totalAttribs == 0);
+		this.empty = (totalAttribs === 0);
 
 		const arrayBuffer = new ArrayBuffer(BYTES_PER_ATTRIB * totalAttribs);
 		const data = new DataView(arrayBuffer);
@@ -2338,7 +2340,7 @@ class VisTubes extends Geometry {
 		const col_transparent = rgba2Uint32([...col_rgb, 0.1]);
 		const col_opaque = rgb2Uint32(col_rgb);
 		for (const cell of body.cells) {
-			if (this.displayCell(cell) != this.solid) continue;
+			if (this.respectVisibility && (checkCellVisible(cell) !== this.solid)) continue;
 
 			const col = this.solid ? col_opaque : col_transparent;
 
