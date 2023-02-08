@@ -59,19 +59,22 @@ export function writeHighlightedCode(code, target, consolidate=true) {
 	const orderedCode = consolidate ? groupPasses(code) : code;
 
 	const lines = orderedCode.split("\n");
-	for (let line of lines) {
-		const tokens = tokenize(line);
+	for (let iL=0; iL<lines.length; ++iL) {
+		let tokens = tokenize(lines[iL]);
+		if (tokens.length === 0) tokens = [{text: " ", token: "whitespace"}]; // add space to keep line height s
 
 		const item = document.createElement('div');
-		// item.innerHTML = line;
 		item.classList.add("line");
-		if (tokens.length === 0) {
-			const span = document.createElement('span');
-			span.classList.add("whitespace");
-			span.innerHTML = " "; // add space to keep line height
 
-			item.appendChild(span);
-		}
+		// line number
+		const lineNo = document.createElement('span');
+		lineNo.innerHTML = iL;
+		lineNo.classList.add("line-number");
+		item.appendChild(lineNo);
+
+		// code
+		const code = document.createElement('div');
+		code.classList.add("code");
 		for (let token of tokens) {
 			const span = document.createElement('span');
 			span.innerHTML = token.text;
@@ -82,8 +85,9 @@ export function writeHighlightedCode(code, target, consolidate=true) {
 			// tooltip.classList.add("tooltiptext");
 			// span.appendChild(tooltip);
 
-			item.appendChild(span);
+			code.appendChild(span);
 		}
+		item.appendChild(code);
 		target.appendChild(item);
 	}
 }

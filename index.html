@@ -194,6 +194,23 @@ body {
 #view-knitout span:hover .tooltiptext {
 	visibility: visible;
 }*/
+#view-knitout .line {
+	display: flex;
+}
+#view-knitout .line-number {
+	color: #94908D;
+	width: 3em;
+	display: inline-block;
+
+	/* disable selection: https://stackoverflow.com/a/4407335 */
+	-webkit-touch-callout: none; /* iOS Safari */
+	-webkit-user-select: none; /* Safari */
+	 -khtml-user-select: none; /* Konqueror HTML */
+	   -moz-user-select: none; /* Old versions of Firefox */
+	    -ms-user-select: none; /* Internet Explorer/Edge */
+	        user-select: none; /* Non-prefixed version, currently
+	                              supported by Chrome, Edge, Opera and Firefox */
+}
 #view-knitout .comment {
 	color: #74705D;
 }
@@ -2660,8 +2677,8 @@ document.getElementById("select-sidebar-option").addEventListener("change", func
 setSidebar(document.getElementById("select-sidebar-option").value);
 
 
-const cubeKnitout = `;!solid-knitout-VERSION
-;;<Machine details>
+const cubeKnitout = `;;!solid-knitout-VERSION
+;;Machine details
 ;;Carriers: 1
 
 ; 3x3x3.block solid knitout
