@@ -297,6 +297,7 @@ body {
 	<select id="select-sidebar-option">
 		<option value="Library" selected>Library</option>
 		<option value="Knitout">Knitout</option>
+		<option value="BlockData">Block Data</option>
 	</select>
 </div>
 
@@ -323,8 +324,12 @@ body {
 </div>
 
 <!-- preview generated knitout -->
-<!-- Use the monokai background color by default - prevents white background jumping jarringly to dark gray -->
-<div id="view-knitout">
+<div id="view-knitout"></div>
+
+<!-- see information about highlighted block -->
+<div id="view-block-data">
+	<h2> Block Info:</h2>
+	<div id="hovered-block-info"></div>
 </div>
 
 <!-- also list shortcuts -->
@@ -2678,12 +2683,19 @@ function setViewMode(mode) {
 function setSidebar(mode) {
 	const library = document.getElementById("library");
 	const knitout = document.getElementById("view-knitout");
+	const blockData = document.getElementById("view-block-data");
 	if (mode == "Library") {
 		library.style.display="block";
 		knitout.style.display="none";
+		blockData.style.display="none";
 	} else if (mode == "Knitout") {
 		library.style.display="none";
 		knitout.style.display="block";
+		blockData.style.display="none";
+	} else if (mode == "BlockData") {
+		library.style.display="none";
+		knitout.style.display="none";
+		blockData.style.display="block";
 	} else {
 		console.log("Error, invalid sidebar mode ", mode);
 	}
@@ -2914,9 +2926,14 @@ groupKnitoutPassesCheckbox.addEventListener('click', function() {
 	writeHighlightedCode(knitoutCode.text, document.getElementById("view-knitout"), groupKnitoutPassesCheckbox.checked);
 });
 
-// writeHighlightedCode(`tuck + hf1,4 1
-// `,
-// document.getElementById("view-knitout"));
+function displayHoveredBlockInfo(over) {
+	const infoArea = document.getElementById("hovered-block-info");
+	if (over === null) {
+		infoArea.innerHTML = "";
+	} else {
+		infoArea.innerHTML = over.cell.template.name;
+	}
+}
 
 function redrawPattern(pixelRatio) {
 
@@ -2954,6 +2971,9 @@ function redrawPattern(pixelRatio) {
 		}
 		STATUS_LINE.innerText = info;
 	}
+
+	// show info about hovered block in sidebar
+	displayHoveredBlockInfo(MOUSE.over);
 
 
 	gl.lineWidth(2.0 * pixelRatio);
