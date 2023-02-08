@@ -165,7 +165,7 @@ body {
 }
 #view-knitout {
 	margin: 0;
-	padding: 1em;
+	padding: 0.25em 0em;
 	overflow: auto;
 	font-family: monospace;
 	background-color: #272822;
@@ -195,11 +195,13 @@ body {
 	visibility: visible;
 }*/
 #view-knitout .line {
+	padding: 0 0;
 	display: flex;
 }
 #view-knitout .line-number {
 	color: #94908D;
-	width: 3em;
+	width: 2em;
+	padding: 0 0.5em;
 	display: inline-block;
 
 	/* disable selection: https://stackoverflow.com/a/4407335 */
@@ -210,6 +212,16 @@ body {
 	    -ms-user-select: none; /* Internet Explorer/Edge */
 	        user-select: none; /* Non-prefixed version, currently
 	                              supported by Chrome, Edge, Opera and Firefox */
+}
+#view-knitout .line:hover {
+	color: #C4C0BD;
+	background-color: #373832;
+}
+#view-knitout .code {
+	border-left: 2px solid #44402D;
+/*	box-shadow: inset 8px 0 8px -10px black;*/
+	padding-left: 0.5em;
+	width: 100%;
 }
 #view-knitout .comment {
 	color: #74705D;
@@ -2678,7 +2690,7 @@ setSidebar(document.getElementById("select-sidebar-option").value);
 
 
 const cubeKnitout = `;;!solid-knitout-VERSION
-;;Machine details
+;;Machine details 
 ;;Carriers: 1
 
 ; 3x3x3.block solid knitout
