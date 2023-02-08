@@ -496,9 +496,9 @@ import {writeHighlightedCode, groupBlocks, groupPasses} from './code/sk.mjs';
 
 document.getElementById("save-knitout").addEventListener('click', function(evt){
 	if (groupKnitoutPassesCheckbox.checked) {
-		fileSave(groupPasses(cubeKnitout), "solid-knitting-pattern.sk");
+		fileSave(groupPasses(knitoutCode.text), "solid-knitting-pattern.sk");
 	} else {
-		fileSave(cubeKnitout, "solid-knitting-pattern.sk");	
+		fileSave(knitoutCode.text, "solid-knitting-pattern.sk");	
 	}
 });
 
@@ -633,6 +633,12 @@ function templateDirty() {
 	requestRedraw();
 }
 window.templateDirty = templateDirty;
+
+function knitoutDirty() {
+	knitoutCode.dirty = true;
+	requestRedraw();
+}
+window.knitoutDirty = knitoutDirty; // for debugging
 
 function setMouseOver() {
 	MOUSE.over = null;
@@ -2688,8 +2694,8 @@ setViewMode(document.getElementById("select-viewmode-option").value);
 document.getElementById("select-sidebar-option").addEventListener("change", function() {setSidebar(this.value);});
 setSidebar(document.getElementById("select-sidebar-option").value);
 
-
-const cubeKnitout = `;;!solid-knitout-VERSION
+// To change the displayed knitout, set knitoutCode.text to a different value and call knitoutDirty() to request a refresh
+const knitoutCode = {text: `;;!solid-knitout-VERSION
 ;;Machine details 
 ;;Carriers: 1
 
@@ -2886,13 +2892,13 @@ xfer b2 hf2,7
 xfer b3 hf3,7
 
 roll hf*,7
-pause Please bind off the final row`;
+pause Please bind off the final row` };
 
 
 const groupKnitoutPassesCheckbox = document.getElementById('group-knitout-passes-form').children[1];
-writeHighlightedCode(cubeKnitout, document.getElementById("view-knitout"), groupKnitoutPassesCheckbox.checked);
+writeHighlightedCode(knitoutCode.text, document.getElementById("view-knitout"), groupKnitoutPassesCheckbox.checked);
 groupKnitoutPassesCheckbox.addEventListener('click', function() {
-	writeHighlightedCode(cubeKnitout, document.getElementById("view-knitout"), groupKnitoutPassesCheckbox.checked);
+	writeHighlightedCode(knitoutCode.text, document.getElementById("view-knitout"), groupKnitoutPassesCheckbox.checked);
 });
 
 // writeHighlightedCode(`tuck + hf1,4 1
@@ -3081,6 +3087,13 @@ function redraw() {
 		gl.viewport(0,0,width,height);
 		camera.aspect = width / height;
 	})();
+
+	// Update displayed knitout code if necessary
+	// TODO: this should probably happen somewhere else
+	if (knitoutCode.dirty) {
+		writeHighlightedCode(knitoutCode.text, document.getElementById("view-knitout"), groupKnitoutPassesCheckbox.checked);
+		delete knitoutCode.dirty;
+	}
 
 	gl.clearColor(0.1, 0.1, 0.1, 1.0);
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
