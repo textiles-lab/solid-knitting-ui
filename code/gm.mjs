@@ -832,6 +832,9 @@ export function rigidTransform(A,B) {
 	return xform;
 }
 
+export function xformTranslation(xform) {
+	return vec3(xform[3*3+0], xform[3*3+1], xform[3*3+2]);
+}
 
 async function test_svd() {
 	console.log("Testing svd function.");

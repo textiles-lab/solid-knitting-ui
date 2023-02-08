@@ -243,11 +243,24 @@ body {
 }
 
 #hovered-block-info {
-	padding: 0 1em;
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 0;
 }
-
+/* shade every other row https://stackoverflow.com/a/44937583 */
+#hovered-block-info > :nth-child(4n+3), #hovered-block-info > :nth-child(4n+4) {
+	background-color: #dde;
+}
+#hovered-block-info .field-name {
+	text-align: right;
+	padding: 0.15em 0.25em 0.15em 0.5em; /* top right bottom left */
+}
+#hovered-block-info .field-name:after {
+	content: ":";
+}
 #hovered-block-info .field-value {
-	margin-left: 1em;
+	padding: 0.15em 0 0.15em 0.25em; /* top right bottom left */
+	font-family: monospace;
 }
 </style>
 </head>
@@ -1638,7 +1651,7 @@ const textureProgram = new Program(gl,
 		// treat texture as a mask
       	lowp float mask = texture2D(uSampler, uv).r;
       	mask = (1.-TEX_STRENGTH) + TEX_STRENGTH * (1. + mask) / 2.;
-      	highp float selected = (abs(cellID - selectedCellID) < 0.01) ? 1.5 : 1.;
+      	highp float selected = (abs(cellID - selectedCellID) < 0.01) ? 1.3 : 1.;
 		gl_FragColor = TINT * vec4(selected * mask * color.rgb * light, color.a);
 	}
 `);
@@ -2938,40 +2951,30 @@ function displayHoveredBlockInfo(over) {
 	const infoArea = document.getElementById("hovered-block-info");
 	infoArea.innerHTML = "";
 	if (over !== null) {
-		const signatureLine = document.createElement('div');
-		const signatureTitle = document.createElement('span');
-		signatureTitle.innerHTML = "signature:";
-		signatureTitle.classList.add("field-name");
-		signatureLine.appendChild(signatureTitle);
-		const signatureValue = document.createElement('span');
-		signatureValue.innerHTML = over.cell.template.signature();
-		signatureValue.classList.add("field-value");
-		signatureLine.appendChild(signatureValue);
-		infoArea.appendChild(signatureLine);
+		const pos = gm.xformTranslation(over.cell.xform); // TODO: shift cube coordinates to be integer?
+		const posString = "( " + pos[0].toFixed(2) + ", " + pos[1].toFixed(2) + ", " + pos[2].toFixed(2) + " )";
 
-		const positionLine = document.createElement('div');
-		const positionTitle = document.createElement('span');
-		positionTitle.innerHTML = "position:";
-		positionTitle.classList.add("field-name");
-		positionLine.appendChild(positionTitle);
-		const positionValue = document.createElement('span');
-		const pos = gm.xformTranslation(over.cell.xform); // TODO: why aren't these integers? is the center of the template not at the origin?
-		positionValue.innerHTML = "( " + pos[0].toFixed(2) + ", " + pos[1].toFixed(2) + ", " + pos[2].toFixed(2) + " )";
-		positionValue.classList.add("field-value");
-		positionLine.appendChild(positionValue);
-		infoArea.appendChild(positionLine);
-
-		const schedulingDataLine = document.createElement('div');
-		const schedulingDataTitle = document.createElement('span');
-		schedulingDataTitle.innerHTML = "schedulingData:";
-		schedulingDataTitle.classList.add("field-name");
-		schedulingDataLine.appendChild(schedulingDataTitle);
-		// TODO: print scheduling data
-		const schedulingDataValue = document.createElement('span');
-		schedulingDataValue.innerHTML = "???";
-		schedulingDataValue.classList.add("field-value");
-		schedulingDataLine.appendChild(schedulingDataValue);
-		infoArea.appendChild(schedulingDataLine);
+		const displayData = function(name, value) {
+			const nameElem = document.createElement('span');
+			nameElem.innerHTML = name;
+			nameElem.classList.add("field-name");
+			infoArea.appendChild(nameElem);
+			const valueElem = document.createElement('span');
+			valueElem.innerHTML = value ? value : "null";
+			valueElem.classList.add("field-value");
+			infoArea.appendChild(valueElem);
+		};
+		
+		if (!over.cell.schedulingData) over.cell.schedulingData = {};
+		displayData("ID", over.cellID);
+		displayData("Signature", over.cell.template.signature());
+		displayData("Position", posString);
+		displayData("Needle", over.cell.schedulingData.needle);
+		displayData("Front Holder", over.cell.schedulingData.frontHolder);
+		displayData("Back Holder", over.cell.schedulingData.backHolder);
+		displayData("Layer", over.cell.schedulingData.layer);
+		displayData("Direction", over.cell.schedulingData.direction);
+		displayData("Yarn ID", over.cell.schedulingData.yarnID);
 	}
 }
 
@@ -3014,6 +3017,7 @@ function redrawPattern(pixelRatio) {
 
 	// show info about hovered block in sidebar
 	displayHoveredBlockInfo(MOUSE.over);
+	// if (body.cells.length > 0) displayHoveredBlockInfo({cellID: 0, cell: body.cells[0]});
 
 
 	gl.lineWidth(2.0 * pixelRatio);
