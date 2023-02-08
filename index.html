@@ -241,6 +241,14 @@ body {
 #view-knitout .string {
 	color: #EDE277;
 }
+
+#hovered-block-info {
+	padding: 0 1em;
+}
+
+#hovered-block-info .field-value {
+	margin-left: 1em;
+}
 </style>
 </head>
 <body>
@@ -2928,10 +2936,42 @@ groupKnitoutPassesCheckbox.addEventListener('click', function() {
 
 function displayHoveredBlockInfo(over) {
 	const infoArea = document.getElementById("hovered-block-info");
-	if (over === null) {
-		infoArea.innerHTML = "";
-	} else {
-		infoArea.innerHTML = over.cell.template.name;
+	infoArea.innerHTML = "";
+	if (over !== null) {
+		const signatureLine = document.createElement('div');
+		const signatureTitle = document.createElement('span');
+		signatureTitle.innerHTML = "signature:";
+		signatureTitle.classList.add("field-name");
+		signatureLine.appendChild(signatureTitle);
+		const signatureValue = document.createElement('span');
+		signatureValue.innerHTML = over.cell.template.signature();
+		signatureValue.classList.add("field-value");
+		signatureLine.appendChild(signatureValue);
+		infoArea.appendChild(signatureLine);
+
+		const positionLine = document.createElement('div');
+		const positionTitle = document.createElement('span');
+		positionTitle.innerHTML = "position:";
+		positionTitle.classList.add("field-name");
+		positionLine.appendChild(positionTitle);
+		const positionValue = document.createElement('span');
+		const pos = gm.xformTranslation(over.cell.xform); // TODO: why aren't these integers? is the center of the template not at the origin?
+		positionValue.innerHTML = "( " + pos[0].toFixed(2) + ", " + pos[1].toFixed(2) + ", " + pos[2].toFixed(2) + " )";
+		positionValue.classList.add("field-value");
+		positionLine.appendChild(positionValue);
+		infoArea.appendChild(positionLine);
+
+		const schedulingDataLine = document.createElement('div');
+		const schedulingDataTitle = document.createElement('span');
+		schedulingDataTitle.innerHTML = "schedulingData:";
+		schedulingDataTitle.classList.add("field-name");
+		schedulingDataLine.appendChild(schedulingDataTitle);
+		// TODO: print scheduling data
+		const schedulingDataValue = document.createElement('span');
+		schedulingDataValue.innerHTML = "???";
+		schedulingDataValue.classList.add("field-value");
+		schedulingDataLine.appendChild(schedulingDataValue);
+		infoArea.appendChild(schedulingDataLine);
 	}
 }
 
