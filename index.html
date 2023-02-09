@@ -3137,8 +3137,8 @@ function redrawPattern(pixelRatio) {
 	}
 
 	// show info about hovered block in sidebar
-	// displayHoveredBlockInfo(MOUSE.over);
-	if (body.cells.length > 0) displayHoveredBlockInfo({cellID: 0, cell: body.cells[0]});
+	displayHoveredBlockInfo(MOUSE.over);
+	// if (body.cells.length > 0) displayHoveredBlockInfo({cellID: 0, cell: body.cells[0]});
 
 
 	gl.lineWidth(2.0 * pixelRatio);
