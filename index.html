@@ -1759,6 +1759,7 @@ const textureProgram = new Program(gl,
 	varying highp float cellID;
     uniform sampler2D uSampler;
     uniform highp float selectedCellID;
+	uniform lowp vec4 selectedColor;
 	void main() {
 		highp vec3 n = normalize(normal);
 		//upper dome light:
@@ -1767,8 +1768,9 @@ const textureProgram = new Program(gl,
 		// treat texture as a mask
       	lowp float mask = texture2D(uSampler, uv).r;
       	mask = (1.-TEX_STRENGTH) + TEX_STRENGTH * (1. + mask) / 2.;
-      	highp float selected = (abs(cellID - selectedCellID) < 0.01) ? 1.3 : 1.;
-		gl_FragColor = TINT * vec4(selected * mask * color.rgb * light, color.a);
+      	highp float selected = (abs(cellID - selectedCellID) < 0.01) ? 1. : 0.;
+      	lowp vec4 compositeColor = selected * selectedColor + (1.-selected) * color;
+		gl_FragColor = TINT * vec4(mask * compositeColor.rgb * light, color.a);
 	}
 `);
 window.textureProgram = textureProgram; //DEBUG
@@ -2397,6 +2399,8 @@ class VisTubes extends Geometry {
 		this.solid = solid;
 		this.respectVisibility = respectVisibility;
 		this.empty = false;
+
+		this.selectedColor = [-1., -1., -1., -1.]; // set later in set()
 	}
 	set(body) {
 		const BYTES_PER_ATTRIB = VisTubes.BYTES_PER_ATTRIB;
@@ -2491,6 +2495,7 @@ class VisTubes extends Geometry {
 		const col_rgb = [1.0, 0.6, 0.5];
 		const col_transparent = rgba2Uint32([...col_rgb, 0.1]);
 		const col_opaque = rgb2Uint32(col_rgb);
+		this.selectedColor = [0.6, 0.5, 1.0, 1.0];
 		for (let cellID = 0; cellID < body.cells.length; ++cellID) {
 			const cell = body.cells[cellID];
 			if (this.respectVisibility && (checkCellVisible(cell) !== this.solid)) continue;
@@ -3339,6 +3344,14 @@ function redraw() {
 		gl.uniform1f(
 			textureProgram.uniformLocations.selectedCellID,
 			MOUSE.over === null ?  -1. : MOUSE.over.cellID
+		);
+		gl.uniform4f(
+			textureProgram.uniformLocations.TINT,
+			1.0, 1.0, 1.0, 1.0
+		);
+		gl.uniform4f(
+			textureProgram.uniformLocations.selectedColor,
+			visTubes.selectedColor[0], visTubes.selectedColor[1], visTubes.selectedColor[2], visTubes.selectedColor[3]
 		);
 
 		// pass in texture
