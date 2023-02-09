@@ -113,7 +113,6 @@ body {
 
 	display:grid;
 	grid-template-rows: 1fr min-content;
-	grid-row-gap: 0.25em;
 	width: 24em;
 	min-height: 0; /* don't expand past parent height https://stackoverflow.com/a/43312314 */
 /*	background: #00f8 ;*/
@@ -137,6 +136,7 @@ body {
 	min-height: 0;
 	display:grid; /* set to grid from javascript later too */
 	grid-template-rows: auto 1fr;
+	padding-bottom: 0.5em;
 }
 #library-list {
 /*	grid-row: 2 ;*/
@@ -167,7 +167,7 @@ body {
 	border: 1pt solid #94908D;
 }
 #view-shortcuts {
-	border-top: 1px solid #44402D;
+	border-top: 2px solid #44402D;
 	padding-left: 0.25em;
 	padding-top: 0.5em;
 }
@@ -202,6 +202,7 @@ body {
 #knitout-source {
 	min-height: 0;
 	overflow-y: scroll;
+	margin-bottom: 0.5em;
 }
 /* code styling */
 #knitout-source span {
@@ -277,6 +278,7 @@ body {
 	display: grid; /* set to grid from javascript later too */
 	grid-template-rows: auto 1fr;
 	gap: 0;
+	padding-bottom: 0.5em;
 }
 #view-block-data h2 {
 	padding: 0.5em 0 0 0.5em; /* top right bottom left */
