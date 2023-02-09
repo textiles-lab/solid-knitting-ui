@@ -2960,7 +2960,7 @@ function displayHoveredBlockInfo(over) {
 			nameElem.classList.add("field-name");
 			infoArea.appendChild(nameElem);
 			const valueElem = document.createElement('span');
-			valueElem.innerHTML = value ? value : "null";
+			valueElem.innerHTML = value == null ? "null" : value;
 			valueElem.classList.add("field-value");
 			infoArea.appendChild(valueElem);
 		};
