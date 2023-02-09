@@ -367,6 +367,7 @@ body {
 	<li> <span class="key">down</span>: next template</li>
 	<li> <span class="key">K</span>: prev compatible template</li>
 	<li> <span class="key">J</span>: next compatible template</li>
+	<li> <span class="key">Ctrl-Z</span>: undo</li>
 </ul>
 </details>
 </div>
@@ -839,10 +840,15 @@ canvas.addEventListener('mouseup', function(evt){
 });
 
 window.addEventListener('keydown', function(evt){
-	if (ACTION) {
+
+	if (ACTION) { // actions take priority over ordinary keybindings
 		if (ACTION.keydown) ACTION.keydown(evt);
 	} else {
-		if (evt.code === 'Space' || evt.code === 'KeyR') {
+		if (evt.code == 'KeyZ' && (evt.ctrlKey || evt.metaKey)) { 
+			// allow control-z or command-z on all systems since it seems tricky to check which is expected
+			undoLatestCommand();
+			return;
+		} else if (evt.code === 'Space' || evt.code === 'KeyR') {
 			body.relax();
 			bodyDirty();
 		} else if (evt.code == 'KeyA') {
@@ -882,6 +888,60 @@ window.addEventListener('keydown', function(evt){
 		//console.log(evt.code); //when you want more keys
 	}
 });
+
+// keep track of commands in a circular buffer to implement undo
+let commandHistory = {
+	commands: Array(50).fill(null),
+	latest: 49
+};
+
+function pushCommand(command) {
+	commandHistory.latest = (commandHistory.latest + 1) % commandHistory.commands.length;
+	commandHistory.commands[commandHistory.latest] = command;
+}
+
+function undoLatestCommand() {
+	const command = commandHistory.commands[commandHistory.latest];
+	if (command == null) return; // no command to undo
+
+	if (command.type === "addCell") { // {type: "addCell", newCellIndex: newCellIndex}
+		unsafeDeleteCell(command.newCellIndex);
+	} else if (command.type === "deleteCell") { // {type: "deleteCell", cell: cell, cellIndex: cellIndex}
+		unsafeAddCell(command.cell, command.cellIndex);
+	} else if (command.type === "confirmGrabCell") {
+		// {type: "confirmGrabCell", cellIndex: body.cells.indexOf(cell),
+		// 		             startVertices: startVertices, startXform: startXform,
+		// 		             endVertices: cell.vertices, endXform: cell.xform}
+		const cell = body.cells[command.cellIndex];
+		cell.vertices = command.startVertices;
+		cell.xform = command.startXform;
+		ACTION = null; // just in case
+		bodyDirty();
+	} else if (command.type === "confirmConnect") {
+		// {type: "confirmConnect", cellIndex: body.cells.indexOf(cell), face: face, oldConnection: oldConnection}
+		const cell = body.cells[command.cellIndex];
+		if (cell.connections[command.face]) { // remove created connection
+			const toCell = cell.connections[command.face].cell;
+			const toFace = cell.connections[command.face].face;
+			toCell.connections[toFace] = null;
+		}
+		cell.connections[command.face] = command.oldConnection; // restore old connection for cell
+		console.log(cell.connections);
+		if (command.oldConnection) { // restore old connection for cell's neighbor
+			command.oldConnection.cell.connections[command.oldConnection.face] = {cell:cell, face:command.face};
+		}
+		ACTION = null; // just in case
+		bodyDirty();
+	} else {
+		console.err("unknown command type ", command.type, " in command ", command);
+		return;
+	}
+
+	// erase command and decrement latest
+	commandHistory.commands[commandHistory.latest] = null;
+	commandHistory.latest = (commandHistory.latest + commandHistory.commands.length - 1) % commandHistory.commands.length;
+}
+
 
 // TODO: Consider moving each script into its own module for the sake of code
 // clarity. 
@@ -1129,6 +1189,26 @@ function previewCell() {
 }
 window.previewCell = previewCell; //DEBUG
 
+// add a cell to the body at a specified index in the cell list
+// does not perform correctness checks or store this action in the undo queue
+function unsafeAddCell(cell, index) {
+	if (cell === null) return;
+
+	//if the cell *does* exist, hook up the other side of any connections it has:
+	for (let f = 0; f < cell.connections.length; ++f) {
+		const con = cell.connections[f];
+		if (con === null) continue;
+		console.assert(con.cell.connections[con.face] === null, "Shouldn't be over-writing connections.");
+		con.cell.connections[con.face] = {cell:cell, face:f};
+	}
+
+	body.cells.splice(index, 0, cell);
+
+	//update UI and redraw:
+	mouseDirty();
+	bodyDirty();
+}
+
 /**
  * addCell (): 
  * Adds cell adjacent to selected face. */
@@ -1141,21 +1221,14 @@ function addCell() {
 	//if doesn't exist, don't create anything:
 	if (preview === null) return;
 
-	//if the cell *does* exist, hook up the other side of any connections it has:
-	for (let f = 0; f < preview.connections.length; ++f) {
-		const con = preview.connections[f];
-		if (con === null) continue;
-		console.assert(con.cell.connections[con.face] === null, "Shouldn't be over-writing connections.");
-		con.cell.connections[con.face] = {cell:preview, face:f};
-	}
-	body.cells.push(preview);
+	const newCellIndex = body.cells.length;
+	unsafeAddCell(preview, newCellIndex);
+
+	// Record command in undo queue
+	pushCommand({type: "addCell", newCellIndex: newCellIndex});
 
 	// Check global correctness from preview cell. 
 	if (!checkGlobalCellCorrectness()) console.log("Warning: There is exists a cycle in yarn directions!");
-
-	//update UI and redraw:
-	mouseDirty();
-	bodyDirty();
 }
 
 
@@ -1241,19 +1314,10 @@ function checkGlobalCellCorrectness() {
 	return count == bodyLen; 
 }
 
-/**
- * deleteCell (): 
- * Deletes currently selected cell, regardless of face type. 
- * Consider: When cell is selected to delete a box, instead of highlighting
- * selected face, we should highlight selected cell. */
-function deleteCell() {
-	if (MOUSE.dirty) setMouseOver();
-	if (!MOUSE.over) return;
-
-	const cell = MOUSE.over.cell;
-
-	const cellIndex =  body.cells.indexOf(cell);
-	const cellConnections = body.cells[cellIndex].connections;
+// add a cell to the body at a specified index in the cell list
+// does not perform correctness checks or store this action in the undo queue
+function unsafeDeleteCell(index) {
+	const cellConnections = body.cells[index].connections;
 
 	// Update all connections referencing current cell.
 	for (let i = 0; i < cellConnections.length; i++) {
@@ -1265,14 +1329,32 @@ function deleteCell() {
 	}
 
 	// Remove current cell from body. 
-	body.cells.splice(cellIndex, 1);
-
-	// Check global correctness from preview cell. 
-	if (!checkGlobalCellCorrectness()) console.log("Warning: There is exists a cycle in yarn directions!");
+	body.cells.splice(index, 1);
 
 	// Update UI and redraw:
 	mouseDirty();
 	bodyDirty();
+}
+
+/**
+ * deleteCell (): 
+ * Deletes currently selected cell, regardless of face type. 
+ * Consider: When cell is selected to delete a box, instead of highlighting
+ * selected face, we should highlight selected cell. */
+function deleteCell() {
+	if (MOUSE.dirty) setMouseOver();
+	if (!MOUSE.over) return;
+
+	const cell = MOUSE.over.cell;
+	const cellIndex =  body.cells.indexOf(cell);
+
+	unsafeDeleteCell(cellIndex);
+
+	// Record command in undo queue
+	pushCommand({type: "deleteCell", cell: cell, cellIndex: cellIndex});
+
+	// Check global correctness from preview cell. 
+	if (!checkGlobalCellCorrectness()) console.log("Warning: There is exists a cycle in yarn directions!");
 }
 
 /**
@@ -1326,6 +1408,17 @@ function startConnectFace() {
 		bodyDirty();
 	}
 
+	function cancelConnect() {
+		console.log("Cancelling connect.");
+		setConnection.pending = false;
+		cell.connections[face] = oldConnection;
+		if (oldConnection) {
+			oldConnection.cell.connections[oldConnection.face] = {cell:cell, face:face};
+		}
+		bodyDirty();
+		ACTION = null;
+	}
+
 	console.log("Starting connect.");
 
 	ACTION = {
@@ -1333,14 +1426,7 @@ function startConnectFace() {
 			if (evt.button === 0) {
 				startCameraMove();
 			} else if (evt.button === 2) {
-				console.log("Cancelling connect.");
-				setConnection.pending = false;
-				cell.connections[face] = oldConnection;
-				if (oldConnection) {
-					oldConnection.cell.connections[oldConnection.face] = {cell:cell, face:face};
-				}
-				bodyDirty();
-				ACTION = null;
+				cancelConnect();
 			}
 		},
 		//nothing: mouseup:(evt,mouse) => { },
@@ -1355,6 +1441,9 @@ function startConnectFace() {
 				console.log("Confirming connect.");
 				setConnection.pending = false;
 				ACTION = null;
+				pushCommand({type: "confirmConnect", cellIndex: body.cells.indexOf(cell), face: face, oldConnection: oldConnection});
+			} else if (evt.code === 'Escape') {
+				cancelConnect();
 			}
 		},
 	};
@@ -1416,6 +1505,9 @@ function startGrabCell() {
 		mousedown:(evt,mouse) => {
 			if (evt.button == 0) {
 				console.log("Confirming grab.");
+				pushCommand({type: "confirmGrabCell", cellIndex: body.cells.indexOf(cell),
+				             startVertices: startVertices, startXform: startXform,
+				             endVertices: cell.vertices, endXform: cell.xform});
 				ACTION = null;
 				bodyDirty();
 			} else if (evt.button == 2) {
