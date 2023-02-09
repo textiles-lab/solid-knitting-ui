@@ -36,6 +36,7 @@ body {
 
 	grid-template-columns: 1fr auto ;
 	grid-template-rows: auto 1.0fr;
+	overflow: none;
 
 	/*background: #0008 ;*/
 }
@@ -98,6 +99,7 @@ body {
 	left:0;
 	bottom:0;
 	background:#fff8;
+	padding: 0.15em 0.3em;
 }
 #sidebar {
 	grid-column: 2 ;
@@ -105,9 +107,9 @@ body {
 
 	display:grid;
 	grid-template-rows: 1fr min-content;
-	overflow-y:auto;
 	grid-row-gap: 0.25em;
 	width: 24em;
+	min-height: 0; /* don't expand past parent height https://stackoverflow.com/a/43312314 */
 /*	background: #00f8 ;*/
 }
 #sidebar h2, summary {
@@ -121,13 +123,17 @@ body {
 /*	grid-row: 2 ;*/
 	margin:0;
 	padding:0;
-	overflow: auto;
+	min-height: 0;
+	display:grid; /* set to grid from javascript later too */
+	grid-template-rows: auto 1fr;
 }
 #library-list {
 /*	grid-row: 2 ;*/
 	margin:0;
 	padding:0;
-	overflow-y:scroll;
+	min-width: 0;
+	min-height: 0;
+	overflow-y: scroll;
 }
 #library ul {
 	list-style:none;
@@ -170,6 +176,10 @@ body {
 	font-family: monospace;
 	background-color: #272822;
 	color: white;
+}
+
+#view-knitout {
+	display:grid; /* set to grid from javascript later too */
 }
 
 /* code styling */
@@ -242,10 +252,17 @@ body {
 	color: #EDE277;
 }
 
+#view-block-data {
+	display: grid; /* set to grid from javascript later too */
+	grid-template-rows: auto 1fr;
+	gap: 0;
+}
 #hovered-block-info {
 	display: grid;
 	grid-template-columns: auto 1fr;
+	align-content: start;
 	gap: 0;
+	overflow-y: scroll;
 }
 /* shade every other row https://stackoverflow.com/a/44937583 */
 #hovered-block-info > :nth-child(4n+3), #hovered-block-info > :nth-child(4n+4) {
@@ -254,6 +271,7 @@ body {
 #hovered-block-info .field-name {
 	text-align: right;
 	padding: 0.15em 0.25em 0.15em 0.5em; /* top right bottom left */
+	min-height: 0;
 }
 #hovered-block-info .field-name:after {
 	content: ":";
@@ -261,6 +279,7 @@ body {
 #hovered-block-info .field-value {
 	padding: 0.15em 0 0.15em 0.25em; /* top right bottom left */
 	font-family: monospace;
+	min-height: 0;
 }
 </style>
 </head>
@@ -367,7 +386,8 @@ body {
 	<li> <span class="key">down</span>: next template</li>
 	<li> <span class="key">K</span>: prev compatible template</li>
 	<li> <span class="key">J</span>: next compatible template</li>
-	<li> <span class="key">Ctrl-Z</span>: undo</li>
+	<li> <span class="key">ctrl-Z</span>: undo</li>
+	<li> <span class="key">esc</span>: escape from grab/connect</li>
 </ul>
 </details>
 </div>
@@ -848,7 +868,7 @@ window.addEventListener('keydown', function(evt){
 			// allow control-z or command-z on all systems since it seems tricky to check which is expected
 			undoLatestCommand();
 			return;
-		} else if (evt.code === 'Space' || evt.code === 'KeyR') {
+		} else if (evt.code === 'Space' || evt.code === 'KeyR') { // TODO: allow undo for relax?
 			body.relax();
 			bodyDirty();
 		} else if (evt.code == 'KeyA') {
@@ -902,13 +922,17 @@ function pushCommand(command) {
 
 function undoLatestCommand() {
 	const command = commandHistory.commands[commandHistory.latest];
-	if (command == null) return; // no command to undo
+	if (command == null) {
+		console.log("reached end of undo history");
+		return; // no command to undo
+	}
 
 	if (command.type === "addCell") { // {type: "addCell", newCellIndex: newCellIndex}
 		unsafeDeleteCell(command.newCellIndex);
 	} else if (command.type === "deleteCell") { // {type: "deleteCell", cell: cell, cellIndex: cellIndex}
 		unsafeAddCell(command.cell, command.cellIndex);
 	} else if (command.type === "confirmGrabCell") {
+		console.log("undoing grab");
 		// {type: "confirmGrabCell", cellIndex: body.cells.indexOf(cell),
 		// 		             startVertices: startVertices, startXform: startXform,
 		// 		             endVertices: cell.vertices, endXform: cell.xform}
@@ -918,6 +942,7 @@ function undoLatestCommand() {
 		ACTION = null; // just in case
 		bodyDirty();
 	} else if (command.type === "confirmConnect") {
+		console.log("undoing connect");
 		// {type: "confirmConnect", cellIndex: body.cells.indexOf(cell), face: face, oldConnection: oldConnection}
 		const cell = body.cells[command.cellIndex];
 		if (cell.connections[command.face]) { // remove created connection
@@ -926,7 +951,6 @@ function undoLatestCommand() {
 			toCell.connections[toFace] = null;
 		}
 		cell.connections[command.face] = command.oldConnection; // restore old connection for cell
-		console.log(cell.connections);
 		if (command.oldConnection) { // restore old connection for cell's neighbor
 			command.oldConnection.cell.connections[command.oldConnection.face] = {cell:cell, face:command.face};
 		}
@@ -2798,17 +2822,17 @@ function setSidebar(mode) {
 	const knitout = document.getElementById("view-knitout");
 	const blockData = document.getElementById("view-block-data");
 	if (mode == "Library") {
-		library.style.display="block";
+		library.style.display="grid";
 		knitout.style.display="none";
 		blockData.style.display="none";
 	} else if (mode == "Knitout") {
 		library.style.display="none";
-		knitout.style.display="block";
+		knitout.style.display="grid";
 		blockData.style.display="none";
 	} else if (mode == "BlockData") {
 		library.style.display="none";
 		knitout.style.display="none";
-		blockData.style.display="block";
+		blockData.style.display="grid";
 	} else {
 		console.log("Error, invalid sidebar mode ", mode);
 	}
@@ -3108,8 +3132,8 @@ function redrawPattern(pixelRatio) {
 	}
 
 	// show info about hovered block in sidebar
-	displayHoveredBlockInfo(MOUSE.over);
-	// if (body.cells.length > 0) displayHoveredBlockInfo({cellID: 0, cell: body.cells[0]});
+	// displayHoveredBlockInfo(MOUSE.over);
+	if (body.cells.length > 0) displayHoveredBlockInfo({cellID: 0, cell: body.cells[0]});
 
 
 	gl.lineWidth(2.0 * pixelRatio);
