@@ -6,6 +6,9 @@
 body {
 	padding:0;
 	margin:0;
+
+	background-color: #414038;
+	color: #E4E0CD;
 }
 #dropTarget {
 	position:fixed;
@@ -43,9 +46,10 @@ body {
 #controls {
 	grid-column: 1 / 3 ;
 	grid-row: 1 ;
+	gap: 8px;
 	font-size: 16px;
 	line-height:16px;
-	padding: 5px 10px;
+	padding: 5px 5px;
 	display:flex;
 	flex-flow: row wrap;
 	align-items:center;
@@ -58,7 +62,7 @@ body {
 	display:block;
 	background:#cfbb96;
 	padding:4px 8px;
-	margin:0 2px;
+	margin:0;
 	box-shadow: 0 1px 2px 0 #0008;
 	text-decoration:none;
 	line-height:1;
@@ -67,6 +71,7 @@ body {
 /*	height:100%;*/
 	font-size:inherit;
 	font-family: sans-serif;
+	color: black;
 }
 
 .controlsButton:hover {
@@ -78,7 +83,7 @@ body {
 }
 
 .controls-section {
-	margin-left: 2em;
+	margin-left: 1em;
 }
 
 #view-3d {
@@ -99,6 +104,7 @@ body {
 	left:0;
 	bottom:0;
 	background:#fff8;
+	color: black;
 	padding: 0.15em 0.3em;
 }
 #sidebar {
@@ -111,18 +117,23 @@ body {
 	width: 24em;
 	min-height: 0; /* don't expand past parent height https://stackoverflow.com/a/43312314 */
 /*	background: #00f8 ;*/
+
+	background-color: #232220;
+	color: #C4C0AD;
 }
 #sidebar h2, summary {
 	font-size:20px;
 	font-weight: bold;
 	line-height:20px;
-	padding:0;
-	margin:0 5px;
+	padding: 0;
+	margin: 0;
+	margin-bottom: 0.5em;
+	font-family: sans-serif;
 }
 #library {
 /*	grid-row: 2 ;*/
 	margin:0;
-	padding:0;
+	padding: 0.5em 0 0 0.5em; /* top right bottom left */
 	min-height: 0;
 	display:grid; /* set to grid from javascript later too */
 	grid-template-rows: auto 1fr;
@@ -144,18 +155,22 @@ body {
 	padding:0.15em 0.5em;
 	border-radius:0.2em;
 	cursor:pointer;
-	border: 2pt solid white;
+	border: 1pt solid #fff0;
 }
 #library li:hover {
-	background-color: #eef;
-	color: black;
+	background-color: #dde2;
+	color: #D4D0CD;
 }
 #library .library-active-template {
-	background-color: #dde;
-	color: black;
-	border: 2pt solid black;
+	background-color: #dde2;
+	color: #D4D0CD;
+	border: 1pt solid #94908D;
 }
-
+#view-shortcuts {
+	border-top: 1px solid #44402D;
+	padding-left: 0.25em;
+	padding-top: 0.5em;
+}
 #shortcuts {
 	grid-row: 3 ;
 	margin:0;
@@ -163,7 +178,7 @@ body {
 }
 #shortcuts li {
 	display:block;
-	margin:0em 0.15em;
+	margin:0.1em 0.15em;
 	padding:0.0em 0.5em;
 }
 #shortcuts .key {
@@ -171,25 +186,31 @@ body {
 }
 #view-knitout {
 	margin: 0;
-	padding: 0.25em 0em;
+	padding: 0;
+	padding-top: 0.5em;
 	overflow: auto;
 	font-family: monospace;
 	background-color: #272822;
 	color: white;
-}
-
-#view-knitout {
 	display:grid; /* set to grid from javascript later too */
+	grid-template-rows: 1fr auto;
 }
-
+#view-knitout #view-knitout-options {
+	padding: 0.5em 1em;
+	background-color: #373832;
+}
+#knitout-source {
+	min-height: 0;
+	overflow-y: scroll;
+}
 /* code styling */
-#view-knitout span {
+#knitout-source span {
 	/* position: relative; /* for tooltips */
 	white-space: pre; /* preserve whitespace */
 }
 
 /* https://www.w3schools.com/css/css_tooltip.asp */
-/*#view-knitout span .tooltiptext {
+/*#knitout-source span .tooltiptext {
 	visibility: hidden;
 	position: absolute;
 	z-index: 1;
@@ -201,14 +222,14 @@ body {
 	border: 1pt solid #555;
 	border-radius: 0.25em;
 }
-#view-knitout span:hover .tooltiptext {
+#knitout-source span:hover .tooltiptext {
 	visibility: visible;
 }*/
-#view-knitout .line {
+#knitout-source .line {
 	padding: 0 0;
 	display: flex;
 }
-#view-knitout .line-number {
+#knitout-source .line-number {
 	color: #94908D;
 	width: 2em;
 	padding: 0 0.5em;
@@ -223,32 +244,32 @@ body {
 	        user-select: none; /* Non-prefixed version, currently
 	                              supported by Chrome, Edge, Opera and Firefox */
 }
-#view-knitout .line:hover {
+#knitout-source .line:hover {
 	color: #C4C0BD;
 	background-color: #373832;
 }
-#view-knitout .code {
+#knitout-source .code {
 	border-left: 2px solid #44402D;
 /*	box-shadow: inset 8px 0 8px -10px black;*/
 	padding-left: 0.5em;
 	width: 100%;
 }
-#view-knitout .comment {
+#knitout-source .comment {
 	color: #74705D;
 }
-#view-knitout .location {
+#knitout-source .location {
 	color: #A6E42C;
 }
-#view-knitout .direction {
+#knitout-source .direction {
 	color: #AC7DFF;
 }
-#view-knitout .keyword {
+#knitout-source .keyword {
 	color: #FF2275;
 }
-#view-knitout .carrier {
+#knitout-source .carrier {
 	color: #EEEEEE;
 }
-#view-knitout .string {
+#knitout-source .string {
 	color: #EDE277;
 }
 
@@ -256,6 +277,9 @@ body {
 	display: grid; /* set to grid from javascript later too */
 	grid-template-rows: auto 1fr;
 	gap: 0;
+}
+#view-block-data h2 {
+	padding: 0.5em 0 0 0.5em; /* top right bottom left */
 }
 #hovered-block-info {
 	display: grid;
@@ -265,8 +289,8 @@ body {
 	overflow-y: scroll;
 }
 /* shade every other row https://stackoverflow.com/a/44937583 */
-#hovered-block-info > :nth-child(4n+3), #hovered-block-info > :nth-child(4n+4) {
-	background-color: #dde;
+#hovered-block-info > :nth-child(4n+1), #hovered-block-info > :nth-child(4n+2) {
+	background-color: #dde1;
 }
 #hovered-block-info .field-name {
 	text-align: right;
@@ -289,9 +313,9 @@ body {
 
 <!-- controls bar at the top of the window -->
 <div id="controls">
+<span id="fileName">(no file loaded)</span>
 <input id="file" type="file" />
 <label id="fileLabel" for="file" class="controlsButton">Load</label>
-<span id="fileName">(no file loaded)</span>
 <!-- <button id="benchmark">benchmark</button>
 <span id="benchmark-result"></span> -->
 <button id="save" class="controlsButton">Save</button>
@@ -340,13 +364,6 @@ body {
 		<option value="BlockData">Block Data</option>
 	</select>
 </div>
-
-<div class="controls-section">
-	<form id="group-knitout-passes-form" style="display:inline-block;">
-		<label for="group-knitout-passes">Group knitout passes:</label>
-		<input type="checkbox" name="group-knitout-passes">
-	</form>
-</div>
 </div>
 
 <!-- 3d view -->
@@ -358,13 +375,21 @@ body {
 <!-- library panel -->
 <div id="sidebar">
 <div id="library">
-<h2>Blocks:</h2>
+<h2>Block Library:</h2>
 <ul id="library-list">
 </ul>
 </div>
 
 <!-- preview generated knitout -->
-<div id="view-knitout"></div>
+<div id="view-knitout">
+	<div id="knitout-source"></div>
+	<div id="view-knitout-options">
+		<form id="group-knitout-passes-form" style="display:inline-block;">
+		<label for="group-knitout-passes">Group knitout passes:</label>
+		<input type="checkbox" name="group-knitout-passes">
+		</form>
+	</div>
+</div>
 
 <!-- see information about highlighted block -->
 <div id="view-block-data">
@@ -2495,7 +2520,7 @@ class VisTubes extends Geometry {
 		const col_rgb = [1.0, 0.6, 0.5];
 		const col_transparent = rgba2Uint32([...col_rgb, 0.1]);
 		const col_opaque = rgb2Uint32(col_rgb);
-		this.selectedColor = [0.6, 0.5, 1.0, 1.0];
+		this.selectedColor = [1.0, 0.4, 0.3, 1.0];
 		for (let cellID = 0; cellID < body.cells.length; ++cellID) {
 			const cell = body.cells[cellID];
 			if (this.respectVisibility && (checkCellVisible(cell) !== this.solid)) continue;
@@ -3063,9 +3088,9 @@ pause Please bind off the final row` };
 
 
 const groupKnitoutPassesCheckbox = document.getElementById('group-knitout-passes-form').children[1];
-writeHighlightedCode(knitoutCode.text, document.getElementById("view-knitout"), groupKnitoutPassesCheckbox.checked);
+writeHighlightedCode(knitoutCode.text, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
 groupKnitoutPassesCheckbox.addEventListener('click', function() {
-	writeHighlightedCode(knitoutCode.text, document.getElementById("view-knitout"), groupKnitoutPassesCheckbox.checked);
+	writeHighlightedCode(knitoutCode.text, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
 });
 
 function displayHoveredBlockInfo(over) {
@@ -3287,7 +3312,7 @@ function redraw() {
 	// Update displayed knitout code if necessary
 	// TODO: this should probably happen somewhere else
 	if (knitoutCode.dirty) {
-		writeHighlightedCode(knitoutCode.text, document.getElementById("view-knitout"), groupKnitoutPassesCheckbox.checked);
+		writeHighlightedCode(knitoutCode.text, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
 		delete knitoutCode.dirty;
 	}
 
