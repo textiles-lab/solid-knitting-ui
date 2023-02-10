@@ -365,6 +365,7 @@ body {
 		<option value="Library" selected>Library</option>
 		<option value="Knitout">Knitout</option>
 		<option value="BlockData">Block Data</option>
+		<option value="KnitoutAndBlockData">Knitout & Block Data</option>
 	</select>
 </div>
 </div>
@@ -1476,7 +1477,7 @@ function allocateSpots(x0=1, y0=4) {
 					x = cell.connections[iF].cell.schedulingData.embedding[0];
 					y = cell.connections[iF].cell.schedulingData.embedding[1];
 					// z = cell.connections[iF].cell.schedulingData.embedding[2];
-					if (bed === "b") {
+					if (bed === "f") {
 						y += 1; // xfer to front -> bump up y coord
 					} else {
 						y -= 1; // xfer to back -> bump down y coord
@@ -3021,6 +3022,10 @@ function setSidebar(mode) {
 	} else if (mode == "BlockData") {
 		library.style.display="none";
 		knitout.style.display="none";
+		blockData.style.display="grid";
+	} else if (mode == "KnitoutAndBlockData") {
+		library.style.display="none";
+		knitout.style.display="grid";
 		blockData.style.display="grid";
 	} else {
 		console.log("Error, invalid sidebar mode ", mode);
