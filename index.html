@@ -1366,7 +1366,19 @@ function checkGlobalCellCorrectness() {
 }
 // computes a needle, frontHolder, backHolder, layer, direction, and yarnID for each cell, storing these in cell.schedulingData
 // currently computes locations for knit, next-row, yarn-next-layer, loop-next-layer, cast-on, bind-off
-function allocateSpots() {
+function allocateSpots(x0=1, y0=4) {
+	// identify extreme stitch
+	let origin = null;
+	for (let cell of body.cells) {
+		if (cell.template.name != "knit") continue;
+		if (origin === null) {
+			origin = gm.xformTranslation(cell.xform);
+		} else {
+			const cellPosition = gm.xformTranslation(cell.xform);
+			origin = gm.min(origin, cellPosition);
+		}
+	}
+
 	// follow yarn through body
 	function getYarnExitFace(cell) {
 		for (let iF=0; iF<cell.template.faces.length; ++iF) {
@@ -1404,18 +1416,33 @@ function allocateSpots() {
 		return;
 	}
 
+	let currBed = 1; // somewhat confusingly, bed is the stitch that the bed gets made on, which is opposite to the bed used for the needle
 	let currWaleDirection = 1; // TODO: how do you determine this?
 
-	// find directions
+	let xMax=0, yMax=0;
+	// find directions for all stitches and embeddings for knit stitches (abstract 3d coordinates that we'll use to get needle/holder positions)
 	while (currCell != null) {
 		currCell.schedulingData.direction = (currDirection > 0) ? "+" : "-";
 		currCell.schedulingData.waleDirection = (currWaleDirection > 0) ? "+" : "-";
-		if (currCell.template.name.startsWith("yarn-next-row") || currCell.template.name.startsWith("yarn-next-layer")) {
+		currCell.schedulingData.bed = (currBed > 0) ? "f" : "b";
+		if (currCell.template.name.startsWith("yarn-next-row")) {
 			currDirection *= -1;
+		} else if (currCell.template.name.startsWith("yarn-next-layer")) {
+			currWaleDirection *= -1; // TODO: does this depend on same vs opposite?
+			currDirection *= -1;
+			currBed *= -1;
 		}
-		if (currCell.template.name.startsWith("yarn-next-layer-opposite") || currCell.template.name.startsWith("yarn-next-layer")) {
-			currWaleDirection *= -1;
-		} // TODO: what happens with yarn-next-layer-same?
+
+		// guess knit locations from position. Others will be guessed from knits later
+		if (currCell.template.name.startsWith("knit")) {
+			const cellPosition = gm.sub(gm.xformTranslation(currCell.xform), origin);
+			const x = Math.round(cellPosition[0] / 2.);
+			const y = Math.round(cellPosition[1]);
+			const z = Math.round(cellPosition[2]);
+			currCell.schedulingData.embedding = gm.vec3(x, y, z);
+			xMax = Math.max(xMax, x);
+			yMax = Math.max(yMax, y);
+		}
 
 		let exitFace = getYarnExitFace(currCell);
 
@@ -1426,107 +1453,68 @@ function allocateSpots() {
 		}
 	}
 
-	// Strategy: first, we will assign each cell coordinates in 3D space, where the x and y coordinates
-	// correspond to holder locations and the z coordinate corresponds to the layer.
-	// These coordinates need to obey the constraint that neighboring cells need to agree along two
-	// coordinates and differ by at least one along the third
-	// We first use union-find to identify equivalence classes of cells under the equality constraints along
-	// these three dimensions
-	// Then we build graphs whose vertices are equivalence classes of cells along these three dimensions
-	// and whose edges encode inequality constraints. Then traversing the graph yields the desired coordinates
-	// (https://www.geeksforgeeks.org/find-longest-path-directed-acyclic-graph/)
+	function holderPositions(x, y) {
+		return {f: "hf" + (x+x0) + "," + (y0+y), b: "hb" + (x+x0) + "," + (y0+yMax-y)};
+	}
 
-	// find equivalence classes
-	let xParent = [...body.cells.keys()]; // = range(len(body.cells)) https://stackoverflow.com/a/10050831
-	let yParent = [...body.cells.keys()];
-	let zParent = [...body.cells.keys()];
-	for (let iC=0; iC<body.cells.length; ++iC) {
-		const cell = body.cells[iC];
-		for (let iF=0; iF<cell.template.faces.length; ++iF) {
-			if (cell.template.faces[iF].type.length < 2) continue; // 
-			if (!cell.connections[iF]) continue;
-			let iN = body.cells.indexOf(cell.connections[iF].cell);
-			const faceType = cell.template.faces[iF].type;
-
-			if (faceType[1] == "y") {
-				// yarn direction (x neighbor)
-
-				// glue y and z coordinates
-				yParent[iC] = Math.min(yParent[iC], yParent[iN]);
-				yParent[iN] = yParent[iC];
-				zParent[iC] = Math.min(zParent[iC], zParent[iN]);
-				zParent[iN] = zParent[iC];
-			} else if (faceType[1] == "l") {
-				// (y neighbor)
-				// glue z and x coordinates
-				zParent[iC] = Math.min(zParent[iC], zParent[iN]);
-				zParent[iN] = zParent[iC];
-				xParent[iC] = Math.min(xParent[iC], xParent[iN]);
-				xParent[iN] = xParent[iC];
-			} else if (faceType[1] == "L") {
-				// (z neighbor)
-				// glue x and y coordinates
-				xParent[iC] = Math.min(xParent[iC], xParent[iN]);
-				xParent[iN] = xParent[iC];
-				yParent[iC] = Math.min(yParent[iC], yParent[iN]);
-				yParent[iN] = yParent[iC];
-			} else if (faceType[1] == "c") {
-				console.err("error: chain neighbors not handled")
-				// (??? neighbor)
+	for (let cell of body.cells) {
+			
+		let x = null, y = null, z = null;
+		if (cell.template.name.startsWith("loop-next-layer")) {
+			// make sure to look at loop in to specify correct holder for xfer
+			for (let iF=0; iF<cell.template.faces.length; iF++){
+				if (!cell.connections[iF]) continue;
+				if (cell.template.faces[iF].type.startsWith("-l")) {
+					// loop in
+					const bed = cell.connections[iF].cell.schedulingData.bed
+					cell.schedulingData.bed = bed;
+					x = cell.connections[iF].cell.schedulingData.embedding[0];
+					y = cell.connections[iF].cell.schedulingData.embedding[1];
+					// z = cell.connections[iF].cell.schedulingData.embedding[2];
+					if (bed === "b") {
+						y += 1; // xfer to front -> bump up y coord
+					} else {
+						y -= 1; // xfer to back -> bump down y coord
+					}
+				}
 			}
-		}
-	}
-
-	// index equivalence classes
-	let iX = Array(body.cells.length);
-	let iY = Array(body.cells.length);
-	let iZ = Array(body.cells.length);
-
-	let nx=0, ny=0, nz=0;
-	for (let j=0; j<body.cells.length; ++j) {
-		// if j has a parent, take its parent's index. Otherwise, take next available index
-		iX[j] = (xParent[j] < j) ? iX[xParent[j]] : nx++;
-		iY[j] = (yParent[j] < j) ? iY[yParent[j]] : ny++;
-		iZ[j] = (zParent[j] < j) ? iZ[zParent[j]] : nz++;
-	}
-
-	// build graphs
-	let xNeighbors = Array(nx).fill([]);
-	let yNeighbors = Array(ny).fill([]);
-	let zNeighbors = Array(nz).fill([]);
-
-	for (let iC=0; iC<body.cells.length; iC++) {
-		const cell = body.cells[iC];
-		for (let iF=0; iF<cell.template.faces.length; ++iF) {
-			if (cell.template.faces[iF].type.length < 2) continue; // 
-			if (!cell.connections[iF]) continue;
-			let iN = body.cells.indexOf(cell.connections[iF].cell);
-			const faceType = cell.template.faces[iF].type;
-
-			if (faceType[1] == "y") {
-				// yarn direction (x neighbor)
-				if (faceType[0] == cell.schedulingData.direction) {
-					xNeighbors[iX[iC]].push(iX[iN]);
+			z = null; // layer not well-defined for next-layer blocks
+		} else if (cell.template.name.startsWith("knit")) {
+			x = cell.schedulingData.embedding[0];
+			y = cell.schedulingData.embedding[1];
+			z = cell.schedulingData.embedding[2];
+		} else if (cell.template.name.startsWith("cast-on")) {
+			// TODO: there's something weird with the direction. Clarify what cast-on looks like with Yuichi
+			
+			// look at loop out to specify correct holder for cast-on tuck
+			for (let iF=0; iF<cell.template.faces.length; iF++){
+				if (!cell.connections[iF]) continue;
+				if (cell.template.faces[iF].type.startsWith("+l")) {
+					// loop out
+					const bed = cell.connections[iF].cell.schedulingData.bed
+					cell.schedulingData.bed = bed;
+					x = cell.connections[iF].cell.schedulingData.embedding[0];
+					y = cell.connections[iF].cell.schedulingData.embedding[1];
+					z = cell.connections[iF].cell.schedulingData.embedding[2];
 				}
-			} else if (faceType[1] == "l") {
-				// (y neighbor)
-				if (faceType[0] == cell.schedulingData.waleDirection) {
-					xNeighbors[iY[iC]].push(iY[iN]);
-				}
-			} else if (faceType[1] == "L") {
-				// (z neighbor)
-				if (faceType[0] == "+") {
-					xNeighbors[iZ[iC]].push(iZ[iN]);
-				}
-			} else if (faceType[1] == "c") {
-				console.err("error: chain neighbors not handled")
-				// (??? neighbor)
 			}
+		} else {
+			// TODO: grab data from a knit neighbor
+
 		}
+		if (x != null) {
+			// somewhat confusingly, bed is the stitch that the bed gets made on, which is opposite to the bed used for the needle
+			const needleBed = (cell.schedulingData.bed === "f") ? "b" : "f";
+
+			const holders = holderPositions(x, y);
+			cell.schedulingData.frontHolder = holders.f;
+			cell.schedulingData.backHolder = holders.b;
+			cell.schedulingData.layer = z;
+			cell.schedulingData.needle = needleBed + (x+x0); 
+			cell.schedulingData.yarnID = 1;
+		}
+
 	}
-
-	// traverse graphs to 
-
 }
 
 // add a cell to the body at a specified index in the cell list
@@ -3281,6 +3269,7 @@ function displayHoveredBlockInfo(over) {
 		displayData("ID", over.cellID);
 		displayData("Signature", over.cell.template.signature());
 		displayData("Position", posString);
+		displayData("Bed", over.cell.schedulingData.bed);
 		displayData("Needle", over.cell.schedulingData.needle);
 		displayData("Front Holder", over.cell.schedulingData.frontHolder);
 		displayData("Back Holder", over.cell.schedulingData.backHolder);
