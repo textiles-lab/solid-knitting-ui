@@ -323,6 +323,7 @@ body {
 <button id="save" class="controlsButton">Save</button>
 <button id="save-yarn-path" class="controlsButton">Save Yarn Path</button>
 <button id="save-knitout" class="controlsButton">Save Knitout</button>
+<button id="reallocate-spots" class="controlsButton">Reallocate Needle Locations</button>
 
 <div id="yarn-vis-options" class="controls-section">
 	Yarn Visualization:
@@ -574,6 +575,10 @@ document.getElementById("save-knitout").addEventListener('click', function(evt){
 	} else {
 		fileSave(knitoutCode.text, "solid-knitting-pattern.sk");	
 	}
+});
+
+document.getElementById("reallocate-spots").addEventListener('click', function(evt){
+	allocateSpots();
 });
 
 //-----------------------------------------------------------------------------
@@ -984,7 +989,7 @@ function undoLatestCommand() {
 		ACTION = null; // just in case
 		bodyDirty();
 	} else {
-		console.err("unknown command type ", command.type, " in command ", command);
+		console.error("unknown command type ", command.type, " in command ", command);
 		return;
 	}
 
@@ -1403,7 +1408,7 @@ function allocateSpots(x0=1, y0=4) {
 		}
 	}
 	if (currCell == null) {
-		console.err("spot allocation failed: no yarn-in cell found");
+		console.error("spot allocation failed: no yarn-in cell found");
 		return;
 	}
 
@@ -1412,7 +1417,7 @@ function allocateSpots(x0=1, y0=4) {
 	                  : (exitFace === 4) ? 1  // TODO: remove magic indices
 	                  : null;
 	if (currDirection == null) {
-		console.err("spot allocation failed: unrecognized yarn-in signature ", currCell.signature());
+		console.error("spot allocation failed: unrecognized yarn-in signature ", currCell.signature());
 		return;
 	}
 
@@ -1485,7 +1490,7 @@ function allocateSpots(x0=1, y0=4) {
 			z = cell.schedulingData.embedding[2];
 		} else if (cell.template.name.startsWith("cast-on")) {
 			// TODO: there's something weird with the direction. Clarify what cast-on looks like with Yuichi
-			
+
 			// look at loop out to specify correct holder for cast-on tuck
 			for (let iF=0; iF<cell.template.faces.length; iF++){
 				if (!cell.connections[iF]) continue;
