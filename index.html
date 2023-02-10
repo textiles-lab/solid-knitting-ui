@@ -1378,7 +1378,14 @@ function allocateSpots() {
 	// initialize schedulingData and look for yarn-in to start
 	let currCell = null;
 	for (let cell of body.cells) {
-		if (!cell.schedulingData) cell.schedulingData = {};
+		if (!cell.schedulingData) {
+			cell.schedulingData = {
+				xNode: null,
+				yNode: null,
+				zNode: null,
+				direction: null
+			};
+		}
 		if (cell.template.name === "yarn-in") {
 			currCell = cell;
 		}
@@ -1390,20 +1397,28 @@ function allocateSpots() {
 
 	let exitFace = getYarnExitFace(currCell);
 	let currDirection = (exitFace === 2) ? -1  // TODO: remove magic indices
-	                  : (exitFace === 4) ? +1  // TODO: remove magic indices
+	                  : (exitFace === 4) ? 1  // TODO: remove magic indices
 	                  : null;
 	if (currDirection == null) {
 		console.err("spot allocation failed: unrecognized yarn-in signature ", currCell.signature());
 		return;
 	}
 
+	let currWaleDirection = 1; // TODO: how do you determine this?
 
+	// find directions
 	while (currCell != null) {
 		currCell.schedulingData.direction = (currDirection > 0) ? "+" : "-";
+		currCell.schedulingData.waleDirection = (currWaleDirection > 0) ? "+" : "-";
 		if (currCell.template.name.startsWith("yarn-next-row") || currCell.template.name.startsWith("yarn-next-layer")) {
 			currDirection *= -1;
 		}
-		const exitFace = getYarnExitFace(currCell);
+		if (currCell.template.name.startsWith("yarn-next-layer-opposite") || currCell.template.name.startsWith("yarn-next-layer")) {
+			currWaleDirection *= -1;
+		} // TODO: what happens with yarn-next-layer-same?
+
+		let exitFace = getYarnExitFace(currCell);
+
 		if (exitFace != null) {
 			currCell = currCell.connections[exitFace].cell;
 		} else {
@@ -1411,6 +1426,106 @@ function allocateSpots() {
 		}
 	}
 
+	// Strategy: first, we will assign each cell coordinates in 3D space, where the x and y coordinates
+	// correspond to holder locations and the z coordinate corresponds to the layer.
+	// These coordinates need to obey the constraint that neighboring cells need to agree along two
+	// coordinates and differ by at least one along the third
+	// We first use union-find to identify equivalence classes of cells under the equality constraints along
+	// these three dimensions
+	// Then we build graphs whose vertices are equivalence classes of cells along these three dimensions
+	// and whose edges encode inequality constraints. Then traversing the graph yields the desired coordinates
+	// (https://www.geeksforgeeks.org/find-longest-path-directed-acyclic-graph/)
+
+	// find equivalence classes
+	let xParent = [...body.cells.keys()]; // = range(len(body.cells)) https://stackoverflow.com/a/10050831
+	let yParent = [...body.cells.keys()];
+	let zParent = [...body.cells.keys()];
+	for (let iC=0; iC<body.cells.length; ++iC) {
+		const cell = body.cells[iC];
+		for (let iF=0; iF<cell.template.faces.length; ++iF) {
+			if (cell.template.faces[iF].type.length < 2) continue; // 
+			if (!cell.connections[iF]) continue;
+			let iN = body.cells.indexOf(cell.connections[iF].cell);
+			const faceType = cell.template.faces[iF].type;
+
+			if (faceType[1] == "y") {
+				// yarn direction (x neighbor)
+
+				// glue y and z coordinates
+				yParent[iC] = Math.min(yParent[iC], yParent[iN]);
+				yParent[iN] = yParent[iC];
+				zParent[iC] = Math.min(zParent[iC], zParent[iN]);
+				zParent[iN] = zParent[iC];
+			} else if (faceType[1] == "l") {
+				// (y neighbor)
+				// glue z and x coordinates
+				zParent[iC] = Math.min(zParent[iC], zParent[iN]);
+				zParent[iN] = zParent[iC];
+				xParent[iC] = Math.min(xParent[iC], xParent[iN]);
+				xParent[iN] = xParent[iC];
+			} else if (faceType[1] == "L") {
+				// (z neighbor)
+				// glue x and y coordinates
+				xParent[iC] = Math.min(xParent[iC], xParent[iN]);
+				xParent[iN] = xParent[iC];
+				yParent[iC] = Math.min(yParent[iC], yParent[iN]);
+				yParent[iN] = yParent[iC];
+			} else if (faceType[1] == "c") {
+				console.err("error: chain neighbors not handled")
+				// (??? neighbor)
+			}
+		}
+	}
+
+	// index equivalence classes
+	let iX = Array(body.cells.length);
+	let iY = Array(body.cells.length);
+	let iZ = Array(body.cells.length);
+
+	let nx=0, ny=0, nz=0;
+	for (let j=0; j<body.cells.length; ++j) {
+		// if j has a parent, take its parent's index. Otherwise, take next available index
+		iX[j] = (xParent[j] < j) ? iX[xParent[j]] : nx++;
+		iY[j] = (yParent[j] < j) ? iY[yParent[j]] : ny++;
+		iZ[j] = (zParent[j] < j) ? iZ[zParent[j]] : nz++;
+	}
+
+	// build graphs
+	let xNeighbors = Array(nx).fill([]);
+	let yNeighbors = Array(ny).fill([]);
+	let zNeighbors = Array(nz).fill([]);
+
+	for (let iC=0; iC<body.cells.length; iC++) {
+		const cell = body.cells[iC];
+		for (let iF=0; iF<cell.template.faces.length; ++iF) {
+			if (cell.template.faces[iF].type.length < 2) continue; // 
+			if (!cell.connections[iF]) continue;
+			let iN = body.cells.indexOf(cell.connections[iF].cell);
+			const faceType = cell.template.faces[iF].type;
+
+			if (faceType[1] == "y") {
+				// yarn direction (x neighbor)
+				if (faceType[0] == cell.schedulingData.direction) {
+					xNeighbors[iX[iC]].push(iX[iN]);
+				}
+			} else if (faceType[1] == "l") {
+				// (y neighbor)
+				if (faceType[0] == cell.schedulingData.waleDirection) {
+					xNeighbors[iY[iC]].push(iY[iN]);
+				}
+			} else if (faceType[1] == "L") {
+				// (z neighbor)
+				if (faceType[0] == "+") {
+					xNeighbors[iZ[iC]].push(iZ[iN]);
+				}
+			} else if (faceType[1] == "c") {
+				console.err("error: chain neighbors not handled")
+				// (??? neighbor)
+			}
+		}
+	}
+
+	// traverse graphs to 
 
 }
 
