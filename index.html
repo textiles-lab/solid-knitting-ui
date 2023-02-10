@@ -1364,63 +1364,54 @@ function checkGlobalCellCorrectness() {
 	}
 	return count == bodyLen; 
 }
-
 // computes a needle, frontHolder, backHolder, layer, direction, and yarnID for each cell, storing these in cell.schedulingData
 // currently computes locations for knit, next-row, yarn-next-layer, loop-next-layer, cast-on, bind-off
 function allocateSpots() {
-	// HACK: hard code schedule based on cell positions so we can get the code generation working
-	// TODO: compute things properly via constraint propagation
-
-	// identify extreme knit
-	let origin = null;
-	for (let cell of body.cells) {
-		if (cell.template.name != "knit") continue;
-		if (origin === null) {
-			origin = gm.xformTranslation(cell.xform);
-		} else {
-			const cellPosition = gm.xformTranslation(cell.xform);
-			origin = gm.min(origin, cellPosition);
+	// follow yarn through body
+	function getYarnExitFace(cell) {
+		for (let iF=0; iF<cell.template.faces.length; ++iF) {
+			if (cell.template.faces[iF].type.startsWith("+y")) return iF;
 		}
+		return null;
 	}
 
-	// place cells on hooks
+	// initialize schedulingData and look for yarn-in to start
+	let currCell = null;
 	for (let cell of body.cells) {
 		if (!cell.schedulingData) cell.schedulingData = {};
-
-		if (cell.template.name === "knit") {
-
-			// guess hook locations from position
-			const cellPosition = gm.sub(gm.xformTranslation(cell.xform), origin);
-			const x = Math.round(cellPosition[0] / 2.);
-			const y = Math.round(cellPosition[1]);
-			const z = Math.round(cellPosition[2]);
-			cell.schedulingData.frontHolder = x + " " + y + " " + z;
-
-			// guess direction from which side of the block is +y and which is -y
-			let posPosition = null;
-			let negPosition = null;
-			for (let face of cell.template.faces) {
-				let center = gm.vec3(0.0);
-				for (let vi of face.indices) {
-					center = gm.add(center, cell.vertices[vi]);
-				}
-				center = gm.scale(1.0 / face.indices.length, center);
-				if (face.type.substr(0,2) === "+y") {
-					posPosition = center;
-				} else if (face.type.substr(0,2) === "-y") {
-					negPosition = center;
-				}
-			}
-			const movingRight = negPosition[0] < posPosition[0]; // TODO: hard-codes bed axis to +x. Relax somehow?
-
-			cell.schedulingData.needle = "?" + x;
-			cell.schedulingData.frontHolder = "map(" + x + "," + y + ")";
-			cell.schedulingData.backHolder = "map(" + x + "," + y + ")";
-			cell.schedulingData.layer = z;
-			cell.schedulingData.direction = movingRight ? "+" : "-";
-			cell.schedulingData.yarnID = "1";
+		if (cell.template.name === "yarn-in") {
+			currCell = cell;
 		}
 	}
+	if (currCell == null) {
+		console.err("spot allocation failed: no yarn-in cell found");
+		return;
+	}
+
+	let exitFace = getYarnExitFace(currCell);
+	let currDirection = (exitFace === 2) ? -1  // TODO: remove magic indices
+	                  : (exitFace === 4) ? +1  // TODO: remove magic indices
+	                  : null;
+	if (currDirection == null) {
+		console.err("spot allocation failed: unrecognized yarn-in signature ", currCell.signature());
+		return;
+	}
+
+
+	while (currCell != null) {
+		currCell.schedulingData.direction = (currDirection > 0) ? "+" : "-";
+		if (currCell.template.name.startsWith("yarn-next-row") || currCell.template.name.startsWith("yarn-next-layer")) {
+			currDirection *= -1;
+		}
+		const exitFace = getYarnExitFace(currCell);
+		if (exitFace != null) {
+			currCell = currCell.connections[exitFace].cell;
+		} else {
+			currCell = null;
+		}
+	}
+
+
 }
 
 // add a cell to the body at a specified index in the cell list
