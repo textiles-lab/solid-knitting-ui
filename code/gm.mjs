@@ -383,6 +383,13 @@ export function sub(a,b) {
 	return c;
 }
 
+export function scalarmul(s,v) {
+	const c = v.slice();
+	for (let i = 0; i < c.length; ++i) {
+		c[i] *= s;
+	}
+	return c;
+}
 
 export function matmul(a_rows, a_columns, b_rows, b_columns, a,b) {
 	if (a.length !== (a_columns * a_rows) || b.length !== (b_columns * b_rows)) throw new Error("arguments should match their sizes");
@@ -570,6 +577,18 @@ export function length(a) {
 	return Math.sqrt(dot(a,a));
 }
 
+export function length2(a) {
+	return dot(a,a);
+}
+
+export function dist(a, b) {
+	return length(sub(b, a));
+}
+
+export function dist2(a, b) {
+	return length2(sub(b, a));
+}
+
 export function svd(A_) {
 	if (!(A_.length === 9)) throw new Error("This svd code only works on 3x3 matricies.");
 
@@ -740,6 +759,15 @@ export function svd(A_) {
 	return {U, Sigma, V};
 }
 
+export function identityTransform() {
+	return [
+		1, 0, 0,
+		0, 1, 0,
+		0, 0, 1,
+		0, 0, 0
+	];
+}
+
 //rigid transform X such that minimizes ( X * [A[i],1] - B[i] ) ^ 2
 // that is, the translation + rotation that get points in A as close as possible to their corresponding points in B
 // return is a Mat4x3
@@ -804,6 +832,9 @@ export function rigidTransform(A,B) {
 	return xform;
 }
 
+export function xformTranslation(xform) {
+	return vec3(xform[3*3+0], xform[3*3+1], xform[3*3+2]);
+}
 
 async function test_svd() {
 	console.log("Testing svd function.");

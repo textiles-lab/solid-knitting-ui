@@ -1,4 +1,4 @@
-
+ 
 // work-in-progress: factoring out some webgl helpers from the main blob
 
 export class Geometry {
@@ -101,3 +101,38 @@ export class Program {
 	}
 }
 
+// Load a texture from url. While texture is loading, it is substituted by a single white pixel
+// based on: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Using_textures_in_WebGL
+export function loadTexture(gl, url) {
+	const texture = gl.createTexture();
+	gl.bindTexture(gl.TEXTURE_2D, texture);
+
+	// temp image (single white pixel)
+	gl.texImage2D(
+		gl.TEXTURE_2D, 0 /* level */, gl.RGBA /* internal format */, 1 /* width */, 1 /* height */, 0 /* border */,
+		gl.RGBA /* src format */, gl.UNSIGNED_BYTE /* src type */, new Uint8Array([255, 255, 255, 255]) /* src image */
+	);
+
+	const image = new Image();
+	image.onload = () => {
+		gl.bindTexture(gl.TEXTURE_2D, texture);
+		gl.texImage2D(
+			gl.TEXTURE_2D, 0 /* level */, gl.RGBA /* internal format */, gl.RGBA /* src format */, gl.UNSIGNED_BYTE /* src type */,
+			image
+		);
+
+		function isPowerOf2(value) {
+			return (value & (value - 1)) === 0;
+		}
+		if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+			gl.generateMipmap(gl.TEXTURE_2D);
+		} else {
+			console.err("Image dimensions are not powers of 2: ", image.width, image.height, image);
+		}
+	};
+	image.src = url;
+
+	return texture;
+}

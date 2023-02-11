@@ -6,6 +6,9 @@
 body {
 	padding:0;
 	margin:0;
+
+	background-color: #414038;
+	color: #E4E0CD;
 }
 #dropTarget {
 	position:fixed;
@@ -31,20 +34,22 @@ body {
 
 #views {
 	display:grid;
-	width:99vw;
+/*	width:99vw;*/
 	height:99vh;
 
 	grid-template-columns: 1fr auto ;
-	grid-template-rows: auto 1.0fr ;
+	grid-template-rows: auto 1.0fr;
+	overflow: none;
 
 	/*background: #0008 ;*/
 }
 #controls {
 	grid-column: 1 / 3 ;
 	grid-row: 1 ;
+	gap: 8px;
 	font-size: 16px;
 	line-height:16px;
-	padding: 5px 10px;
+	padding: 5px 5px;
 	display:flex;
 	flex-flow: row wrap;
 	align-items:center;
@@ -57,14 +62,16 @@ body {
 	display:block;
 	background:#cfbb96;
 	padding:4px 8px;
-	margin:0 2px;
+	margin:0;
 	box-shadow: 0 1px 2px 0 #0008;
 	text-decoration:none;
 	line-height:1;
 	border: none;
 	border-radius:2px;
-	height:100%;
+/*	height:100%;*/
 	font-size:inherit;
+	font-family: sans-serif;
+	color: black;
 }
 
 .controlsButton:hover {
@@ -73,6 +80,10 @@ body {
 
 .controlsButton:active {
 	box-shadow: 0 0 1px 0 #0008;
+}
+
+.controls-section {
+	margin-left: 1em;
 }
 
 #view-3d {
@@ -93,28 +104,208 @@ body {
 	left:0;
 	bottom:0;
 	background:#fff8;
+	color: black;
+	padding: 0.15em 0.3em;
 }
-#view-library {
+#sidebar {
 	grid-column: 2 ;
 	grid-row: 2 ;
-	/*background: #00f8 ;*/
+
+	display:grid;
+	grid-template-rows: 1fr min-content;
+	width: 24em;
+	min-height: 0; /* don't expand past parent height https://stackoverflow.com/a/43312314 */
+/*	background: #00f8 ;*/
+
+	background-color: #232220;
+	color: #C4C0AD;
 }
-#view-library h1 {
+#sidebar h2, summary {
 	font-size:20px;
+	font-weight: bold;
 	line-height:20px;
-	padding:0;
-	margin:0 5px;
+	padding: 0;
+	margin: 0;
+	margin-bottom: 0.5em;
+	font-family: sans-serif;
 }
 #library {
-	display:block;
-	list-style:none;
+/*	grid-row: 2 ;*/
+	margin:0;
+	padding: 0.5em 0 0 0.5em; /* top right bottom left */
+	min-height: 0;
+	display:grid; /* set to grid from javascript later too */
+	grid-template-rows: auto 1fr;
+	padding-bottom: 0.5em;
+}
+#library-list {
+/*	grid-row: 2 ;*/
 	margin:0;
 	padding:0;
+	min-width: 0;
+	min-height: 0;
+	overflow-y: scroll;
+}
+#library ul {
+	list-style:none;
 }
 #library li {
 	display:block;
-	margin:0.5em 1.0em;
+	margin:0em 0.15em;
+	padding:0.15em 0.5em;
+	border-radius:0.2em;
+	cursor:pointer;
+	border: 1pt solid #fff0;
+}
+#library li:hover {
+	background-color: #dde2;
+	color: #D4D0CD;
+}
+#library .library-active-template {
+	background-color: #dde2;
+	color: #D4D0CD;
+	border: 1pt solid #94908D;
+}
+#view-shortcuts {
+	border-top: 2px solid #44402D;
+	padding-left: 0.25em;
+	padding-top: 0.5em;
+}
+#shortcuts {
+	grid-row: 3 ;
+	margin:0;
 	padding:0;
+}
+#shortcuts li {
+	display:block;
+	margin:0.1em 0.15em;
+	padding:0.0em 0.5em;
+}
+#shortcuts .key {
+	font-family: monospace;
+}
+#view-knitout {
+	margin: 0;
+	padding: 0;
+	padding-top: 0.5em;
+	overflow: auto;
+	font-family: monospace;
+	background-color: #272822;
+	color: white;
+	display:grid; /* set to grid from javascript later too */
+	grid-template-rows: 1fr auto;
+}
+#view-knitout #view-knitout-options {
+	padding: 0.5em 1em;
+	background-color: #373832;
+}
+#knitout-source {
+	min-height: 0;
+	overflow-y: scroll;
+	margin-bottom: 0.5em;
+}
+/* code styling */
+#knitout-source span {
+	/* position: relative; /* for tooltips */
+	white-space: pre; /* preserve whitespace */
+}
+
+/* https://www.w3schools.com/css/css_tooltip.asp */
+/*#knitout-source span .tooltiptext {
+	visibility: hidden;
+	position: absolute;
+	z-index: 1;
+	background-color: #202010;
+	padding: 0.5em 1em;
+	color: white;
+	top: 0;
+	left: 4em;
+	border: 1pt solid #555;
+	border-radius: 0.25em;
+}
+#knitout-source span:hover .tooltiptext {
+	visibility: visible;
+}*/
+#knitout-source .line {
+	padding: 0 0;
+	display: flex;
+}
+#knitout-source .line-number {
+	color: #94908D;
+	width: 2em;
+	padding: 0 0.5em;
+	display: inline-block;
+
+	/* disable selection: https://stackoverflow.com/a/4407335 */
+	-webkit-touch-callout: none; /* iOS Safari */
+	-webkit-user-select: none; /* Safari */
+	 -khtml-user-select: none; /* Konqueror HTML */
+	   -moz-user-select: none; /* Old versions of Firefox */
+	    -ms-user-select: none; /* Internet Explorer/Edge */
+	        user-select: none; /* Non-prefixed version, currently
+	                              supported by Chrome, Edge, Opera and Firefox */
+}
+#knitout-source .line:hover {
+	color: #C4C0BD;
+	background-color: #373832;
+}
+#knitout-source .code {
+	border-left: 2px solid #44402D;
+/*	box-shadow: inset 8px 0 8px -10px black;*/
+	padding-left: 0.5em;
+	width: 100%;
+}
+#knitout-source .comment {
+	color: #74705D;
+}
+#knitout-source .location {
+	color: #A6E42C;
+}
+#knitout-source .direction {
+	color: #AC7DFF;
+}
+#knitout-source .keyword {
+	color: #FF2275;
+}
+#knitout-source .carrier {
+	color: #EEEEEE;
+}
+#knitout-source .string {
+	color: #EDE277;
+}
+
+#view-block-data {
+	display: grid; /* set to grid from javascript later too */
+	grid-template-rows: auto 1fr;
+	gap: 0;
+	padding-bottom: 0.5em;
+}
+#view-block-data h2 {
+	padding: 0.5em 0 0 0.5em; /* top right bottom left */
+}
+#hovered-block-info {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	align-content: start;
+	gap: 0;
+	overflow-y: scroll;
+}
+/* shade every other row https://stackoverflow.com/a/44937583 */
+#hovered-block-info > :nth-child(4n+1), #hovered-block-info > :nth-child(4n+2) {
+	background-color: #dde1;
+}
+#hovered-block-info .field-name {
+	text-align: right;
+	padding: 0.15em 0.25em 0.15em 0.5em; /* top right bottom left */
+	min-height: 0;
+}
+#hovered-block-info .field-name:after {
+	content: ":";
+}
+#hovered-block-info .field-value {
+	padding: 0.15em 0 0.15em 0.25em; /* top right bottom left */
+	font-family: monospace;
+	min-height: 0;
 }
 </style>
 </head>
@@ -124,14 +315,61 @@ body {
 
 <!-- controls bar at the top of the window -->
 <div id="controls">
+<span id="fileName">(no file loaded)</span>
 <input id="file" type="file" />
 <label id="fileLabel" for="file" class="controlsButton">Load</label>
-<span id="fileName">(no file loaded)</span>
 <!-- <button id="benchmark">benchmark</button>
 <span id="benchmark-result"></span> -->
 <button id="save" class="controlsButton">Save</button>
 
 <button id="export" class="controlsButton">Export Solid Knitout</button>
+<button id="save-yarn-path" class="controlsButton">Save Yarn Path</button>
+<button id="save-knitout" class="controlsButton">Save Knitout</button>
+<button id="reallocate-spots" class="controlsButton">Reallocate Needle Locations</button>
+
+<div id="yarn-vis-options" class="controls-section">
+	Yarn Visualization:
+	<select id="select-yarn-vis-option">
+		<option value="Tube" selected>Tube</option>
+		<option value="Wire">Wire</option>
+		<option value="Body">Body</option>
+	</select>
+</div>
+
+<div id="layer-visibility-options" class="controls-section">
+	Layer Visibility:
+	<form id="layer-visibility-form" style="display:inline-block;">
+		<input type="checkbox" name="layer-visible" value="0" checked>0
+		<input type="checkbox" name="layer-visible" value="1" checked>1
+		<input type="checkbox" name="layer-visible" value="2" checked>2
+		<input type="checkbox" name="layer-visible" value="3" checked>3
+		<input type="checkbox" name="layer-visible" value="4" checked>4
+	</form>
+</div>
+
+<div id="yarn-direction-vis-options" class="controls-section">
+	<form id="show-yarn-direction-form" style="display:inline-block;">
+		<input type="checkbox" name="show-yarn-direction" value="0"> Show Yarn Direction
+	</form>
+</div>
+
+<div id="viewmode-options" class="controls-section">
+	View Mode:
+	<select id="select-viewmode-option">
+		<option value="Pattern" selected>Pattern</option>
+		<option value="Template">Template</option>
+	</select>
+</div>
+
+<div id="sidebar-options" class="controls-section">
+	Sidebar:
+	<select id="select-sidebar-option">
+		<option value="Library" selected>Library</option>
+		<option value="Knitout">Knitout</option>
+		<option value="BlockData">Block Data</option>
+		<option value="KnitoutAndBlockData">Knitout & Block Data</option>
+	</select>
+</div>
 </div>
 
 <!-- 3d view -->
@@ -141,13 +379,51 @@ body {
 </div>
 
 <!-- library panel -->
-<div id="view-library">
-<h1>Blocks:</h1>
-<ul id="library">
+<div id="sidebar">
+<div id="library">
+<h2>Block Library:</h2>
+<ul id="library-list">
 </ul>
 </div>
 
+<!-- preview generated knitout -->
+<div id="view-knitout">
+	<div id="knitout-source"></div>
+	<div id="view-knitout-options">
+		<form id="group-knitout-passes-form" style="display:inline-block;">
+		<label for="group-knitout-passes">Group knitout passes:</label>
+		<input type="checkbox" name="group-knitout-passes">
+		</form>
+	</div>
 </div>
+
+<!-- see information about highlighted block -->
+<div id="view-block-data">
+	<h2> Block Info:</h2>
+	<div id="hovered-block-info"></div>
+</div>
+
+<!-- also list shortcuts -->
+<details id="view-shortcuts" open>
+<summary>Commands:</summary>
+<ul id="shortcuts">
+	<li> <span class="key">space</span> or <span class="key">R</span>: relax shape</li>
+	<li> <span class="key">enter</span>: select hovered template</li>
+	<li> <span class="key">X</span>: delete cell</li>
+	<li> <span class="key">G</span>: grab cell</li>
+	<li> <span class="key">C</span>: start connection</li>
+	<li> <span class="key">U</span>: check for cycles</li>
+	<li> <span class="key">up</span>: prev template</li>
+	<li> <span class="key">down</span>: next template</li>
+	<li> <span class="key">K</span>: prev compatible template</li>
+	<li> <span class="key">J</span>: next compatible template</li>
+	<li> <span class="key">ctrl-Z</span>: undo</li>
+	<li> <span class="key">esc</span>: escape from grab/connect</li>
+</ul>
+</details>
+</div>
+
+
 
 <!-- full-window drop target -->
 <div id="dropTarget"></div>
@@ -239,6 +515,29 @@ document.getElementById("save").addEventListener('click', function(evt){
 	const text = JSON.stringify(body.toData());
 	fileSave(text, "solid-knitting.body");
 });
+document.getElementById("save-yarn-path").addEventListener('click', function(evt){
+	console.log("Saving yarn path");
+	let text = "";
+	let iV = 1;
+	for (const cell of body.cells) {
+		const xf = cell.xform;
+		for (const yarn of cell.template.yarns) {
+			for (let iP=0; iP<yarn.pts.length; ++iP) {
+				const pt = yarn.pts[iP];
+				let at = gm.mul_mat4x3_vec4(xf, [...pt, 1]);
+				text += "v " + at[0]  + " " + at[1] + " " + at[2] + "\n";
+			}
+			text += "l ";
+			for (let iP=0; iP<yarn.pts.length; ++iP) {
+				text += iV + " ";
+				++iV;
+			}
+			text += "\n";
+		}
+
+	}
+	fileSave(text, "solid-knitting-yarn-path.obj");
+});
 
 // export machine code 
 document.getElementById("export").addEventListener('click', function(evt){
@@ -329,7 +628,20 @@ window.library = new sv.Library();
 window.template = null;
 window.body = new sv.Body();
 
-import {Geometry, Program} from './code/gl.mjs';
+import {Geometry, Program, loadTexture} from './code/gl.mjs';
+import {writeHighlightedCode, groupBlocks, groupPasses} from './code/sk.mjs';
+
+document.getElementById("save-knitout").addEventListener('click', function(evt){
+	if (groupKnitoutPassesCheckbox.checked) {
+		fileSave(groupPasses(knitoutCode.text), "solid-knitting-pattern.sk");
+	} else {
+		fileSave(knitoutCode.text, "solid-knitting-pattern.sk");	
+	}
+});
+
+document.getElementById("reallocate-spots").addEventListener('click', function(evt){
+	allocateSpots();
+});
 
 //-----------------------------------------------------------------------------
 // Adapted from yarn visualizer code (from smobj)
@@ -342,6 +654,13 @@ window.gl = gl; //DEBUG
 
 const STATUS_LINE = document.getElementById("status-line");
 window.STATUS_LINE = STATUS_LINE;
+
+// "enum" representing possible displays
+const ViewMode = {
+	Pattern: 'Pattern',
+	Template: 'Template'
+};
+let viewMode = ViewMode.Pattern;
 
 //------- camera -------
 const camera = {
@@ -441,9 +760,26 @@ window.mouseDirty = mouseDirty;
 function bodyDirty() {
 	visBody.dirty = true;
 	visWire.dirty = true;
+	visWireCells.dirty = true;
+	visTubes.dirty = true;
 	requestRedraw();
 }
 window.bodyDirty = bodyDirty;
+
+function templateDirty() {
+	visTemplateBody.dirty = true;
+	visTemplateWire.dirty = true;
+	visTemplateTubes.dirty = true;
+	visTemplateWireCells.dirty = true;
+	requestRedraw();
+}
+window.templateDirty = templateDirty;
+
+function knitoutDirty() {
+	knitoutCode.dirty = true;
+	requestRedraw();
+}
+window.knitoutDirty = knitoutDirty; // for debugging
 
 function setMouseOver() {
 	MOUSE.over = null;
@@ -455,7 +791,7 @@ function setMouseOver() {
 	
 
 	//faces of cells:
-	function isect(a,b,c, cell,face) {
+	function isect(a,b,c, cell,face, cellID) {
 		const perp = gm.cross(gm.sub(b, a), gm.sub(c, a));
 
 		//offset of the start of the ray from the plane of the triangle:
@@ -487,11 +823,13 @@ function setMouseOver() {
 		if (wa < 0 || wb < 0 || wc < 0) return;
 
 		close = t;
-		MOUSE.over = {cell, face};
+		MOUSE.over = {cell, face, cellID};
 		MOUSE.grid = null;
 	}
 
-	for (const cell of body.cells) {
+	for (let cellID = 0; cellID < body.cells.length; ++cellID) {
+		const cell = body.cells[cellID];
+		if (!checkCellVisible(cell)) continue;
 		{ //ray vs bounding box of cell:
 			let min = gm.vec3(Infinity);
 			let max = gm.vec3(-Infinity);
@@ -528,7 +866,7 @@ function setMouseOver() {
 				const a = cell.vertices[face.indices[0]];
 				const b = cell.vertices[face.indices[i-1]];
 				const c = cell.vertices[face.indices[i]];
-				isect(a,b,c, cell,fi);
+				isect(a,b,c, cell,fi, cellID);
 			}
 		}
 	}
@@ -616,20 +954,25 @@ canvas.addEventListener('mouseup', function(evt){
 });
 
 window.addEventListener('keydown', function(evt){
-	if (ACTION) {
+
+	if (ACTION) { // actions take priority over ordinary keybindings
 		if (ACTION.keydown) ACTION.keydown(evt);
 	} else {
-		if (evt.code === 'Space') {
+		if (evt.code == 'KeyZ' && (evt.ctrlKey || evt.metaKey)) { 
+			// allow control-z or command-z on all systems since it seems tricky to check which is expected
+			undoLatestCommand();
+			return;
+		} else if (evt.code === 'Space' || evt.code === 'KeyR') { // TODO: allow undo for relax?
 			body.relax();
 			bodyDirty();
 		} else if (evt.code == 'KeyA') {
 			addCell();
 		} else if (evt.code == 'Enter') {
 			if (MOUSE.over) {
-				template = MOUSE.over.cell.template;
+				setActiveTemplate(MOUSE.over.cell.template);
 				requestRedraw();
 			} else {
-				template = null;
+				setActiveTemplate(null);
 				requestRedraw();
 			}
 		} else if (evt.code == 'KeyX') {
@@ -641,20 +984,122 @@ window.addEventListener('keydown', function(evt){
 		} else if (evt.code == 'KeyU') {
 			// probably will change keycode. 
 			// Run topological sort. 
-			if (!checkGlobalCellCorrectness()) console.log("Warning: Topological sort shows a cycle in yarn directions!");
-		}else if (evt.code == 'ArrowUp') {
+			if (!checkGlobalCellCorrectness()) console.log("Warning: There is exists a cycle in yarn directions!");
+			else console.log("No cycles detected in yarn directions");
+		} else if (evt.code == 'ArrowUp') {
 			prevTemplate();
 			requestRedraw();
 		} else if (evt.code == 'ArrowDown') {
 			nextTemplate();
+			requestRedraw();
+		} else if (evt.code == 'KeyJ') {
+			nextCompatibleTemplate();
+			requestRedraw();
+		} else if (evt.code == 'KeyK') {
+			prevCompatibleTemplate();
 			requestRedraw();
 		}
 		//console.log(evt.code); //when you want more keys
 	}
 });
 
+// keep track of commands in a circular buffer to implement undo
+let commandHistory = {
+	commands: Array(50).fill(null),
+	latest: 49
+};
+
+function pushCommand(command) {
+	commandHistory.latest = (commandHistory.latest + 1) % commandHistory.commands.length;
+	commandHistory.commands[commandHistory.latest] = command;
+}
+
+function undoLatestCommand() {
+	const command = commandHistory.commands[commandHistory.latest];
+	if (command == null) {
+		console.log("reached end of undo history");
+		return; // no command to undo
+	}
+
+	if (command.type === "addCell") { // {type: "addCell", newCellIndex: newCellIndex}
+		unsafeDeleteCell(command.newCellIndex);
+	} else if (command.type === "deleteCell") { // {type: "deleteCell", cell: cell, cellIndex: cellIndex}
+		unsafeAddCell(command.cell, command.cellIndex);
+	} else if (command.type === "confirmGrabCell") {
+		console.log("undoing grab");
+		// {type: "confirmGrabCell", cellIndex: body.cells.indexOf(cell),
+		// 		             startVertices: startVertices, startXform: startXform,
+		// 		             endVertices: cell.vertices, endXform: cell.xform}
+		const cell = body.cells[command.cellIndex];
+		cell.vertices = command.startVertices;
+		cell.xform = command.startXform;
+		ACTION = null; // just in case
+		bodyDirty();
+	} else if (command.type === "confirmConnect") {
+		console.log("undoing connect");
+		// {type: "confirmConnect", cellIndex: body.cells.indexOf(cell), face: face, oldConnection: oldConnection}
+		const cell = body.cells[command.cellIndex];
+		if (cell.connections[command.face]) { // remove created connection
+			const toCell = cell.connections[command.face].cell;
+			const toFace = cell.connections[command.face].face;
+			toCell.connections[toFace] = null;
+		}
+		cell.connections[command.face] = command.oldConnection; // restore old connection for cell
+		if (command.oldConnection) { // restore old connection for cell's neighbor
+			command.oldConnection.cell.connections[command.oldConnection.face] = {cell:cell, face:command.face};
+		}
+		ACTION = null; // just in case
+		bodyDirty();
+	} else {
+		console.error("unknown command type ", command.type, " in command ", command);
+		return;
+	}
+
+	// erase command and decrement latest
+	commandHistory.commands[commandHistory.latest] = null;
+	commandHistory.latest = (commandHistory.latest + commandHistory.commands.length - 1) % commandHistory.commands.length;
+}
+
+
 // TODO: Consider moving each script into its own module for the sake of code
 // clarity. 
+
+// https://stackoverflow.com/a/10800402
+function stripSpaces(str) {
+	return str.replace(/\s/g, '');
+}
+
+function listTemplates(templates) {
+// <ul id="library">
+	const library_list = document.getElementById("library-list");
+	library_list.textContent = ''; // clear anything currently in list
+
+	// sort templates by signature
+	let signature_names = {}
+	for (const name of Object.keys(templates)) {
+		signature_names[templates[name].signature()] = name;
+	}
+	for (const signature of Object.keys(signature_names).sort()) {
+		const item = document.createElement('li');
+		item.innerHTML = signature_names[signature];
+		item.setAttribute('id', stripSpaces(signature));
+		item.onclick = function() {setTemplateFromSignature(stripSpaces(signature));};
+		library_list.appendChild(item);
+	}
+}
+
+function setActiveTemplate(t) {
+	template = t;
+	const currently_highlighted = document.getElementsByClassName('library-active-template');
+	for (let elem of currently_highlighted) {
+		elem.classList.remove('library-active-template');
+	}
+	if (template) {
+		document.getElementById(stripSpaces(template.signature())).classList.add('library-active-template');
+	}
+	templateDirty();
+}
+
 
 // Solid knitting interface code. 
 
@@ -670,7 +1115,7 @@ function nextTemplate() {
 		console.assert(selected === null || selected.signature() != t.signature(), "All templates should have unique signatures.");
 		selected = t;
 	}
-	template = selected;
+	setActiveTemplate(selected);
 }
 
 //select previous template from library:
@@ -685,7 +1130,153 @@ function prevTemplate() {
 		console.assert(selected === null || selected.signature() != t.signature(), "All templates should have unique signatures.");
 		selected = t;
 	}
-	template = selected;
+	setActiveTemplate(selected);
+}
+
+//select next template from library:
+// (uses global 'library' and 'template' variables)
+function nextCompatibleTemplate() {
+	if (MOUSE.over === null) return null;
+
+	const cell = MOUSE.over.cell;
+	const face = MOUSE.over.face;
+
+	let selected = null;
+	for (const t of Object.values(library.templates)) {
+		//only consider templates with larger signature than current:
+		if (template !== null && t.signature() <= template.signature()) continue;
+		//of these, select the smallest:
+		if (selected !== null && selected.signature() < t.signature()) continue;
+		if (checkTemplateCompatible(cell, face, t) === null) continue;
+		console.assert(selected === null || selected.signature() != t.signature(), "All templates should have unique signatures.");
+		selected = t;
+	}
+	setActiveTemplate(selected);
+}
+
+//select previous template from library:
+// (uses global 'library' and 'template' variables)
+function prevCompatibleTemplate() {
+	if (MOUSE.over === null) return null;
+
+	const cell = MOUSE.over.cell;
+	const face = MOUSE.over.face;
+
+	let selected = null;
+	for (const t of Object.values(library.templates)) {
+		//only consider templates with smaller signature than current:
+		if (template !== null && t.signature() >= template.signature()) continue;
+		//of these, select the largest:
+		if (selected !== null && selected.signature() > t.signature()) continue;
+		if (checkTemplateCompatible(cell, face, t) === null) continue;
+		console.assert(selected === null || selected.signature() != t.signature(), "All templates should have unique signatures.");
+		selected = t;
+	}
+	setActiveTemplate(selected);
+}
+
+function setTemplateFromSignature(stripped_signature) {
+	let selected = null;
+	for (const t of Object.values(library.templates)) {
+		if (stripSpaces(t.signature()) == stripped_signature) {
+			selected = t;
+		}
+	}
+	setActiveTemplate(selected);
+}
+
+// if template can be attached to face of cell, return the resulting cell
+// otherwise, return null
+function checkTemplateCompatible(cell, face, template, verbose = false) {
+	// Cannot connect if hovered face is already connected. 
+	if (cell.connections[face]) return null;
+
+	let compat = [];
+	for (let f = 0; f < template.faces.length; ++f) {
+		if (sv.canConnectFaces(cell.template.faces[face], template.faces[f])) {
+			compat.push(f);
+		}
+	}
+
+	if (!compat.length) return null; //no compatible faces
+
+	const tf = compat[0];
+
+	console.assert(cell.template.faces[face].indices.length === template.faces[tf].indices.length, "Cell and connecting template face have same count of vertices.");
+
+	//vertex lists that should connect:
+	const cellVerts = [];
+	const templateVerts = [];
+	sv.forAlignedIndices(cell.template.faces[face], template.faces[tf], (i, ti) => {
+		const cv = cell.template.faces[face].indices[i];
+		const tv = template.faces[tf].indices[ti];
+		cellVerts.push(cell.vertices[cv]);
+		templateVerts.push(template.vertices[tv]);
+	});
+
+	const xform = gm.rigidTransform(templateVerts, cellVerts);
+
+	const preview = sv.Cell.fromTemplate(template, xform);
+
+	//record the fact that the connection exists:
+	// preview.connections[tf] = {cell:cell, face:face};
+
+	//see if there are other connections that might make sense:
+	// TODO: center is a bad proxy for faces when we're looking at faces of different shapes
+	let centers = [];
+	for (let fi = 0; fi < preview.template.faces.length; ++fi) {
+		const face = template.faces[fi];
+		let center = gm.vec3(0.0);
+		for (let vi of face.indices) {
+			center = gm.add(center, preview.vertices[vi]);
+		}
+		center = gm.scale(1.0 / face.indices.length, center);
+		centers.push(center);
+	}
+
+	//Check all faces with compatible types for overlapping centers:
+	//TODO: less brute force than this!
+	for (let cell of body.cells) {
+		for (let fi = 0; fi < cell.template.faces.length; ++fi) {
+			// if (cell.connections[fi] !== null) continue;
+			const face = cell.template.faces[fi];
+
+			// if (face.type === 'x') continue;
+			let center = gm.vec3(0.0);
+			for (let vi of face.indices) {
+				center = gm.add(center, cell.vertices[vi]);
+			}
+			center = gm.scale(1.0 / face.indices.length, center);
+
+			for (let pfi = 0; pfi < preview.template.faces.length; ++pfi) {
+				const dist2 = gm.dist2(center, centers[pfi]);
+
+				if (dist2 >= 0.1 * 0.1) continue;
+
+				// check if faces are compatible
+				if (face.type ==='x' && preview.template.faces[pfi].type === 'x') {
+					// this case is okay
+				} else if (preview.connections[pfi] != null) {
+					if (verbose) console.log("preview connection already exists");
+					return null;
+				} else if (face.type ==='x' || preview.template.faces[pfi].type === 'x') {
+					if (verbose) console.log("face.type is x");
+					return null;
+				} else if (cell.connections[fi] !== null) {
+					if (verbose) console.log("cell connection already exists");
+					return null;
+				} else if (!sv.canConnectFaces(preview.template.faces[pfi], face)) {
+					if (verbose) console.log("faces incompatible");
+					return null;
+				}
+
+				// otherwise, we found a connection
+				preview.connections[pfi] = {cell:cell, face:fi};
+			}
+		}
+	}
+
+	return preview;
 }
 
 //return a cell built as if by pressing 'addCell' at this very location:
@@ -707,89 +1298,34 @@ function previewCell() {
 
 	if (MOUSE.over !== null) {
 		const cell = MOUSE.over.cell;
-		const face = MOUSE.over.face; 
+		const face = MOUSE.over.face;
 
-		// Only connect if hovered face is not connected. 
-		if (!cell.connections[face]) {
-
-			let compat = [];
-			for (let f = 0; f < template.faces.length; ++f) {
-				if (sv.canConnectFaces(cell.template.faces[face], template.faces[f])) {
-					compat.push(f);
-				}
-			}
-			if (!compat.length) {
-				//console.log(" (no compatible faces)");
-			} else {
-				const tf = compat[0];
-
-				console.assert(cell.template.faces[face].indices.length === template.faces[tf].indices.length, "Cell and connecting template face have same count of vertices.");
-
-				//vertex lists that should connect:
-				const cellVerts = [];
-				const templateVerts = [];
-				sv.forAlignedIndices(cell.template.faces[face], template.faces[tf], (i, ti) => {
-					const cv = cell.template.faces[face].indices[i];
-					const tv = template.faces[tf].indices[ti];
-					cellVerts.push(cell.vertices[cv]);
-					templateVerts.push(template.vertices[tv]);
-				});
-
-				const xform = gm.rigidTransform(templateVerts, cellVerts);
-
-				const preview = sv.Cell.fromTemplate(template, xform);
-
-				//record the fact that the connection exists:
-				preview.connections[tf] = {cell:cell, face:face};
-
-				//see if there are other connections that might make sense:
-				let centers = [];
-				for (let fi = 0; fi < preview.template.faces.length; ++fi) {
-					const face = template.faces[fi];
-					let center = gm.vec3(0.0);
-					for (let vi of face.indices) {
-						center = gm.add(center, preview.vertices[vi]);
-					}
-					center = gm.scale(1.0 / face.indices.length, center);
-					centers.push(center);
-				}
-
-				//Check all faces with compatible types for overlapping centers:
-				//TODO: less brute force than this!
-				for (let cell of body.cells) {
-					for (let fi = 0; fi < cell.template.faces.length; ++fi) {
-						if (cell.connections[fi] !== null) continue;
-						const face = cell.template.faces[fi];
-						if (face.type === 'x') continue;
-						let center = null;
-						for (let pfi = 0; pfi < preview.template.faces.length; ++pfi) {
-							if (preview.connections[pfi] !== null) continue;
-							if (!sv.canConnectFaces(preview.template.faces[pfi], face)) continue;
-							if (center === null) {
-								center = gm.vec3(0.0);
-								for (let vi of face.indices) {
-									center = gm.add(center, cell.vertices[vi]);
-								}
-								center = gm.scale(1.0 / face.indices.length, center);
-							}
-							const ofs = gm.sub(center, centers[pfi]);
-							const length2 = gm.dot(ofs, ofs);
-							if (length2 < 0.1 * 0.1) {
-								preview.connections[pfi] = {cell:cell, face:fi};
-							}
-						}
-					}
-				}
-
-				return preview;
-			}
-		}
-
+		return checkTemplateCompatible(cell, face, template);
 	}
 
 	return null;
 }
 window.previewCell = previewCell; //DEBUG
+
+// add a cell to the body at a specified index in the cell list
+// does not perform correctness checks or store this action in the undo queue
+function unsafeAddCell(cell, index) {
+	if (cell === null) return;
+
+	//if the cell *does* exist, hook up the other side of any connections it has:
+	for (let f = 0; f < cell.connections.length; ++f) {
+		const con = cell.connections[f];
+		if (con === null) continue;
+		console.assert(con.cell.connections[con.face] === null, "Shouldn't be over-writing connections.");
+		con.cell.connections[con.face] = {cell:cell, face:f};
+	}
+
+	body.cells.splice(index, 0, cell);
+
+	//update UI and redraw:
+	mouseDirty();
+	bodyDirty();
+}
 
 /**
  * addCell (): 
@@ -803,21 +1339,14 @@ function addCell() {
 	//if doesn't exist, don't create anything:
 	if (preview === null) return;
 
-	//if the cell *does* exist, hook up the other side of any connections it has:
-	for (let f = 0; f < preview.connections.length; ++f) {
-		const con = preview.connections[f];
-		if (con === null) continue;
-		console.assert(con.cell.connections[con.face] === null, "Shouldn't be over-writing connections.");
-		con.cell.connections[con.face] = {cell:preview, face:f};
-	}
-	body.cells.push(preview);
+	const newCellIndex = body.cells.length;
+	unsafeAddCell(preview, newCellIndex);
+
+	// Record command in undo queue
+	pushCommand({type: "addCell", newCellIndex: newCellIndex});
 
 	// Check global correctness from preview cell. 
-	if (!checkGlobalCellCorrectness()) console.log("Warning: Topological sort shows a cycle in yarn directions!"); 
-
-	//update UI and redraw:
-	mouseDirty();
-	bodyDirty();
+	if (!checkGlobalCellCorrectness()) console.log("Warning: There is exists a cycle in yarn directions!");
 }
 
 
@@ -902,20 +1431,163 @@ function checkGlobalCellCorrectness() {
 	}
 	return count == bodyLen; 
 }
+// computes a needle, frontHolder, backHolder, layer, direction, and yarnID for each cell, storing these in cell.schedulingData
+// currently computes locations for knit, next-row, yarn-next-layer, loop-next-layer, cast-on, bind-off
+function allocateSpots(x0=1, y0=4) {
+	// identify extreme stitch
+	let origin = null;
+	for (let cell of body.cells) {
+		if (cell.template.name != "knit") continue;
+		if (origin === null) {
+			origin = gm.xformTranslation(cell.xform);
+		} else {
+			const cellPosition = gm.xformTranslation(cell.xform);
+			origin = gm.min(origin, cellPosition);
+		}
+	}
 
-/**
- * deleteCell (): 
- * Deletes currently selected cell, regardless of face type. 
- * Consider: When cell is selected to delete a box, instead of highlighting
- * selected face, we should highlight selected cell. */
-function deleteCell() {
-	if (MOUSE.dirty) setMouseOver();
-	if (!MOUSE.over) return;
+	// follow yarn through body
+	function getYarnExitFace(cell) {
+		for (let iF=0; iF<cell.template.faces.length; ++iF) {
+			if (cell.template.faces[iF].type.startsWith("+y")) return iF;
+		}
+		return null;
+	}
 
-	const cell = MOUSE.over.cell;
+	// initialize schedulingData and look for yarn-in to start
+	let currCell = null;
+	for (let cell of body.cells) {
+		if (!cell.schedulingData) {
+			cell.schedulingData = {
+				xNode: null,
+				yNode: null,
+				zNode: null,
+				direction: null
+			};
+		}
+		if (cell.template.name === "yarn-in") {
+			currCell = cell;
+		}
+	}
+	if (currCell == null) {
+		console.error("spot allocation failed: no yarn-in cell found");
+		return;
+	}
 
-	const cellIndex =  body.cells.indexOf(cell);
-	const cellConnections = body.cells[cellIndex].connections;
+	let exitFace = getYarnExitFace(currCell);
+	let currDirection = (exitFace === 2) ? -1  // TODO: remove magic indices
+	                  : (exitFace === 4) ? 1  // TODO: remove magic indices
+	                  : null;
+	if (currDirection == null) {
+		console.error("spot allocation failed: unrecognized yarn-in signature ", currCell.signature());
+		return;
+	}
+
+	let currBed = 1; // somewhat confusingly, bed is the stitch that the bed gets made on, which is opposite to the bed used for the needle
+	let currWaleDirection = 1; // TODO: how do you determine this?
+
+	let xMax=0, yMax=0;
+	// find directions for all stitches and embeddings for knit stitches (abstract 3d coordinates that we'll use to get needle/holder positions)
+	while (currCell != null) {
+		currCell.schedulingData.direction = (currDirection > 0) ? "+" : "-";
+		currCell.schedulingData.waleDirection = (currWaleDirection > 0) ? "+" : "-";
+		currCell.schedulingData.bed = (currBed > 0) ? "f" : "b";
+		if (currCell.template.name.startsWith("yarn-next-row")) {
+			currDirection *= -1;
+		} else if (currCell.template.name.startsWith("yarn-next-layer")) {
+			currWaleDirection *= -1; // TODO: does this depend on same vs opposite?
+			currDirection *= -1;
+			currBed *= -1;
+		}
+
+		// guess knit locations from position. Others will be guessed from knits later
+		if (currCell.template.name.startsWith("knit")) {
+			const cellPosition = gm.sub(gm.xformTranslation(currCell.xform), origin);
+			const x = Math.round(cellPosition[0] / 2.);
+			const y = Math.round(cellPosition[1]);
+			const z = Math.round(cellPosition[2]);
+			currCell.schedulingData.embedding = gm.vec3(x, y, z);
+			xMax = Math.max(xMax, x);
+			yMax = Math.max(yMax, y);
+		}
+
+		let exitFace = getYarnExitFace(currCell);
+
+		if (exitFace != null) {
+			currCell = currCell.connections[exitFace].cell;
+		} else {
+			currCell = null;
+		}
+	}
+
+	function holderPositions(x, y) {
+		return {f: "hf" + (x+x0) + "," + (y0+y), b: "hb" + (x+x0) + "," + (y0+yMax-y)};
+	}
+
+	for (let cell of body.cells) {
+			
+		let x = null, y = null, z = null;
+		if (cell.template.name.startsWith("loop-next-layer")) {
+			// make sure to look at loop in to specify correct holder for xfer
+			for (let iF=0; iF<cell.template.faces.length; iF++){
+				if (!cell.connections[iF]) continue;
+				if (cell.template.faces[iF].type.startsWith("-l")) {
+					// loop in
+					const bed = cell.connections[iF].cell.schedulingData.bed
+					cell.schedulingData.bed = bed;
+					x = cell.connections[iF].cell.schedulingData.embedding[0];
+					y = cell.connections[iF].cell.schedulingData.embedding[1];
+					// z = cell.connections[iF].cell.schedulingData.embedding[2];
+					if (bed === "f") {
+						y += 1; // xfer to front -> bump up y coord
+					} else {
+						y -= 1; // xfer to back -> bump down y coord
+					}
+				}
+			}
+			z = null; // layer not well-defined for next-layer blocks
+		} else if (cell.template.name.startsWith("knit")) {
+			x = cell.schedulingData.embedding[0];
+			y = cell.schedulingData.embedding[1];
+			z = cell.schedulingData.embedding[2];
+		} else if (cell.template.name.startsWith("cast-on")) {
+			// TODO: there's something weird with the direction. Clarify what cast-on looks like with Yuichi
+
+			// look at loop out to specify correct holder for cast-on tuck
+			for (let iF=0; iF<cell.template.faces.length; iF++){
+				if (!cell.connections[iF]) continue;
+				if (cell.template.faces[iF].type.startsWith("+l")) {
+					// loop out
+					const bed = cell.connections[iF].cell.schedulingData.bed
+					cell.schedulingData.bed = bed;
+					x = cell.connections[iF].cell.schedulingData.embedding[0];
+					y = cell.connections[iF].cell.schedulingData.embedding[1];
+					z = cell.connections[iF].cell.schedulingData.embedding[2];
+				}
+			}
+		} else {
+			// TODO: grab data from a knit neighbor
+
+		}
+		if (x != null) {
+			// somewhat confusingly, bed is the stitch that the bed gets made on, which is opposite to the bed used for the needle
+			const needleBed = (cell.schedulingData.bed === "f") ? "b" : "f";
+
+			const holders = holderPositions(x, y);
+			cell.schedulingData.frontHolder = holders.f;
+			cell.schedulingData.backHolder = holders.b;
+			cell.schedulingData.layer = z;
+			cell.schedulingData.needle = needleBed + (x+x0); 
+			cell.schedulingData.yarnID = 1;
+		}
+
+	}
+}
+
+// add a cell to the body at a specified index in the cell list
+// does not perform correctness checks or store this action in the undo queue
+function unsafeDeleteCell(index) {
+	const cellConnections = body.cells[index].connections;
 
 	// Update all connections referencing current cell.
 	for (let i = 0; i < cellConnections.length; i++) {
@@ -927,14 +1599,32 @@ function deleteCell() {
 	}
 
 	// Remove current cell from body. 
-	body.cells.splice(cellIndex, 1);
-
-	// Check global correctness from preview cell. 
-	if (!checkGlobalCellCorrectness()) console.log("Warning: Topological sort shows a cycle in yarn directions!"); 
+	body.cells.splice(index, 1);
 
 	// Update UI and redraw:
 	mouseDirty();
 	bodyDirty();
+}
+
+/**
+ * deleteCell (): 
+ * Deletes currently selected cell, regardless of face type. 
+ * Consider: When cell is selected to delete a box, instead of highlighting
+ * selected face, we should highlight selected cell. */
+function deleteCell() {
+	if (MOUSE.dirty) setMouseOver();
+	if (!MOUSE.over) return;
+
+	const cell = MOUSE.over.cell;
+	const cellIndex =  body.cells.indexOf(cell);
+
+	unsafeDeleteCell(cellIndex);
+
+	// Record command in undo queue
+	pushCommand({type: "deleteCell", cell: cell, cellIndex: cellIndex});
+
+	// Check global correctness from preview cell. 
+	if (!checkGlobalCellCorrectness()) console.log("Warning: There is exists a cycle in yarn directions!");
 }
 
 /**
@@ -988,6 +1678,17 @@ function startConnectFace() {
 		bodyDirty();
 	}
 
+	function cancelConnect() {
+		console.log("Cancelling connect.");
+		setConnection.pending = false;
+		cell.connections[face] = oldConnection;
+		if (oldConnection) {
+			oldConnection.cell.connections[oldConnection.face] = {cell:cell, face:face};
+		}
+		bodyDirty();
+		ACTION = null;
+	}
+
 	console.log("Starting connect.");
 
 	ACTION = {
@@ -995,14 +1696,7 @@ function startConnectFace() {
 			if (evt.button === 0) {
 				startCameraMove();
 			} else if (evt.button === 2) {
-				console.log("Cancelling connect.");
-				setConnection.pending = false;
-				cell.connections[face] = oldConnection;
-				if (oldConnection) {
-					oldConnection.cell.connections[oldConnection.face] = {cell:cell, face:face};
-				}
-				bodyDirty();
-				ACTION = null;
+				cancelConnect();
 			}
 		},
 		//nothing: mouseup:(evt,mouse) => { },
@@ -1017,6 +1711,9 @@ function startConnectFace() {
 				console.log("Confirming connect.");
 				setConnection.pending = false;
 				ACTION = null;
+				pushCommand({type: "confirmConnect", cellIndex: body.cells.indexOf(cell), face: face, oldConnection: oldConnection});
+			} else if (evt.code === 'Escape') {
+				cancelConnect();
 			}
 		},
 	};
@@ -1078,6 +1775,9 @@ function startGrabCell() {
 		mousedown:(evt,mouse) => {
 			if (evt.button == 0) {
 				console.log("Confirming grab.");
+				pushCommand({type: "confirmGrabCell", cellIndex: body.cells.indexOf(cell),
+				             startVertices: startVertices, startXform: startXform,
+				             endVertices: cell.vertices, endXform: cell.xform});
 				ACTION = null;
 				bodyDirty();
 			} else if (evt.button == 2) {
@@ -1273,6 +1973,54 @@ const colorProgram = new Program(gl,
 `);
 window.colorProgram = colorProgram; //DEBUG
 
+const textureProgram = new Program(gl,
+`
+	uniform mat4 LOCAL_TO_CLIP;
+
+	attribute vec4 Position;
+	attribute vec3 Normal;
+	attribute vec2 UV;
+	attribute vec4 Color;
+	attribute float CellID;
+
+	varying vec4 color;
+	varying vec2 uv;
+	varying vec3 normal;
+	varying float cellID;
+
+	void main() {
+		gl_Position = LOCAL_TO_CLIP * Position;
+		color = Color;
+		uv = UV;
+		normal = Normal;
+		cellID = CellID;
+	}
+`,`
+	uniform highp vec3 HEMI_DIRECTION;
+	uniform lowp vec4 TINT;
+	uniform lowp float TEX_STRENGTH;
+	varying lowp vec4 color;
+	varying highp vec2 uv;
+	varying highp vec3 normal;
+	varying highp float cellID;
+    uniform sampler2D uSampler;
+    uniform highp float selectedCellID;
+	uniform lowp vec4 selectedColor;
+	void main() {
+		highp vec3 n = normalize(normal);
+		//upper dome light:
+		highp vec3 light = mix(vec3(0.1), vec3(1.0), 0.5*dot(n, HEMI_DIRECTION)+0.5);
+
+		// treat texture as a mask
+      	lowp float mask = texture2D(uSampler, uv).r;
+      	mask = (1.-TEX_STRENGTH) + TEX_STRENGTH * (1. + mask) / 2.;
+      	highp float selected = (abs(cellID - selectedCellID) < 0.01) ? 1. : 0.;
+      	lowp vec4 compositeColor = selected * selectedColor + (1.-selected) * color;
+		gl_FragColor = TINT * vec4(mask * compositeColor.rgb * light, color.a);
+	}
+`);
+window.textureProgram = textureProgram; //DEBUG
+
 
 //when using a data view to store Float32 values, do they need to be marked as little endian?
 const FLOAT32_LITTLE_ENDIAN = function() {
@@ -1404,6 +2152,28 @@ function rgb2Uint32(color) {
 	return val;
 }
 
+function rgba2Uint32(color) {
+	let val;
+	val = Math.max(0, Math.min(255, Math.round(255 * color[0])));
+	val = val * 256 + Math.max(0, Math.min(255, Math.round(255 * color[1])));
+	val = val * 256 + Math.max(0, Math.min(255, Math.round(255 * color[2])));
+	val = val * 256 + Math.max(0, Math.min(255, Math.round(255 * color[3])));
+	return val;
+}
+
+function checkCellVisible(cell) {
+	let zmax = null, zmin = null;
+	for (const v of cell.vertices) {
+		if (zmax == null || v[2] > zmax) zmax = v[2];
+		if (zmin == null || v[2] < zmin) zmin = v[2];
+	}
+
+	// const h = zmax - zmin;
+	const h = 1; //HACK: standardize height to 1?
+	const layer = Math.round((zmax + zmin) / (2 * h));
+	const layerVisibilityBoxes = document.getElementById("layer-visibility-form");
+	return !(layer >= 0 && layer < layerVisibilityBoxes.length) || layerVisibilityBoxes[layer].checked;
+}
 
 class VisBody extends Geometry {
 	static BYTES_PER_ATTRIB = 4*3 + 4*3 + 1*4; //Position, Normal, Color
@@ -1422,7 +2192,7 @@ class VisBody extends Geometry {
 
 		this.buffer = buffer; //needed for set()
 	}
-	set(blocks) {
+	set(body) {
 		const BYTES_PER_ATTRIB = VisBody.BYTES_PER_ATTRIB;
 
 		//figure out how much space to allocate for attributes:
@@ -1475,6 +2245,7 @@ class VisBody extends Geometry {
 	}
 }
 const visBody = new VisBody();
+const visTemplateBody = new VisBody();
 window.visBody = visBody; //DEBUG
 
 //compute cell center point, face centers, and port vertices (used for drawing stuff):
@@ -1533,7 +2304,7 @@ class VisWire extends Geometry {
 
 		this.buffer = buffer; //needed for set()
 	}
-	set(blocks) {
+	set(body) {
 		const BYTES_PER_ATTRIB = VisWire.BYTES_PER_ATTRIB;
 
 		const SHOW_INTERNAL_FACES = false;
@@ -1687,7 +2458,417 @@ class VisWire extends Geometry {
 }
 
 const visWire = new VisWire();
+const visTemplateWire = new VisWire();
 window.visWire = visWire; //DEBUG
+
+
+class VisWireCells extends Geometry {
+	static BYTES_PER_ATTRIB = 4*3 + 1*4; //Position, Color
+	constructor(respectVisibility=true) {
+		const BYTES_PER_ATTRIB = VisWireCells.BYTES_PER_ATTRIB;
+
+		const buffer = gl.createBuffer();
+
+		const attribs = {
+			Position:{buffer:buffer, size:3, type:gl.FLOAT, normalize:false, stride:BYTES_PER_ATTRIB, offset:0},
+			Normal:[0,0,1],
+			Color:{buffer:buffer, size:4, type:gl.UNSIGNED_BYTE, normalize:true, stride:BYTES_PER_ATTRIB, offset:4*3},
+		};
+
+		super(gl, attribs, gl.LINES, 0);
+
+		this.buffer = buffer; //needed for set()
+		this.respectVisibility = respectVisibility;
+	}
+	set(body) {
+		const BYTES_PER_ATTRIB = VisWireCells.BYTES_PER_ATTRIB;
+
+		const SHOW_INTERNAL_FACES = false;
+		const SHOW_TIGHT_CONNECTIONS = false;
+		const SHOW_MISSING_CONNECTIONS = true;
+
+		//figure out how much space to allocate for attributes:
+		let totalAttribs = 0;
+		for (const cell of body.cells) {
+			if (this.respectVisibility && (!checkCellVisible(cell))) continue;
+			for (let fi = 0; fi < cell.template.faces.length; ++fi) {
+				const face = cell.template.faces[fi];
+				totalAttribs += face.indices.length * 2 + 4;
+				const con = cell.connections[fi];
+				if (con !== null) totalAttribs += face.indices.length * 3;
+				else if (face.type !== 'x') totalAttribs += face.indices.length * 2;
+			}
+		}
+
+		const arrayBuffer = new ArrayBuffer(BYTES_PER_ATTRIB * totalAttribs);
+		const data = new DataView(arrayBuffer);
+		let dataOffset = 0;
+		function attrib(x,y,z, rgba) {
+			data.setFloat32(dataOffset, x, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, y, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, z, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+
+			data.setUint32(dataOffset, rgba, false); dataOffset += 4;
+		}
+
+		for (const cell of body.cells) {
+			setCellDrawingInfo(cell);
+		}
+
+		for (const cell of body.cells) {
+			if (this.respectVisibility && (!checkCellVisible(cell))) continue;
+			//faces:
+			for (let fi = 0; fi < cell.template.faces.length; ++fi) {
+				if (!SHOW_INTERNAL_FACES) {
+					//skip faces which are connected tightly:
+					const connection = cell.connections[fi];
+					if (connection !== null) {
+						const ofs = gm.sub(connection.cell.centers[connection.face], cell.centers[fi]);
+						const length2 = gm.dot(ofs,ofs);
+						if (length2 < 0.1 * 0.1) {
+							continue;
+						}
+					}
+				}
+				const face = cell.template.faces[fi];
+				const center = cell.centers[fi];
+				for (let i = 0; i < face.indices.length; ++i) {
+					let a = cell.vertices[face.indices[i]];
+					let b = cell.vertices[face.indices[(i+1)%face.indices.length]];
+					a = gm.add(gm.scale(0.9, gm.sub(a, center)), center);
+					b = gm.add(gm.scale(0.9, gm.sub(b, center)), center);
+					let col = css2Uint32(face.color);
+					attrib(a[0],a[1],a[2], col);
+					attrib(b[0],b[1],b[2], col);
+					if (i === 0 && face.type !== 'x') { //show "first edge" (for non-'x' face types)
+						let c = gm.scale(0.5, gm.add(a,b));
+						c = gm.add(gm.scale(0.9, gm.sub(c, center)), center);
+						attrib(a[0],a[1],a[2], col);
+						attrib(c[0],c[1],c[2], col);
+						attrib(c[0],c[1],c[2], col);
+						attrib(b[0],b[1],b[2], col);
+					}
+				}
+			}
+
+			//connections:
+			for (let fi = 0 ; fi < cell.connections.length; ++fi) {
+				const connection = cell.connections[fi];
+				if (connection === null) {
+					if (cell.template.faces[fi].type[0] !== 'x' && SHOW_MISSING_CONNECTIONS) {
+						const col = (cell.template.faces[fi].type[0] === '+' ? COLOR_OUTPUT_WARNING : COLOR_INPUT_WARNING);
+						for (let i = 0; i < cell.ports[fi].length; ++i) {
+							let a = cell.ports[fi][i];
+							let ca = gm.mix(a, cell.center, 0.1);
+							attrib(ca[0], ca[1], ca[2], col); attrib(a[0], a[1], a[2], col);
+						}
+					}
+					continue;
+				}
+				if (cell.template.faces[fi].type[0] !== '+') continue; //draw connectsions from '+' => '-'
+
+				let maxLength2 = 0;
+				const watermark = dataOffset;
+				sv.forAlignedIndices(cell.template.faces[fi], connection.cell.template.faces[connection.face], (i, ci) => {
+					let colOut = COLOR_OUTPUT;
+					let colIn = COLOR_INPUT;
+					if (!sv.canConnectFaces(cell.template.faces[fi], connection.cell.template.faces[connection.face])) {
+						//apparently somehow this connection got made though it shouldn't be allowed:
+						colOut = COLOR_OUTPUT_WARNING;
+						colIn = COLOR_INPUT_WARNING;
+					}
+					let a = cell.ports[fi][i];
+					let ca = gm.mix(a, cell.center, 0.1);
+					let b = connection.cell.ports[connection.face][ci];
+					let cb = gm.mix(b, connection.cell.center, 0.1);
+					attrib(ca[0], ca[1], ca[2], colOut); attrib(a[0], a[1], a[2], colOut);
+					attrib(a[0], a[1], a[2], colOut); attrib(b[0], b[1], b[2], colIn);
+					attrib(b[0], b[1], b[2], colIn); attrib(cb[0], cb[1], cb[2], colIn);
+
+					if (!SHOW_TIGHT_CONNECTIONS) {
+						const ofs = gm.sub(b,a);
+						const length2 = gm.dot(ofs,ofs);
+						maxLength2 = Math.max(maxLength2, length2);
+					}
+				} );
+
+				if (!SHOW_TIGHT_CONNECTIONS) {
+					if (maxLength2 < 0.01 * 0.01) {
+						dataOffset = watermark;
+					}
+				}
+			}
+		}
+
+		
+		//remove temp stuff:
+		for (const cell of body.cells) {
+			deleteCellDrawingInfo(cell);
+		}
+
+
+		//with various skipping may actually under-fill:
+		console.assert(dataOffset <= arrayBuffer.byteLength, `Bytes of attributes (${dataOffset}) matches allocated data size (${data.byteLength}).`);
+
+		this.count = dataOffset / BYTES_PER_ATTRIB;
+
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+		gl.bufferData(gl.ARRAY_BUFFER, arrayBuffer, gl.STATIC_DRAW);
+	}
+}
+
+const visWireCells = new VisWireCells(false);
+const visTemplateWireCells = new VisWireCells(false);
+window.visWireCells = visWireCells; //DEBUG
+
+
+class VisTubes extends Geometry {
+	static BYTES_PER_ATTRIB = 4*3 + 4*3 + 4*2 + 4*1 + 4*1; //Position, Normal, UV, Color, CellID
+	constructor(solid=true, respectVisibility=true) {
+		const BYTES_PER_ATTRIB = VisTubes.BYTES_PER_ATTRIB;
+
+		const buffer = gl.createBuffer();
+
+		const attribs = {
+			Position:{buffer:buffer, size:3, type:gl.FLOAT, normalize:false, stride:BYTES_PER_ATTRIB, offset:0},
+			Normal:{buffer:buffer, size:3, type:gl.FLOAT, normalize:false, stride:BYTES_PER_ATTRIB, offset:4*3},
+			UV:{buffer:buffer, size:2, type:gl.FLOAT, normalize:false, stride:BYTES_PER_ATTRIB, offset:4*3 + 4*3},
+			CellID:{buffer:buffer, size:1, type:gl.FLOAT, normalize:false, stride:BYTES_PER_ATTRIB, offset:4*3 + 4*3 + 4*2},
+			Color:{buffer:buffer, size:4, type:gl.UNSIGNED_BYTE, normalize:true, stride:BYTES_PER_ATTRIB, offset:4*3 + 4*3 + 4*2 + 4*1},
+		};
+
+		super(gl, attribs, gl.TRIANGLES, 0);
+
+		this.buffer = buffer; //needed for set()
+		this.resolution = 6;
+		this.radius = 0.08;
+		this.solid = solid;
+		this.respectVisibility = respectVisibility;
+		this.empty = false;
+
+		this.selectedColor = [-1., -1., -1., -1.]; // set later in set()
+	}
+	set(body) {
+		const BYTES_PER_ATTRIB = VisTubes.BYTES_PER_ATTRIB;
+
+		//figure out how much space to allocate for attributes:
+		let totalAttribs = 0;
+		for (const cell of body.cells) {
+			if (this.respectVisibility && (checkCellVisible(cell) !== this.solid)) continue;
+			for (const yarn of cell.template.yarns) {
+				totalAttribs += (yarn.pts.length-1) * 6 * this.resolution;
+			}
+		}
+		this.empty = (totalAttribs === 0);
+
+		const arrayBuffer = new ArrayBuffer(BYTES_PER_ATTRIB * totalAttribs);
+		const data = new DataView(arrayBuffer);
+		let dataOffset = 0;
+		function attrib(x,y,z, nx,ny,nz, u,v, rgba, id) {
+			data.setFloat32(dataOffset, x, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, y, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, z, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+
+			data.setFloat32(dataOffset, nx, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, ny, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, nz, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+
+			data.setFloat32(dataOffset, 2.*u, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+			data.setFloat32(dataOffset, 2.*v, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+
+			data.setFloat32(dataOffset, id, FLOAT32_LITTLE_ENDIAN); dataOffset += 4;
+
+			data.setUint32(dataOffset, rgba, false); dataOffset += 4;
+		}
+
+		function triangle(va,vb,vc, na,nb,nc, uva,uvb,uvc, color, id) {
+			let shadeSmooth = true;
+			if (!shadeSmooth) {
+				let n = gm.normalize(gm.cross(gm.sub(vb, va), gm.sub(vc, va)));
+				na = n; nb = n; nc = n;
+			}
+
+			attrib(va[0],va[1],va[2], na[0],na[1],na[2], uva[0], uva[1], color, id);
+			attrib(vb[0],vb[1],vb[2], nb[0],nb[1],nb[2], uvb[0], uvb[1], color, id);
+			attrib(vc[0],vc[1],vc[2], nc[0],nc[1],nc[2], uvc[0], uvc[1], color, id);
+		}
+
+		function quad(a, na, uva, b, nb, uvb, c, nc, uvc, d, nd, uvd, color, id) {
+			// triangulate by shortest diagonal
+			const lac = gm.length2(gm.sub(c, a));
+			const lbd = gm.length2(gm.sub(b, d));
+
+			if (lac < lbd) {
+				triangle(a, b, c, na, nb, nc, uva, uvb, uvc, color, id);
+				triangle(a, c, d, na, nc, nd, uva, uvc, uvd, color, id);
+			} else {
+				triangle(a, b, d, na, nb, nd, uva, uvb, uvd, color, id);
+				triangle(b, c, d, nb, nc, nd, uvb, uvc, uvd, color, id);
+			}
+
+		}
+
+		function snapAxisAligned(T) {
+			if (T[0] > 0.5) {
+				return gm.vec3(1,0,0);
+			} else if (T[0] < -0.5) {
+				return gm.vec3(-1, 0, 0);
+			} else if (T[1] > 0.5) {
+				return gm.vec3(0, 1, 0);
+			} else if (T[1] < -0.5) {
+				return gm.vec3(0, -1, 0);
+			} else if (T[2] > 0.5) {
+				return gm.vec3(0, 0, 1);
+			} else {
+				return gm.vec3(0, 0, -1);
+			}
+		}
+
+		for (const cell of body.cells) {
+			setCellDrawingInfo(cell);
+		}
+
+		function snappedFrame(T) {
+			if (Math.abs(T[0]) > 0.9) {
+				return {x: gm.vec3(0, T[0], 0), y: gm.vec3(0, 0, 1)};
+			} else if (Math.abs(T[1]) > 0.9) {
+				return {x: gm.vec3(0, 0, T[1]), y: gm.vec3(1, 0, 0)};
+			} else {
+				return {x: gm.vec3(T[2], 0, 0), y: gm.vec3(0, 1, 0)};
+			}
+		}
+
+		const col_rgb = [1.0, 0.6, 0.5];
+		const col_transparent = rgba2Uint32([...col_rgb, 0.1]);
+		const col_opaque = rgb2Uint32(col_rgb);
+		this.selectedColor = [1.0, 0.4, 0.3, 1.0];
+		for (let cellID = 0; cellID < body.cells.length; ++cellID) {
+			const cell = body.cells[cellID];
+			if (this.respectVisibility && (checkCellVisible(cell) !== this.solid)) continue;
+
+			const col = this.solid ? col_opaque : col_transparent;
+
+			//yarns:
+			const xf = cell.xform;
+			for (const yarn of cell.template.yarns) {
+				const generate_uv = yarn["oriented"];
+
+				// define frame
+				let frames = [];
+				let prev, at, Tprev;
+				let yarnLength = 0;
+				for (let iP = 0; iP < yarn.pts.length; iP++) {
+					if (iP == 0) { // special case for first point
+						at = gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP], 1]);
+						const next = gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP+1], 1]);
+						Tprev = snapAxisAligned(gm.normalize(gm.sub(next,at))); // tangent vector along first edge
+						frames.push(snappedFrame(Tprev));
+						prev = at;
+						at = next;
+					} else if (iP + 1 == yarn.pts.length) { // special case for last point
+						const Tnext = snapAxisAligned(gm.normalize(gm.sub(at, prev))); // tangent vector along last edge
+						frames.push(snappedFrame(Tnext));
+						yarnLength += gm.dist(prev, at);
+					} else {
+						const next = gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP+1], 1]);
+						const Tnext = gm.normalize(gm.sub(next, at)); // tangent vector along prev edge
+						const T = gm.normalize(gm.add(Tprev, Tnext));
+
+						// pick a starting direction for polygon. arbitrarily pick z axis, unless vector points mostly in z direction, then pick x axis
+						let axis = (Math.abs(T[2]) < 0.7) ? gm.vec3(0, 0, 1) : gm.vec3(1, 0, 0);
+
+						// find x and y directions at prev and at points by projecting axis onto orthogonal complement of vertex tangent vector, and taking 90 degree rotation
+						let x = gm.normalize(gm.sub(axis, gm.scalarmul(gm.dot(axis, T),T)));
+						let y = gm.cross(Tprev, x);
+
+						frames.push({x: x, y: y});
+						yarnLength += gm.dist(prev, at);
+						prev = at;
+						at = next;
+						Tprev = Tnext;
+					}
+				}
+
+				// scale length to nearest integer
+				// TODO: pick a good length scale
+				const roundLength = Math.round(yarnLength);
+				const uScale = roundLength / yarnLength;
+
+				// generate cylinder
+				let x_prev, y_prev; // and still using prev
+				let u = 0;
+				let v_offset = 0;
+				for (let iP = 1; iP < yarn.pts.length; iP++) {
+					if (iP == 1) {
+						prev = gm.mul_mat4x3_vec4(xf, [...yarn.pts[0], 1]);
+						x_prev = frames[0].x;
+						y_prev = frames[0].y;
+					}
+					const at = gm.mul_mat4x3_vec4(xf, [...yarn.pts[iP], 1]);
+					const x_at = frames[iP].x;
+					const y_at = frames[iP].y;
+					const cs = gm.dot(x_prev, x_at);
+					const sn = gm.dot(gm.normalize(gm.sub(at, prev)), gm.cross(x_at, x_prev));
+					const twist = Math.atan2(sn, cs) / (2 * Math.PI);
+					const offset = Math.round(twist * this.resolution) / this.resolution;
+					const angleShift = (twist - offset);
+					const du = gm.length(gm.sub(prev, at)) * uScale;
+
+					// finally emit cylinder by drawing circles in x-y planes and connecting them by quads
+					let pj_prev, pj_at, uvj_prev, uvj_at;
+					for (let i=0; i<this.resolution; i++) {
+						if (i==0) {
+							const tj_prev = -1. / this.resolution;
+							const tj_at = tj_prev + offset;
+							uvj_prev = generate_uv ? gm.vec2(u, tj_prev + v_offset) : gm.vec2(0, 0);
+							uvj_at = generate_uv ? gm.vec2(u+du, tj_prev - angleShift + v_offset) : gm.vec2(0, 0);
+
+							pj_prev = gm.add(gm.scalarmul(this.radius * Math.cos(2 * Math.PI * tj_prev), x_prev),  gm.scalarmul(this.radius * Math.sin(2 * Math.PI * tj_prev), y_prev));
+							pj_at = gm.add(gm.scalarmul(this.radius * Math.cos(2 * Math.PI * tj_at), x_at),  gm.scalarmul(this.radius * Math.sin(2 * Math.PI * tj_at), y_at));
+						}
+						const ti_prev = (i / this.resolution);
+						const ti_at = ti_prev + offset;
+						const uvi_prev = generate_uv ? gm.vec2(u, ti_prev + v_offset) : gm.vec2(0, 0);
+						const uvi_at = generate_uv ? gm.vec2(u+du, ti_prev - angleShift + v_offset) : gm.vec2(0, 0);
+
+						const pi_prev = gm.add(gm.scalarmul(this.radius * Math.cos(2 * Math.PI * ti_prev), x_prev),  gm.scalarmul(this.radius * Math.sin(2 * Math.PI * ti_prev), y_prev));
+						const pi_at = gm.add(gm.scalarmul(this.radius * Math.cos(2 * Math.PI * ti_at), x_at),  gm.scalarmul(this.radius * Math.sin(2 * Math.PI * ti_at), y_at));
+						quad(gm.add(prev, pi_prev), pi_prev, uvi_prev, gm.add(at, pi_at), pi_at, uvi_at, gm.add(at, pj_at), pj_at, uvj_at, gm.add(prev, pj_prev), pj_prev, uvj_prev, col, cellID);
+						pj_prev = pi_prev; pj_at = pi_at; uvj_prev = uvi_prev; uvj_at = uvi_at;
+					}
+
+					u += du;
+					v_offset -= offset + angleShift;
+					prev = at;
+					x_prev = x_at;
+					y_prev = y_at;
+				}
+			}
+		}
+
+		
+		//remove temp stuff:
+		for (const cell of body.cells) {
+			deleteCellDrawingInfo(cell);
+		}
+
+
+		//with various skipping may actually under-fill:
+		console.assert(dataOffset <= arrayBuffer.byteLength, `Bytes of attributes (${dataOffset}) matches allocated data size (${data.byteLength}).`);
+
+		this.count = dataOffset / BYTES_PER_ATTRIB;
+
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+		gl.bufferData(gl.ARRAY_BUFFER, arrayBuffer, gl.STATIC_DRAW);
+	}
+}
+
+const visTubes = new VisTubes(true);
+const visTransparentTubes = new VisTubes(false);
+const visTemplateTubes = new VisTubes(true, false);
+window.visTubes = visTubes; //DEBUG
+window.visTransparentTubes = visTransparentTubes; //DEBUG
+window.visTemplateTubes = visTemplateTubes; //DEBUG
 
 class VisDebug extends Geometry {
 	static BYTES_PER_ATTRIB = 4*3 + 1*4; //Position, Color
@@ -1860,6 +3041,484 @@ class VisDebug extends Geometry {
 }
 const visDebug = new VisDebug();
 
+let yarnVisMode = "Tube";
+function setYarnVisMode(mode) {
+	if (mode == "Wire") {
+		yarnVisMode = "Wire";
+	} else if (mode == "Body") {
+		yarnVisMode = "Body";
+	} else if (mode == "Tube") {
+		yarnVisMode = "Tube";
+	} else {
+		console.log("Error, invalid vis mode ", mode);
+	}
+	bodyDirty();
+	requestRedraw()
+}
+
+function setViewMode(mode) {
+	if (mode == "Pattern") {
+		viewMode = ViewMode.Pattern;
+		bodyDirty();
+	} else if (mode == "Template") {
+		viewMode = ViewMode.Template;
+		templateDirty();
+	} else {
+		console.log("Error, invalid view mode ", mode);
+	}
+	requestRedraw()
+}
+function setSidebar(mode) {
+	const library = document.getElementById("library");
+	const knitout = document.getElementById("view-knitout");
+	const blockData = document.getElementById("view-block-data");
+	if (mode == "Library") {
+		library.style.display="grid";
+		knitout.style.display="none";
+		blockData.style.display="none";
+	} else if (mode == "Knitout") {
+		library.style.display="none";
+		knitout.style.display="grid";
+		blockData.style.display="none";
+	} else if (mode == "BlockData") {
+		library.style.display="none";
+		knitout.style.display="none";
+		blockData.style.display="grid";
+	} else if (mode == "KnitoutAndBlockData") {
+		library.style.display="none";
+		knitout.style.display="grid";
+		blockData.style.display="grid";
+	} else {
+		console.log("Error, invalid sidebar mode ", mode);
+	}
+}
+
+// set up response to clicking on visualization options
+document.getElementById("select-yarn-vis-option").addEventListener("change", function() {setYarnVisMode(this.value);});
+setYarnVisMode(document.getElementById("select-yarn-vis-option").value);
+
+for (const elem of document.getElementById('layer-visibility-form').children) {
+	elem.addEventListener('click', function() {bodyDirty();});
+}
+
+for (const elem of document.getElementById('show-yarn-direction-form').children) {
+	elem.addEventListener('click', function() {bodyDirty();});
+}
+
+document.getElementById("select-viewmode-option").addEventListener("change", function() {setViewMode(this.value);});
+setViewMode(document.getElementById("select-viewmode-option").value);
+
+document.getElementById("select-sidebar-option").addEventListener("change", function() {setSidebar(this.value);});
+setSidebar(document.getElementById("select-sidebar-option").value);
+
+// To change the displayed knitout, set knitoutCode.text to a different value and call knitoutDirty() to request a refresh
+const knitoutCode = {text: `;;!solid-knitout-VERSION
+;;Machine details 
+;;Carriers: 1
+
+; 3x3x3.block solid knitout
+
+; =============================
+;          First Layer      
+; =============================
+
+; cast on / first row
+tuck + hf1,4 1
+tuck + hf2,4 1
+tuck + hf3,4 1
+
+roll hf*,9 hb*,9
+pause Please set up caston on machine
+
+knit b3 hf3,4 1
+knit b2 hf2,4 1
+knit b1 hf1,4 1
+
+release f
+
+; second row
+tuck + hf1,5 1    ; block 1
+xfer b1 hf1,5     ; block 1
+knit b1 hf1,5 1 ; block 1
+
+tuck + hf2,5 1    ; block 2
+xfer b2 hf2,5     ; block 2
+knit b2 hf2,5 1 ; block 2
+
+tuck + hf3,5 1    ; block 3
+xfer b3 hf3,5     ; block 3
+knit b3 hf3,5 1 ; block 3
+
+release f
+
+; third row
+tuck - hf3,6 1
+xfer b3 hf3,6
+knit b3 hf3,6 1
+
+tuck - hf2,6 1
+xfer b2 hf2,6
+knit b2 hf2,6 1
+
+tuck - hf1,6 1
+xfer b1 hf1,6
+knit b1 hf1,6 1
+
+release f
+
+; xfer the final row
+
+xfer b1 hf1,7
+xfer b2 hf2,7
+xfer b3 hf3,7
+
+; =============================
+;          Second Layer      
+; =============================
+
+xfer hf1,7 f1
+xfer hf2,7 f2
+xfer hf3,7 f3
+
+; first row
+tuck + hb1,4 1
+xfer f1 hb1,4 
+xfer hf1,6 f1
+knit f1 hb1,4 1
+
+tuck + hb2,4 1
+xfer f2 hb2,4
+xfer hf2,6 f2
+knit f2 hb2,4 1
+
+tuck + hb3,4 1
+xfer f3 hb3,4 
+xfer hf3,6 f3
+knit f3 hb3,4 1
+
+release b
+
+; second row
+tuck - hb3,5 1
+xfer f3 hb3,5
+xfer hf3,5 f3
+knit f3 hb3,5 1
+
+tuck - hb2,5 1
+xfer f2 hb2,5
+xfer hf2,5 f2
+knit f2 hb2,5 1
+
+tuck - hb1,5 1
+xfer f1 hb1,5
+xfer hf1,5 f1
+knit f1 hb1,5 1
+
+release b
+
+; third row
+tuck + hb1,6 1
+xfer f1 hb1,6 
+xfer hf1,4 f1
+knit f1 hb1,6 1
+
+tuck + hb2,6 1
+xfer f2 hb2,6 
+xfer hf2,4 f2
+knit f2 hb2,6 1
+
+tuck + hb3,6 1
+xfer f3 hb3,6
+xfer hf3,4 f3
+knit f3 hb3,6 1
+
+release b
+
+;xfer the final row
+xfer f3 hb3,7
+xfer f2 hb2,7
+xfer f1 hb1,7
+
+
+; ============================
+;          Third Layer      
+; ============================
+
+xfer hb3,7 b3
+xfer hb2,7 b2
+xfer hb1,7 b1
+
+; first row
+tuck - hf3,4 1
+xfer b3 hf3,4 
+xfer hb3,6 b3
+knit b3 hf3,4 1
+
+tuck - hf2,4 1
+xfer b2 hf2,4 
+xfer hb2,6 b2
+knit b2 hf2,4 1
+
+tuck - hf1,4 1
+xfer b1 hf1,4 
+xfer hb1,6 b1
+knit b1 hf1,4 1
+
+release f
+
+; second row
+tuck + hf1,5 1
+xfer b1 hf1,5 
+xfer hb1,5 b1
+knit b1 hf1,5 1
+
+tuck + hf2,5 1
+xfer b2 hf2,5 
+xfer hb3,5 b3
+knit b2 hf2,5 1
+
+tuck + hf3,5 1
+xfer b3 hf3,5 
+xfer hb2,5 b2
+knit b3 hf3,5 1
+
+release f
+
+; third row
+tuck - hf3,6 1
+xfer b3 hf3,6 
+xfer hb3,4 b3
+knit b3 hf3,6 1
+
+tuck - hf2,6 1
+xfer b2 hf2,6 
+xfer hb2,4 b2
+knit b2 hf2,6 1
+
+tuck - hf1,6 1
+xfer b1 hf1,6 
+xfer hb1,4 b1
+knit b1 hf1,6 1
+
+release f
+
+;; xfer the final row
+
+xfer b1 hf1,7 
+xfer b2 hf2,7 
+xfer b3 hf3,7
+
+roll hf*,9 hb*,9
+pause Please bind off the final row` };
+
+
+const groupKnitoutPassesCheckbox = document.getElementById('group-knitout-passes-form').children[1];
+writeHighlightedCode(knitoutCode.text, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
+groupKnitoutPassesCheckbox.addEventListener('click', function() {
+	writeHighlightedCode(knitoutCode.text, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
+});
+
+function displayHoveredBlockInfo(over) {
+	const infoArea = document.getElementById("hovered-block-info");
+	infoArea.innerHTML = "";
+	if (over !== null) {
+		const pos = gm.xformTranslation(over.cell.xform); // TODO: shift cube coordinates to be integer?
+		const posString = "( " + pos[0].toFixed(2) + ", " + pos[1].toFixed(2) + ", " + pos[2].toFixed(2) + " )";
+
+		const displayData = function(name, value) {
+			const nameElem = document.createElement('span');
+			nameElem.innerHTML = name;
+			nameElem.classList.add("field-name");
+			infoArea.appendChild(nameElem);
+			const valueElem = document.createElement('span');
+			valueElem.innerHTML = value == null ? "null" : value;
+			valueElem.classList.add("field-value");
+			infoArea.appendChild(valueElem);
+		};
+		
+		if (!over.cell.schedulingData) over.cell.schedulingData = {};
+		displayData("ID", over.cellID);
+		displayData("Signature", over.cell.template.signature());
+		displayData("Position", posString);
+		displayData("Bed", over.cell.schedulingData.bed);
+		displayData("Needle", over.cell.schedulingData.needle);
+		displayData("Front Holder", over.cell.schedulingData.frontHolder);
+		displayData("Back Holder", over.cell.schedulingData.backHolder);
+		displayData("Layer", over.cell.schedulingData.layer);
+		displayData("Direction", over.cell.schedulingData.direction);
+		displayData("Yarn ID", over.cell.schedulingData.yarnID);
+	}
+}
+
+function redrawPattern(pixelRatio) {
+
+	//update geometry:
+	if (yarnVisMode == "Wire" && visWire.dirty) {
+		visWire.set(body);
+		delete visWire.dirty;
+	}
+	if (visWireCells.dirty) {
+		visWireCells.set(body);
+		delete visWireCells.dirty;
+	}
+	if (yarnVisMode == "Body" && visBody.dirty) {
+		visBody.set(body);
+		delete visBody.dirty;
+	}
+	if (yarnVisMode == "Tube" && visTubes.dirty) {
+		visTubes.set(body);
+		visTransparentTubes.set(body);
+		delete visTubes.dirty;
+	}
+
+	visDebug.update();
+
+	//update status line:
+	{
+		let info = "";
+		if (template !== null) {
+			info += `Template: ${template.signature()}`;
+		} else {
+			info += `No Template`;
+		}
+		if (MOUSE.over) {
+			info += `; Hovered: ${MOUSE.over.cell.template.signature()} / face: ${MOUSE.over.face} (${MOUSE.over.cell.template.faces[MOUSE.over.face].type})`;
+		}
+		STATUS_LINE.innerText = info;
+	}
+
+	// show info about hovered block in sidebar
+	displayHoveredBlockInfo(MOUSE.over);
+	// if (body.cells.length > 0) displayHoveredBlockInfo({cellID: 0, cell: body.cells[0]});
+
+
+	gl.lineWidth(2.0 * pixelRatio);
+	visDebug.draw(colorProgram);
+
+	gl.lineWidth(1.0 * pixelRatio);
+	grid.draw(colorProgram);
+
+	if (yarnVisMode == "Body") {
+		visBody.draw(colorProgram);
+	} else if (yarnVisMode == "Wire") {
+		visWire.draw(colorProgram);
+	} else if (yarnVisMode == "Tube") {
+		visWireCells.draw(colorProgram);
+
+		gl.useProgram(textureProgram.program);
+		// draw opaque tubes
+		if (!visTubes.empty) {
+			visTubes.draw(textureProgram);
+		}
+
+		// draw transparent tubes per https://xem.github.io/articles/webgl-guide-part-2.html#1a
+		if (!visTransparentTubes.empty) {
+			gl.enable(gl.BLEND);
+			gl.blendEquation(gl.FUNC_ADD);
+			gl.disable(gl.DEPTH_TEST);
+			gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+			visTransparentTubes.draw(textureProgram);
+			gl.enable(gl.DEPTH_TEST);
+			gl.disable(gl.BLEND);
+		}
+
+		gl.useProgram(colorProgram.program);
+	}
+
+	//show "hidden" debug lines also:
+
+	gl.enable(gl.BLEND);
+	gl.blendEquation(gl.FUNC_ADD);
+	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+	gl.uniform4f(
+		colorProgram.uniformLocations.TINT,
+		0.0, 0.0, 0.0, 0.1
+	);
+	gl.depthFunc(gl.GREATER);
+	gl.depthMask(false);
+	gl.lineWidth(2.0 * pixelRatio);
+	visDebug.draw(colorProgram);
+
+	gl.depthFunc(gl.LESS);
+	gl.depthMask(true);
+	gl.disable(gl.BLEND);
+}
+
+function redrawTemplate(pixelRatio) {
+	function getTemplateBody(template) {
+		if (template) {
+			return {cells: [sv.Cell.fromTemplate(template, gm.identityTransform())]};
+		} else {
+			return {cells: []};
+		}
+	}
+
+	// update the geometry
+	if (yarnVisMode == "Wire" && visTemplateWire.dirty) {
+		visTemplateWire.set(getTemplateBody(template));
+		delete visTemplateWire.dirty;
+	}
+	if (visTemplateWireCells.dirty) {
+		visTemplateWireCells.set(getTemplateBody(template));
+		delete visTemplateWireCells.dirty;
+	}
+	if (yarnVisMode == "Body" && visTemplateBody.dirty) {
+		visTemplateBody.set(getTemplateBody(template));
+		delete visTemplateBody.dirty;
+	}
+	if (yarnVisMode == "Tube" && visTemplateTubes.dirty) {
+		visTemplateTubes.set(getTemplateBody(template));
+		delete visTemplateTubes.dirty;
+	}
+
+	//update status line:
+	{
+		let info = "";
+		if (template !== null) {
+			info += `Template: ${template.signature()}`;
+		} else {
+			info += `No Template`;
+		}
+		STATUS_LINE.innerText = info;
+	}
+
+	visDebug.update();
+
+	gl.lineWidth(1.0 * pixelRatio);
+	grid.draw(colorProgram);
+
+	// TODO: support other visualization modes
+	if (yarnVisMode == "Body") {
+		visTemplateBody.draw(colorProgram);
+	} else if (yarnVisMode == "Wire") {
+		visTemplateWire.draw(colorProgram);
+	} else if (yarnVisMode == "Tube") {
+		visTemplateWireCells.draw(colorProgram);
+
+		gl.useProgram(textureProgram.program);
+		visTemplateTubes.draw(textureProgram);
+		gl.useProgram(colorProgram.program);
+	}
+
+	//show "hidden" debug lines also:
+
+	gl.enable(gl.BLEND);
+	gl.blendEquation(gl.FUNC_ADD);
+	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+	gl.uniform4f(
+		colorProgram.uniformLocations.TINT,
+		0.0, 0.0, 0.0, 0.1
+	);
+	gl.depthFunc(gl.GREATER);
+	gl.depthMask(false);
+	gl.lineWidth(2.0 * pixelRatio);
+	visDebug.draw(colorProgram);
+
+	gl.depthFunc(gl.LESS);
+	gl.depthMask(true);
+	gl.disable(gl.BLEND);
+}
+
 function redraw() {
 	const pixelRatio = window.devicePixelRatio;
 
@@ -1876,33 +3535,15 @@ function redraw() {
 		camera.aspect = width / height;
 	})();
 
+	// Update displayed knitout code if necessary
+	// TODO: this should probably happen somewhere else
+	if (knitoutCode.dirty) {
+		writeHighlightedCode(knitoutCode.text, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
+		delete knitoutCode.dirty;
+	}
+
 	//update mouse info:
 	if (MOUSE.dirty) setMouseOver();
-
-	//update geometry:
-	if (visWire.dirty) {
-		visWire.set(body);
-		delete visWire.dirty;
-	}
-	if (visBody.dirty) {
-		visBody.set(body);
-		delete visWire.dirty;
-	}
-	visDebug.update();
-
-	//update status line:
-	{
-		let info = "";
-		if (template !== null) {
-			info += `Template: ${template.signature()}`;
-		} else {
-			info += `No Template`;
-		}
-		if (MOUSE.over) {
-			info += `; Hovered: ${MOUSE.over.cell.template.signature()} / face: ${MOUSE.over.face} (${MOUSE.over.cell.template.faces[MOUSE.over.face].type})`;
-		}
-		STATUS_LINE.innerText = info;
-	}
 
 	gl.clearColor(0.1, 0.1, 0.1, 1.0);
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -1927,33 +3568,59 @@ function redraw() {
 		1.0, 1.0, 1.0, 1.0
 	);
 
+	// if we're drawing tubes, set up the texture program as well
+	if (yarnVisMode == "Tube") {
 
-	gl.lineWidth(2.0 * pixelRatio);
-	visDebug.draw(colorProgram);
+		gl.useProgram(textureProgram.program);
+		gl.uniformMatrix4fv(
+			textureProgram.uniformLocations.LOCAL_TO_CLIP,
+			false,
+			computeMVP()
+		);
+		const lightDir = gm.normalize(gm.add(camera.computeUp(),camera.computeOut()));
+		gl.uniform3f(
+			textureProgram.uniformLocations.HEMI_DIRECTION,
+			lightDir[0], lightDir[1], lightDir[2]
+		);
+		gl.uniform4f(
+			textureProgram.uniformLocations.TINT,
+			1.0, 1.0, 1.0, 1.0
+		);
 
-	gl.lineWidth(1.0 * pixelRatio);
-	grid.draw(colorProgram);
+		const show_texture = document.getElementById("show-yarn-direction-form")[0].checked;
+		gl.uniform1f(
+			textureProgram.uniformLocations.TEX_STRENGTH,
+			(show_texture ? 1 : 0)
+		);
+		gl.uniform1f(
+			textureProgram.uniformLocations.selectedCellID,
+			MOUSE.over === null ?  -1. : MOUSE.over.cellID
+		);
+		gl.uniform4f(
+			textureProgram.uniformLocations.TINT,
+			1.0, 1.0, 1.0, 1.0
+		);
+		gl.uniform4f(
+			textureProgram.uniformLocations.selectedColor,
+			visTubes.selectedColor[0], visTubes.selectedColor[1], visTubes.selectedColor[2], visTubes.selectedColor[3]
+		);
 
-	//visBody.draw(colorProgram);
-	visWire.draw(colorProgram);
+		// pass in texture
+		// https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Using_textures_in_WebGL
+		gl.activeTexture(gl.TEXTURE0);
+		gl.bindTexture(gl.TEXTURE_2D, window.arrowTexture);
+		gl.uniform1i(textureProgram.uniformLocations.uSampler, 0);
 
-	//show "hidden" debug lines also:
+		gl.useProgram(colorProgram.program);
+	}
+	
+	if (viewMode === ViewMode.Pattern) {
+		redrawPattern(pixelRatio);
+	} else if (viewMode === ViewMode.Template) {
+		redrawTemplate(pixelRatio);
+	}
 
-	gl.enable(gl.BLEND);
-	gl.blendEquation(gl.FUNC_ADD);
-	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-	gl.uniform4f(
-		colorProgram.uniformLocations.TINT,
-		0.0, 0.0, 0.0, 0.1
-	);
-	gl.depthFunc(gl.GREATER);
-	gl.depthMask(false);
-	gl.lineWidth(2.0 * pixelRatio);
-	visDebug.draw(colorProgram);
-
-	gl.depthFunc(gl.LESS);
-	gl.depthMask(true);
-	gl.disable(gl.BLEND);
+	
 }
 
 function requestRedraw() {
@@ -1980,9 +3647,12 @@ async function init() {
 		console.log(`  got ${arrayBuffer.byteLength} bytes.`);
 
 		window.library = sv.Library.fromArrayBuffer(arrayBuffer);
+		listTemplates(window.library.templates);
+
 		//hack-y way of selecting first template:
 		window.template = null;
 		nextTemplate();
+
 
 		let info = 'Library contains:';
 		for (let name of Object.keys(library.templates).sort()) {
@@ -1994,10 +3664,21 @@ async function init() {
 	{
 		console.log(`Fetching body...`);
 		const request = await fetch('cube-3x3.body');
+		// const request = await fetch('example.body');
 		const arrayBuffer = await request.arrayBuffer();
 		console.log(`  got ${arrayBuffer.byteLength} bytes.`);
 
 		window.body = sv.Body.fromArrayBuffer(arrayBuffer, library);
+		allocateSpots();
+	}
+
+	{
+		console.log(`Loading textures...`)
+		// Load texture
+		window.arrowTexture = loadTexture(gl, "images/arrow.png");
+		// Flip image pixels into the bottom-to-top order that WebGL expects.
+		gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
 	}
 
 	bodyDirty();
@@ -2008,5 +3689,6 @@ async function init() {
 init();
 
 </script>
+
 </body>
 </html>
