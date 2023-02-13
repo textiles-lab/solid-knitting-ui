@@ -1426,7 +1426,7 @@ function allocateSpots(x0=1, y0=4) {
 	let currWaleDirection = 1; // TODO: how do you determine this?
 
 	let xMax=0, yMax=0;
-	// find directions for all stitches and embeddings for knit stitches (abstract 3d coordinates that we'll use to get needle/holder positions)
+	// find directions & beds for all stitches and embeddings for knit stitches (abstract 3d coordinates that we'll use to get needle/holder positions)
 	while (currCell != null) {
 		currCell.schedulingData.direction = (currDirection > 0) ? "+" : "-";
 		currCell.schedulingData.waleDirection = (currWaleDirection > 0) ? "+" : "-";
@@ -1440,6 +1440,7 @@ function allocateSpots(x0=1, y0=4) {
 		}
 
 		// guess knit locations from position. Others will be guessed from knits later
+		// TODO: solve fancy optimization problem? what are the constraints?
 		if (currCell.template.name.startsWith("knit")) {
 			const cellPosition = gm.sub(gm.xformTranslation(currCell.xform), origin);
 			const x = Math.round(cellPosition[0] / 2.);
@@ -1513,11 +1514,13 @@ function allocateSpots(x0=1, y0=4) {
 			const needleBed = (cell.schedulingData.bed === "f") ? "b" : "f";
 
 			const holders = holderPositions(x, y);
-			cell.schedulingData.frontHolder = holders.f;
-			cell.schedulingData.backHolder = holders.b;
+			cell.schedulingData.Hxy = (cell.schedulingData.bed === "f") ? holders.f : holders.b;
+			cell.schedulingData.Nx = needleBed + (x+x0); 
+			cell.schedulingData.D = cell.schedulingData.direction;
+			cell.schedulingData.CS = [1];
+
+			// not currently used
 			cell.schedulingData.layer = z;
-			cell.schedulingData.needle = needleBed + (x+x0); 
-			cell.schedulingData.yarnID = 1;
 		}
 
 	}
@@ -3011,22 +3014,27 @@ function setSidebar(mode) {
 	const library = document.getElementById("library");
 	const knitout = document.getElementById("view-knitout");
 	const blockData = document.getElementById("view-block-data");
+	const commands = document.getElementById("view-shortcuts");
 	if (mode == "Library") {
 		library.style.display="grid";
 		knitout.style.display="none";
 		blockData.style.display="none";
+		commands.style.display = "grid";
 	} else if (mode == "Knitout") {
 		library.style.display="none";
 		knitout.style.display="grid";
 		blockData.style.display="none";
+		commands.style.display = "grid";
 	} else if (mode == "BlockData") {
 		library.style.display="none";
 		knitout.style.display="none";
 		blockData.style.display="grid";
+		commands.style.display = "grid";
 	} else if (mode == "KnitoutAndBlockData") {
 		library.style.display="none";
 		knitout.style.display="grid";
 		blockData.style.display="grid";
+		commands.style.display = "none";
 	} else {
 		console.log("Error, invalid sidebar mode ", mode);
 	}
@@ -3260,33 +3268,41 @@ groupKnitoutPassesCheckbox.addEventListener('click', function() {
 function displayHoveredBlockInfo(over) {
 	const infoArea = document.getElementById("hovered-block-info");
 	infoArea.innerHTML = "";
-	if (over !== null) {
-		const pos = gm.xformTranslation(over.cell.xform); // TODO: shift cube coordinates to be integer?
-		const posString = "( " + pos[0].toFixed(2) + ", " + pos[1].toFixed(2) + ", " + pos[2].toFixed(2) + " )";
 
-		const displayData = function(name, value) {
-			const nameElem = document.createElement('span');
-			nameElem.innerHTML = name;
-			nameElem.classList.add("field-name");
-			infoArea.appendChild(nameElem);
-			const valueElem = document.createElement('span');
-			valueElem.innerHTML = value == null ? "null" : value;
-			valueElem.classList.add("field-value");
-			infoArea.appendChild(valueElem);
-		};
-		
-		if (!over.cell.schedulingData) over.cell.schedulingData = {};
-		displayData("ID", over.cellID);
-		displayData("Signature", over.cell.template.signature());
-		displayData("Position", posString);
-		displayData("Bed", over.cell.schedulingData.bed);
-		displayData("Needle", over.cell.schedulingData.needle);
-		displayData("Front Holder", over.cell.schedulingData.frontHolder);
-		displayData("Back Holder", over.cell.schedulingData.backHolder);
-		displayData("Layer", over.cell.schedulingData.layer);
-		displayData("Direction", over.cell.schedulingData.direction);
-		displayData("Yarn ID", over.cell.schedulingData.yarnID);
+	let posString, id, signature, schedulingData;
+	if (over != null) {
+		id = over.cellID;
+		signature = over.cell.template.signature();
+		const pos = gm.xformTranslation(over.cell.xform); // TODO: shift cube coordinates to be integer?
+		posString = "( " + pos[0].toFixed(2) + ", " + pos[1].toFixed(2) + ", " + pos[2].toFixed(2) + " )";
+		schedulingData = over.cell.schedulingData;
+	} else {
+		id = "";
+		signature = "";
+		posString = "( , , )";
+		schedulingData = {};
 	}
+
+	const displayData = function(name, value) {
+		const nameElem = document.createElement('span');
+		nameElem.innerHTML = name;
+		nameElem.classList.add("field-name");
+		infoArea.appendChild(nameElem);
+		const valueElem = document.createElement('span');
+		valueElem.innerHTML = value == null ? "" : value;
+		valueElem.classList.add("field-value");
+		infoArea.appendChild(valueElem);
+	};
+	
+	displayData("ID", id);
+	displayData("Signature", signature);
+	displayData("Position", posString);
+	displayData("Bed", schedulingData.bed);
+	displayData("Nx", schedulingData.Nx);
+	displayData("Hxy", schedulingData.Hxy);
+	displayData("D", schedulingData.D);
+	displayData("CS", schedulingData.CS);
+	displayData("Layer", schedulingData.layer);
 }
 
 function redrawPattern(pixelRatio) {
