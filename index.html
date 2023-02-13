@@ -3269,16 +3269,18 @@ function displayHoveredBlockInfo(over) {
 	const infoArea = document.getElementById("hovered-block-info");
 	infoArea.innerHTML = "";
 
-	let posString, id, signature, schedulingData;
+	let posString, id, ports, longname, schedulingData;
 	if (over != null) {
 		id = over.cellID;
-		signature = over.cell.template.signature();
+		ports = over.cell.template.signature().substr(over.cell.template.name.length + 1);
+		longname = over.cell.template.longname;
 		const pos = gm.xformTranslation(over.cell.xform); // TODO: shift cube coordinates to be integer?
 		posString = "( " + pos[0].toFixed(2) + ", " + pos[1].toFixed(2) + ", " + pos[2].toFixed(2) + " )";
 		schedulingData = over.cell.schedulingData;
 	} else {
 		id = "";
-		signature = "";
+		ports = "";
+		longname = "";
 		posString = "( , , )";
 		schedulingData = {};
 	}
@@ -3295,7 +3297,8 @@ function displayHoveredBlockInfo(over) {
 	};
 	
 	displayData("ID", id);
-	displayData("Signature", signature);
+	displayData("Long Name", longname);
+	displayData("Ports", ports);
 	displayData("Position", posString);
 	displayData("Bed", schedulingData.bed);
 	displayData("Nx", schedulingData.Nx);
