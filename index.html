@@ -415,6 +415,7 @@ body {
 	<li> <span class="key">down</span>: next template</li>
 	<li> <span class="key">K</span>: prev compatible template</li>
 	<li> <span class="key">J</span>: next compatible template</li>
+	<li> <span class="key">S</span>: select hovered block</li>
 	<li> <span class="key">ctrl-Z</span>: undo</li>
 	<li> <span class="key">esc</span>: escape from grab/connect</li>
 </ul>
@@ -453,7 +454,7 @@ function readFile(file) {
 		window.body = sv.Body.fromArrayBuffer(reader.result, library);
 
 		bodyDirty();
-		mouseDirty();
+		cursorDirty();
 		resetCamera();
 		requestRedraw();
 		window.currentFile = file;
@@ -668,6 +669,7 @@ window.resetCamera = resetCamera;
 //--- controls ---
 
 const MOUSE = {x:NaN, y:NaN, over:null, grid:null};
+let CURSOR = MOUSE; // <-- if anything is selected, set to selection. Otherwise, set to MOUSE
 let ACTION = null; //<-- current action; gets all events if not null
 
 let camFlipX = false; //used for camera rotation control
@@ -696,6 +698,20 @@ function mouseDirty() {
 }
 window.mouseDirty = mouseDirty;
 
+function cursorDirty() {
+	mouseDirty(); // always update MOUSE
+
+	// if CURSOR is frozen, we shouldn't update
+	if (CURSOR.frozen) return;
+
+	CURSOR.over = null;
+	CURSOR.grid = null;
+
+	CURSOR.dirty = true;
+	requestRedraw();
+}
+window.cursorDirty = cursorDirty;
+
 function bodyDirty() {
 	visBody.dirty = true;
 	visWire.dirty = true;
@@ -721,6 +737,7 @@ function knitoutDirty() {
 window.knitoutDirty = knitoutDirty; // for debugging
 
 function setMouseOver() {
+	delete MOUSE.dirty;
 	MOUSE.over = null;
 	MOUSE.grid = null;
 	if (MOUSE.x !== MOUSE.x) return;
@@ -830,6 +847,17 @@ function setMouseOver() {
 
 }
 
+function setCursorOver() {
+	delete CURSOR.dirty;
+	setMouseOver(); // update mouse position
+	if (CURSOR.frozen) {
+		// if a location is selected, do nothing
+	} else {
+		// otherwise, deep copy mouse position
+		CURSOR = {x: MOUSE.x, y: MOUSE.y, over: MOUSE.over, grid: MOUSE.grid, ray: mouseRay() };
+	}
+}
+
 //mouse in elt-is-[-1,1]x[-1,1] space:
 function relativeMouse(evt, elt) {
 	//based on: https://developer.mozilla.org/en-US/docs/Web/API/Element/mousemove_event
@@ -838,6 +866,11 @@ function relativeMouse(evt, elt) {
 		x:2.0 * (evt.clientX - rect.left) / rect.width - 1.0,
 		y:-2.0 * (evt.clientY - rect.top) / rect.height + 1.0
 	};
+}
+
+function selectMouseOver() {
+	setCursorOver();
+	CURSOR.frozen = true;
 }
 
 canvas.addEventListener('wheel', function(evt){
@@ -862,7 +895,7 @@ canvas.addEventListener('mousedown', function(evt){
 	}
 	MOUSE.x = mouse.x;
 	MOUSE.y = mouse.y;
-	mouseDirty();
+	cursorDirty();
 	evt.preventDefault();
 });
 
@@ -875,7 +908,7 @@ canvas.addEventListener('mousemove', function(evt){
 	}
 	MOUSE.x = mouse.x;
 	MOUSE.y = mouse.y;
-	mouseDirty();
+	cursorDirty();
 	evt.preventDefault();
 });
 
@@ -888,7 +921,7 @@ canvas.addEventListener('mouseup', function(evt){
 	}
 	MOUSE.x = mouse.x;
 	MOUSE.y = mouse.y;
-	mouseDirty();
+	cursorDirty();
 	evt.preventDefault();
 });
 
@@ -897,6 +930,10 @@ window.addEventListener('keydown', function(evt){
 	if (ACTION) { // actions take priority over ordinary keybindings
 		if (ACTION.keydown) ACTION.keydown(evt);
 	} else {
+		if (CURSOR != null && evt.code == 'Escape') {
+			delete CURSOR.frozen;
+			cursorDirty();
+		}
 		if (evt.code == 'KeyZ' && (evt.ctrlKey || evt.metaKey)) { 
 			// allow control-z or command-z on all systems since it seems tricky to check which is expected
 			undoLatestCommand();
@@ -907,8 +944,8 @@ window.addEventListener('keydown', function(evt){
 		} else if (evt.code == 'KeyA') {
 			addCell();
 		} else if (evt.code == 'Enter') {
-			if (MOUSE.over) {
-				setActiveTemplate(MOUSE.over.cell.template);
+			if (CURSOR.over) {
+				setActiveTemplate(CURSOR.over.cell.template);
 				requestRedraw();
 			} else {
 				setActiveTemplate(null);
@@ -916,6 +953,8 @@ window.addEventListener('keydown', function(evt){
 			}
 		} else if (evt.code == 'KeyX') {
 			deleteCell();
+			delete CURSOR.frozen;
+			cursorDirty();
 		} else if (evt.code == 'KeyG') {
 			startGrabCell(); //start drag
 		} else if (evt.code == 'KeyC') {
@@ -936,6 +975,9 @@ window.addEventListener('keydown', function(evt){
 			requestRedraw();
 		} else if (evt.code == 'KeyK') {
 			prevCompatibleTemplate();
+			requestRedraw();
+		} else if (evt.code == 'KeyS') {
+			selectMouseOver();
 			requestRedraw();
 		}
 		//console.log(evt.code); //when you want more keys
@@ -1075,10 +1117,10 @@ function prevTemplate() {
 //select next template from library:
 // (uses global 'library' and 'template' variables)
 function nextCompatibleTemplate() {
-	if (MOUSE.over === null) return null;
+	if (CURSOR.over === null) return null;
 
-	const cell = MOUSE.over.cell;
-	const face = MOUSE.over.face;
+	const cell = CURSOR.over.cell;
+	const face = CURSOR.over.face;
 
 	let selected = null;
 	for (const t of Object.values(library.templates)) {
@@ -1096,10 +1138,10 @@ function nextCompatibleTemplate() {
 //select previous template from library:
 // (uses global 'library' and 'template' variables)
 function prevCompatibleTemplate() {
-	if (MOUSE.over === null) return null;
+	if (CURSOR.over === null) return null;
 
-	const cell = MOUSE.over.cell;
-	const face = MOUSE.over.face;
+	const cell = CURSOR.over.cell;
+	const face = CURSOR.over.face;
 
 	let selected = null;
 	for (const t of Object.values(library.templates)) {
@@ -1224,20 +1266,20 @@ function previewCell() {
 	//can't add a cell if current template is no template:
 	if (template === null) return null;
 
-	if (MOUSE.grid !== null) {
-		//transform that puts center of cell at mouse position on the grid:
+	if (CURSOR.grid !== null) {
+		//transform that puts center of cell at cursor position on the grid:
 		const xform = gm.mat4x3(
 			1,0,0,
 			0,1,0,
 			0,0,1,
-			MOUSE.grid.x, MOUSE.grid.y, 0
+			CURSOR.grid.x, CURSOR.grid.y, 0
 		);
 		return sv.Cell.fromTemplate(template, xform);
 	}
 
-	if (MOUSE.over !== null) {
-		const cell = MOUSE.over.cell;
-		const face = MOUSE.over.face;
+	if (CURSOR.over !== null) {
+		const cell = CURSOR.over.cell;
+		const face = CURSOR.over.face;
 
 		return checkTemplateCompatible(cell, face, template);
 	}
@@ -1262,7 +1304,7 @@ function unsafeAddCell(cell, index) {
 	body.cells.splice(index, 0, cell);
 
 	//update UI and redraw:
-	mouseDirty();
+	cursorDirty();
 	bodyDirty();
 }
 
@@ -1270,7 +1312,7 @@ function unsafeAddCell(cell, index) {
  * addCell (): 
  * Adds cell adjacent to selected face. */
 function addCell() {
-	if (MOUSE.dirty) setMouseOver();
+	if (CURSOR.dirty) setCursorOver();
 
 	//is there a cell that could exist here? Ask the preview function:
 	const preview = previewCell();
@@ -1544,7 +1586,7 @@ function unsafeDeleteCell(index) {
 	body.cells.splice(index, 1);
 
 	// Update UI and redraw:
-	mouseDirty();
+	cursorDirty();
 	bodyDirty();
 }
 
@@ -1554,10 +1596,10 @@ function unsafeDeleteCell(index) {
  * Consider: When cell is selected to delete a box, instead of highlighting
  * selected face, we should highlight selected cell. */
 function deleteCell() {
-	if (MOUSE.dirty) setMouseOver();
-	if (!MOUSE.over) return;
+	if (CURSOR.dirty) setCursorOver();
+	if (!CURSOR.over) return;
 
-	const cell = MOUSE.over.cell;
+	const cell = CURSOR.over.cell;
 	const cellIndex =  body.cells.indexOf(cell);
 
 	unsafeDeleteCell(cellIndex);
@@ -1575,10 +1617,13 @@ function deleteCell() {
  */
 function startConnectFace() {
 	if (ACTION !== null) return;
-	if (MOUSE.dirty) setMouseOver();
-	if (!MOUSE.over) return;
-	const cell = MOUSE.over.cell;
-	const face = MOUSE.over.face;
+	if (CURSOR.dirty) setCursorOver();
+	if (!CURSOR.over) return;
+	const cell = CURSOR.over.cell;
+	const face = CURSOR.over.face;
+	let oldCURSOR = {x: CURSOR.x, y: CURSOR.y, over: CURSOR.over, grid: CURSOR.grid };
+	if (CURSOR.frozen) oldCURSOR.frozen = true;
+	delete CURSOR.frozen;
 
 	//is face already connected?
 	const oldConnection = cell.connections[face];
@@ -1603,11 +1648,11 @@ function startConnectFace() {
 		setConnection.pending = false;
 
 		clearConnection();
-		if (MOUSE.dirty) setMouseOver();
-		if (!MOUSE.over) return;
-		const toCell = MOUSE.over.cell;
+		if (CURSOR.dirty) setCursorOver();
+		if (!CURSOR.over) return;
+		const toCell = CURSOR.over.cell;
 		if (toCell === cell) return; //can't self-connect
-		const toFace = MOUSE.over.face;
+		const toFace = CURSOR.over.face;
 		if (toCell.connections[toFace]) return; //can't double-connect
 
 		if (!sv.canConnectFaces(cell.template.faces[face], toCell.template.faces[toFace])) return;
@@ -1653,9 +1698,11 @@ function startConnectFace() {
 				console.log("Confirming connect.");
 				setConnection.pending = false;
 				ACTION = null;
+				CURSOR = oldCURSOR;
 				pushCommand({type: "confirmConnect", cellIndex: body.cells.indexOf(cell), face: face, oldConnection: oldConnection});
 			} else if (evt.code === 'Escape') {
 				cancelConnect();
+				CURSOR = oldCURSOR;
 			}
 		},
 	};
@@ -1671,12 +1718,12 @@ function startConnectFace() {
 function startGrabCell() {
 	if (ACTION !== null) return;
 
-	if (MOUSE.dirty) setMouseOver();
+	if (CURSOR.dirty) setCursorOver();
 
-	if (!MOUSE.over) return;
+	if (!CURSOR.over) return;
 
 
-	const cell = MOUSE.over.cell;
+	const cell = CURSOR.over.cell;
 	const startXform = cell.xform;
 	const startVertices = [];
 	let center = gm.vec3(0);
@@ -2841,8 +2888,8 @@ class VisDebug extends Geometry {
 
 		//----- make debug/UI lines ----
 		
-		//mouse cursor:
-		if (MOUSE.x === MOUSE.x) {
+		// cursor:
+		if (CURSOR.x === CURSOR.x) {
 			const ray = mouseRay();
 			let r = camera.computeRight();
 			let u = camera.computeUp();
@@ -2854,18 +2901,18 @@ class VisDebug extends Geometry {
 		}
 
 		//currently hovered face:
-		if (MOUSE.over !== null) {
-			const cell = MOUSE.over.cell;
-			const face = cell.template.faces[MOUSE.over.face];
+		if (CURSOR.over !== null) {
+			const cell = CURSOR.over.cell;
+			const face = cell.template.faces[CURSOR.over.face];
 			for (let i = 0; i < face.indices.length; ++i) {
 				line(cell.vertices[face.indices[(i == 0 ? face.indices.length : i) - 1]], cell.vertices[face.indices[i]], 0xffff0088);
 			}
 		}
 
 		//currently hovered grid cell:
-		if (MOUSE.grid !== null) {
-			const x = Math.floor(MOUSE.grid.x);
-			const y = Math.floor(MOUSE.grid.y);
+		if (CURSOR.grid !== null) {
+			const x = Math.floor(CURSOR.grid.x);
+			const y = Math.floor(CURSOR.grid.y);
 
 			line([x, y, 0], [x+1,y,0], 0xff00ffff);
 			line([x+1,y, 0], [x+1,y+1,0], 0xff00ffff);
@@ -3276,7 +3323,7 @@ function displayHoveredBlockInfo(over) {
 		longname = over.cell.template.longname;
 		const pos = gm.xformTranslation(over.cell.xform); // TODO: shift cube coordinates to be integer?
 		posString = "( " + pos[0].toFixed(2) + ", " + pos[1].toFixed(2) + ", " + pos[2].toFixed(2) + " )";
-		schedulingData = over.cell.schedulingData;
+		schedulingData = over.cell.schedulingData ? over.cell.schedulingData : {};
 	} else {
 		id = "";
 		ports = "";
@@ -3339,14 +3386,14 @@ function redrawPattern(pixelRatio) {
 		} else {
 			info += `No Template`;
 		}
-		if (MOUSE.over) {
-			info += `; Hovered: ${MOUSE.over.cell.template.signature()} / face: ${MOUSE.over.face} (${MOUSE.over.cell.template.faces[MOUSE.over.face].type})`;
+		if (CURSOR.over) {
+			info += `; Hovered: ${CURSOR.over.cell.template.signature()} / face: ${CURSOR.over.face} (${CURSOR.over.cell.template.faces[CURSOR.over.face].type})`;
 		}
 		STATUS_LINE.innerText = info;
 	}
 
 	// show info about hovered block in sidebar
-	displayHoveredBlockInfo(MOUSE.over);
+	displayHoveredBlockInfo(CURSOR.over);
 	// if (body.cells.length > 0) displayHoveredBlockInfo({cellID: 0, cell: body.cells[0]});
 
 
@@ -3501,7 +3548,7 @@ function redraw() {
 	}
 
 	//update mouse info:
-	if (MOUSE.dirty) setMouseOver();
+	if (CURSOR.dirty || MOUSE.dirty) setCursorOver();
 
 	gl.clearColor(0.1, 0.1, 0.1, 1.0);
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -3552,7 +3599,7 @@ function redraw() {
 		);
 		gl.uniform1f(
 			textureProgram.uniformLocations.selectedCellID,
-			MOUSE.over === null ?  -1. : MOUSE.over.cellID
+			CURSOR.over === null ?  -1. : CURSOR.over.cellID
 		);
 		gl.uniform4f(
 			textureProgram.uniformLocations.TINT,
