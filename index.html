@@ -59,7 +59,7 @@ body {
 .controlsButton {
 	box-sizing:border-box;
 	cursor:pointer;
-	display:block;
+	display:inline-block;
 	background:#cfbb96;
 	padding:4px 8px;
 	margin:0;
@@ -405,19 +405,19 @@ body {
 <details id="view-shortcuts" open>
 <summary>Commands:</summary>
 <ul id="shortcuts">
-	<li> <span class="key">space</span> or <span class="key">R</span>: relax shape</li>
-	<li> <span class="key">enter</span>: select hovered template</li>
-	<li> <span class="key">X</span>: delete cell</li>
-	<li> <span class="key">G</span>: grab cell</li>
-	<li> <span class="key">C</span>: start connection</li>
-	<li> <span class="key">U</span>: check for cycles</li>
-	<li> <span class="key">up</span>: prev template</li>
-	<li> <span class="key">down</span>: next template</li>
-	<li> <span class="key">K</span>: prev compatible template</li>
-	<li> <span class="key">J</span>: next compatible template</li>
-	<li> <span class="key">S</span>: select hovered block</li>
-	<li> <span class="key">ctrl-Z</span>: undo</li>
-	<li> <span class="key">esc</span>: escape from grab/connect</li>
+	<li> <button class="controlsButton" id="relax-shape">Relax shape</button> (<span class="key">space</span> or <span class="key">R</span>)</li>
+	<li> <button class="controlsButton" id="select-hovered-template">Select hovered template</button> (<span class="key">enter</span>)</li>
+	<li> <button class="controlsButton" id="delete">Delete cell</button> (<span class="key">X</span>)</li>
+	<li> <button class="controlsButton" id="grab">Grab cell</button> (<span class="key">G</span>)</li>
+	<li> <button class="controlsButton" id="start-connection">Start/make connection</button> (<span class="key">C</span>)</li>
+	<li> <button class="controlsButton" id="check-for-cycles">Check for cycles</button> (<span class="key">U</span>)</li>
+	<li> <button class="controlsButton" id="prev-template">Prev template</button> (<span class="key">up</span>)</li>
+	<li> <button class="controlsButton" id="next-template">Next template</button> (<span class="key">down</span>)</li>
+	<li> <button class="controlsButton" id="prev-compatible-template">Prev compatible template</button> (<span class="key">K</span>)</li>
+	<li> <button class="controlsButton" id="next-compatible-template">Next compatible template</button> (<span class="key">J</span>)</li>
+	<li> <button class="controlsButton" id="select-hovered-block">Select hovered block</button> (<span class="key">S</span>)</li>
+	<li> <button class="controlsButton" id="undo">Undo</button> (<span class="key">ctrl-Z</span>)</li>
+	<li> <button class="controlsButton" id="escape-from-action">Escape from grab/connect/selection</button> (<span class="key">esc</span>)</li>
 </ul>
 </details>
 </div>
@@ -925,12 +925,66 @@ canvas.addEventListener('mouseup', function(evt){
 	evt.preventDefault();
 });
 
+// set up command buttons
+document.getElementById("relax-shape").onclick = function () { body.relax(); bodyDirty(); };
+document.getElementById("select-hovered-template").onclick = function () {
+	if (CURSOR.over) {
+		setActiveTemplate(CURSOR.over.cell.template);
+		requestRedraw();
+	} else {
+		setActiveTemplate(null);
+		requestRedraw();
+	}
+};
+document.getElementById("delete").onclick = function () {
+	deleteCell();
+	delete CURSOR.frozen;
+	cursorDirty();
+};
+document.getElementById("grab").onclick = startGrabCell;
+document.getElementById("start-connection").onclick = startConnectFace;
+document.getElementById("check-for-cycles").onclick = function () {
+	// probably will change keycode. 
+	// Run topological sort. 
+	if (!checkGlobalCellCorrectness()) console.log("Warning: There is exists a cycle in yarn directions!");
+	else console.log("No cycles detected in yarn directions");
+};
+document.getElementById("prev-template").onclick = function () {
+	prevTemplate();
+	requestRedraw();
+};
+document.getElementById("next-template").onclick = function () {
+	nextTemplate();
+	requestRedraw();
+};
+document.getElementById("prev-compatible-template").onclick = function () {
+	prevCompatibleTemplate();
+	requestRedraw();
+};
+document.getElementById("next-compatible-template").onclick = function () {
+	nextCompatibleTemplate();
+	requestRedraw();
+};
+document.getElementById("select-hovered-block").onclick = function () {
+	selectMouseOver();
+	requestRedraw();
+};
+document.getElementById("undo").onclick = undoLatestCommand;
+document.getElementById("escape-from-action").onclick = function () {
+	if (ACTION) {
+		ACTION.keydown({code : 'Escape'});
+	} else if (CURSOR.frozen) {
+		delete CURSOR.frozen;
+		cursorDirty();
+	}
+};
+
 window.addEventListener('keydown', function(evt){
 
 	if (ACTION) { // actions take priority over ordinary keybindings
 		if (ACTION.keydown) ACTION.keydown(evt);
 	} else {
-		if (CURSOR != null && evt.code == 'Escape') {
+		if (CURSOR.frozen && evt.code == 'Escape') {
 			delete CURSOR.frozen;
 			cursorDirty();
 		}
