@@ -287,10 +287,9 @@ export class Library {
 	} 
 	static fromArrayBuffer(buffer) {
 		const text = new TextDecoder("utf-8").decode(buffer);
-		const json = stripCommentsButStoreLongNames(text); // HACK: extract comments of the form //from blender.name and add them as json fields
-		                                                   // TODO: edit build script to add these to the json
+		const json = stripComments(text);
 		const data = JSON.parse(json);
-		console.log(data);
+		// console.log(data)
 		return Library.fromData(data);
 	}
 }
@@ -298,6 +297,7 @@ export class Library {
 export class Template {
 	constructor({
 		name = "",
+		longname = "",
 		from = "",
 		vertices = [],
 		faces = [],
@@ -306,7 +306,7 @@ export class Template {
 		human = {}
 	} = {}) {
 		this.name = name;
-		this.longname = from;
+		this.longname = longname;
 
 		//vertices should be 3D, lexicographic [by x,y,z] order:
 		if (!Array.isArray(vertices)) throw new Error("LibraryBlock.vertices should be an array.");
@@ -453,42 +453,6 @@ function stripComments(text) {
 		} else {
 			if (text[i] === '/' && text[i+1] === '/') {
 				while (i < text.length && text[i] !== '\n') i += 1;
-				if (i < text.length) i -= 1;
-			} else {
-				ret += text[i];
-				if (text[i] === '"') {
-					inString = true;
-				}
-			}
-		}
-	}
-	return ret;
-}
-
-function stripCommentsButStoreLongNames(text) {
-	// convert '//'-style comments into comment objects within otherwise-json-style text.
-	let ret = '';
-	let inString = false;
-	for (let i = 0; i < text.length; ++i) {
-		if (inString) {
-			ret += text[i];
-			if (text[i] === '\\') {
-				ret += text[i+1]; //copy next character as well
-				++i; //and then skip processing it
-			} else if (text[i] === '"') {
-				inString = false;
-			}
-		} else {
-			if (text[i] === '/' && text[i+1] === '/') {
-				i += 2;
-				let comment = '';
-				while (i < text.length && text[i] !== '\n') {
-					comment += text[i];
-					i += 1;
-				}
-				if (comment.startsWith("from ")) {
-					ret += '"from": "' + comment.substr(5) + '",'	
-				}
 				if (i < text.length) i -= 1;
 			} else {
 				ret += text[i];
