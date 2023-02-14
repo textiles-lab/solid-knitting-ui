@@ -3653,7 +3653,8 @@ function redraw() {
 		);
 		gl.uniform1f(
 			textureProgram.uniformLocations.selectedCellID,
-			CURSOR.over === null ?  -1. : CURSOR.over.cellID
+			// HACK: don't highlight selected cell in template view mode. Really, we should probably make CURSOR.over depend on mode
+			(CURSOR.over === null || viewMode === ViewMode.Template) ?  -1. : CURSOR.over.cellID
 		);
 		gl.uniform4f(
 			textureProgram.uniformLocations.TINT,
