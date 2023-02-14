@@ -1130,7 +1130,10 @@ function setActiveTemplate(t) {
 		elem.classList.remove('library-active-template');
 	}
 	if (template) {
-		document.getElementById(stripSpaces(template.signature())).classList.add('library-active-template');
+		const templateElem = document.getElementById(stripSpaces(template.signature()));
+		templateElem.classList.add('library-active-template');
+		templateElem.scrollIntoView({behavior: "smooth", block: "nearest"});
+		// if ()
 	}
 	templateDirty();
 }
@@ -3723,7 +3726,7 @@ async function init() {
 
 	{
 		console.log(`Fetching body...`);
-		const request = await fetch('cube-3x3-flipped.body');
+		const request = await fetch('cube-3x3.body');
 		// const request = await fetch('example.body');
 		const arrayBuffer = await request.arrayBuffer();
 		console.log(`  got ${arrayBuffer.byteLength} bytes.`);
