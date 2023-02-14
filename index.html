@@ -1116,7 +1116,7 @@ function listTemplates(templates) {
 	}
 	for (const signature of Object.keys(signature_names).sort()) {
 		const item = document.createElement('li');
-		item.innerHTML = signature_names[signature];
+		item.innerHTML = templates[signature_names[signature]].longname;
 		item.setAttribute('id', stripSpaces(signature));
 		item.onclick = function() {setTemplateFromSignature(stripSpaces(signature));};
 		library_list.appendChild(item);
@@ -3436,12 +3436,12 @@ function redrawPattern(pixelRatio) {
 	{
 		let info = "";
 		if (template !== null) {
-			info += `Template: ${template.signature()}`;
+			info += `Template: ${template.longsignature()}`;
 		} else {
 			info += `No Template`;
 		}
 		if (CURSOR.over) {
-			info += `; Hovered: ${CURSOR.over.cell.template.signature()} / face: ${CURSOR.over.face} (${CURSOR.over.cell.template.faces[CURSOR.over.face].type})`;
+			info += `; Hovered: ${CURSOR.over.cell.template.longsignature()} / face: ${CURSOR.over.face} (${CURSOR.over.cell.template.faces[CURSOR.over.face].type})`;
 		}
 		STATUS_LINE.innerText = info;
 	}
@@ -3534,7 +3534,7 @@ function redrawTemplate(pixelRatio) {
 	{
 		let info = "";
 		if (template !== null) {
-			info += `Template: ${template.signature()}`;
+			info += `Template: ${template.longsignature()}`;
 		} else {
 			info += `No Template`;
 		}

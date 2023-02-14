@@ -404,6 +404,14 @@ export class Template {
 		}
 		return sig;
 	}
+
+	longsignature() { // signature, but use longname rather than name
+		let sig = this.longname;
+		for (let face of this.faces) {
+			sig += ' ' + face.type;
+		}
+		return sig;
+	}
 }
 
 function initYarn(template,yarn) {
