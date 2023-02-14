@@ -13,10 +13,18 @@ for i in range(0,len(sys.argv)):
 	if sys.argv[i] == '--':
 		args = sys.argv[i+1:]
 
-if len(args) != 2:
-	print("\n\nUsage:\nblender --background --python export-blocks.py -- <infile.blend> <outfile.json>\nExports all blocks (meshes in the \"Blocks\" collection) to a block library json file.\n")
+if len(args) not in [2, 3]:
+	print("\n\nUsage:\nblender --background --python export-blocks.py -- <infile.blend> <outfile.json> [instructions.json]\nExports all blocks (meshes in the \"Blocks\" collection) to a block library json file. Optionally reads machine an human instructions for the blocks from a separate json file\n")
 	exit(1)
 
+import json
+
+instructions = {}
+if len(args) == 3:
+	with open(args[2]) as f:
+		strip_comment = lambda line : line if line.find("//") < 0 else line[:line.find("//")]
+		uncommented_text = "".join(strip_comment(line) for line in f)
+		instructions = json.loads(uncommented_text)
 
 import bpy
 from mathutils import Vector
@@ -302,6 +310,7 @@ for obj in blocks.objects:
 
 	out.append(f'{{')
 	out.append(f'\t"name":"{shortname}", //from {obj.name}')
+	# out.append(f'\t"longname": "{obj.name}",')
 	out.append(f'\t"vertices":[')
 	for vi in vertex_order:
 		v = mesh.vertices[vi]
@@ -332,10 +341,23 @@ for obj in blocks.objects:
 		info += f' "oriented": {"true" if yarn["oriented"] else "false"} }}{comma}'
 		out.append(info)
 		#was: out.append(f'\t\t{{ "begin":{yarn["begin"]}, "end":{yarn["end"]}, "cps":[{",".join(cps)}] }}{comma}')
-
 	out.append(f'\t],')
-	out.append(f'\t"machine":{{ }},')
-	out.append(f'\t"human":{{ }}')
+
+	# convert dict to json with spacing that matches the spacing in the current block file
+	def to_json_with_idiomatric_spacing(instructions):
+		text = json.dumps(instructions)
+		text = text.replace(": ", ":")
+		text = text.replace("{}", "{ }")
+		return text
+	machine_instructions = {}
+	human_instructions = {}
+	if obj.name in instructions:
+		if "machine" in instructions[obj.name]:
+			machine_instructions = instructions[obj.name]["machine"]
+		if "human" in instructions[obj.name] and instructions[obj.name]["human"]:
+			human_instructions = instructions[obj.name]["human"]
+	out.append(f'\t"machine":{to_json_with_idiomatric_spacing(machine_instructions)},')
+	out.append(f'\t"human":{to_json_with_idiomatric_spacing(human_instructions)}')
 	out.append(f'}}')
 
 with open(outfile,'wb') as f:

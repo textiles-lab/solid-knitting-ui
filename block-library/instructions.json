@@ -1,0 +1,126 @@
+{
+	"bind-off-through-down.left": {
+		"machine": { "seq": "roll [HFxy] [HBxy]\npause Please bind off the final row\n" },
+		"human":{}
+	},
+	"bind-off-through-down.right": {
+		"machine": { "seq": "roll [HFxy] [HBxy]\npause Please bind off the final row\n" },
+		"human": {}
+	},
+	"bind-off-through-up.left.001": {
+		"machine": { "seq": "roll [HFxy] [HBxy]\npause Please bind off the final row\n" },
+		"human": {}
+	},
+	"bind-off-through-up.right.001": {
+		"machine": { "seq": "roll [HFxy] [HBxy]\npause Please bind off the final row\n" },
+		"human": {}
+	},
+	"cast-on.left": {
+		"machine": { "seq:": "pause Please manually set up cast-on on machine.\n" },
+		"human": {}
+	},
+	"cast-on.right": {
+		"machine": { "seq:": "pause Please manually set up cast-on on machine.\n" },
+		"human": {}
+	},
+	"chain.right": {
+		"machine": { "seq:": "; No current Solid Knitout sequence for this command.\n" },
+		"human": {}
+	},
+	"chain-turn.right": {
+		"machine": { "seq:": "; No current Solid Knitout sequence for this command.\n" },
+		"human": {}
+	},
+	"chain-yarn.right": {
+		"machine": { "seq:": "; No current Solid Knitout sequence for this command.\n" },
+		"human": {}
+	},
+	"drop": {
+		"machine": { "seq:": "; No current Solid Knitout sequence for this command.\n" },
+		"human": {}
+	},
+	"knit.left.same": {
+		"machine": { "seq:": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hxy] [Nx]\nknit [Nx] [Hxy]\n" },
+		"human": {}
+	},
+	"knit.over-empty.left.same": {
+		"machine": { "seq:": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hxy] [Nx]\nknit [Nx] [Hxy]\n" },
+		"human": {}
+	},
+	"knit.right.same": {
+		"machine": { "seq:": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hxy] [Nx]\nknit [Nx] [Hxy]\n" },
+		"human": {}
+	},
+	"knit.over-empty.right.same": {
+		"machine": { "seq:": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hxy] [Nx]\nknit [Nx] [Hxy]\n" },
+		"human": {}
+	},
+	"knit.left.alt": {
+		"machine": { "seq:": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hxy] [Nx]\nknit [Nx] [Hxy]\n" },
+		"human": {}
+	},
+	"knit.over-empty.left.alt": {
+		"machine": { "seq:": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hxy] [Nx]\nknit [Nx] [Hxy]\n" },
+		"human": {}
+	},
+	"knit.right.alt": {
+		"machine": { "seq:": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hxy] [Nx]\nknit [Nx] [Hxy]\n" },
+		"human": {}
+	},
+	"knit.over-empty.right.alt": {
+		"machine": { "seq:": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hxy] [Nx]\nknit [Nx] [Hxy]\n" },
+		"human": {}
+	},
+	"knit.under-empty.left": {
+		"machine": { "seq:": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hxy] [Nx]\nknit [Nx] [Hxy]\n" },
+		"human": {}
+	},
+	"knit.under-empty.right": {
+		"machine": { "seq:": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hxy] [Nx]\nknit [Nx] [Hxy]\n" },
+		"human": {}
+	},
+	"loop-next-layer": {
+		"machine": { "seq:": "xfer [Hxy] [Nx]\n" }, //CONFIRM: Is this the right xfer direction for next layer?
+		"human": {}
+	},
+	"yarn-in.left": {
+		"machine": { "seq:": "; No current Solid Knitout sequence for this command.\n" },
+		"human": {}
+	},
+	"yarn-in.right": {
+		"machine": { "seq:": "; No current Solid Knitout sequence for this command.\n" },
+		"human": {}
+	},
+	"yarn-next-layer-opposite.right": {
+		"machine": { "seq:": "release [f/b]\n" },
+		"human": {}
+	},
+	"yarn-next-layer-opposite.left": {
+		"machine": { "seq:": "release [f/b]\n" },
+		"human": {}
+	},
+	"yarn-next-layer-same.right": {
+		"machine": {},
+		"human": {}
+	},
+	"yarn-next-layer-same.left": {
+		"machine": { "seq:": "release [f/b]\n" },
+		"human": {}
+	},
+	"yarn-next-row.right": {
+		"machine": { "seq:": "release [f/b]\n" },
+		"human": {}
+	},
+	"yarn-next-row.left": {
+		"machine": { "seq:": "release [f/b]\n" },
+		"human": {}
+	},
+	"yarn-out.right": {
+		"machine": { "seq:": "; Complete\n" },
+		"human": {}
+	},
+	"yarn-out.left": {
+		"machine": { "seq:": "; Complete\n" },
+		"human": {}
+	}
+}
