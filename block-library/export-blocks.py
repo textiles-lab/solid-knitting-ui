@@ -204,29 +204,30 @@ for obj in blocks.objects:
 						yarn["cps"].reverse()
 						yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
 					determined_orientation = True
-				elif found_course_dir: # for other types of yarn, guess orientation if a block orientation is known
-					if end is not None and ((face_types[begin][1] == "+l" and face_types[end][1] == "+l") or (face_types[begin][1] == "-l" and face_types[end][1] == "-l")):
-						determined_orientation = False # can't orient l-l loops
-					elif face_types[begin][:2] == "-l": # ensure that -l yarn points in course direction
-						if (left_to_right and cps[0][0] > cps[-1][0]) or ((not left_to_right) and cps[0][0] < cps[-1][0]):
-							yarn["cps"].reverse()
-							yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
-						determined_orientation = True
-					elif end is not None and face_types[end][:2] == "+l": # ensure that -l yarn points in course direction
-						if (left_to_right and cps[0][0] < cps[-1][0]) or ((not left_to_right) and cps[0][0] > cps[-1][0]):
-							yarn["cps"].reverse()
-							yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
-						determined_orientation = True
-					elif face_types[begin][:2] == "+l": # ensure that +l yarns points opposite course direction
-						if (left_to_right and cps[0][0] < cps[-1][0]) or ((not left_to_right) and cps[0][0] > cps[-1][0]):
-							yarn["cps"].reverse()
-							yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
-						determined_orientation = True
-					elif end is not None and face_types[end][:2] == "-l": # ensure that +l yarns points opposite course direction
-						if (left_to_right and cps[0][0] > cps[-1][0]) or ((not left_to_right) and cps[0][0] < cps[-1][0]):
-							yarn["cps"].reverse()
-							yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
-						determined_orientation = True
+				# TODO: I think that some of these orientations are wrong. I'm not sure if there are valid heuristics that we can use
+				# elif found_course_dir: # for other types of yarn, guess orientation if a block orientation is known
+				# 	if end is not None and ((face_types[begin][1] == "+l" and face_types[end][1] == "+l") or (face_types[begin][1] == "-l" and face_types[end][1] == "-l")):
+				# 		determined_orientation = False # can't orient l-l loops
+				# 	elif face_types[begin][:2] == "-l": # ensure that -l yarn points in course direction
+				# 		if (left_to_right and cps[0][0] > cps[-1][0]) or ((not left_to_right) and cps[0][0] < cps[-1][0]):
+				# 			yarn["cps"].reverse()
+				# 			yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
+				# 		determined_orientation = True
+				# 	elif end is not None and face_types[end][:2] == "+l": # ensure that -l yarn points in course direction
+				# 		if (left_to_right and cps[0][0] < cps[-1][0]) or ((not left_to_right) and cps[0][0] > cps[-1][0]):
+				# 			yarn["cps"].reverse()
+				# 			yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
+				# 		determined_orientation = True
+				# 	elif face_types[begin][:2] == "+l": # ensure that +l yarns points opposite course direction
+				# 		if (left_to_right and cps[0][0] < cps[-1][0]) or ((not left_to_right) and cps[0][0] > cps[-1][0]):
+				# 			yarn["cps"].reverse()
+				# 			yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
+				# 		determined_orientation = True
+				# 	elif end is not None and face_types[end][:2] == "-l": # ensure that +l yarns points opposite course direction
+				# 		if (left_to_right and cps[0][0] > cps[-1][0]) or ((not left_to_right) and cps[0][0] < cps[-1][0]):
+				# 			yarn["cps"].reverse()
+				# 			yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
+				# 		determined_orientation = True
 
 				if not determined_orientation:
 					print(f"failed to determine orientation on yarn {len(yarns)} of {obj.name}")
