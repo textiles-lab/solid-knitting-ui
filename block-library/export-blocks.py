@@ -310,7 +310,7 @@ for obj in blocks.objects:
 
 	out.append(f'{{')
 	out.append(f'\t"name":"{shortname}", //from {obj.name}')
-	# out.append(f'\t"longname": "{obj.name}",')
+	out.append(f'\t"longname": "{obj.name}",')
 	out.append(f'\t"vertices":[')
 	for vi in vertex_order:
 		v = mesh.vertices[vi]
@@ -343,12 +343,6 @@ for obj in blocks.objects:
 		#was: out.append(f'\t\t{{ "begin":{yarn["begin"]}, "end":{yarn["end"]}, "cps":[{",".join(cps)}] }}{comma}')
 	out.append(f'\t],')
 
-	# convert dict to json with spacing that matches the spacing in the current block file
-	def to_json_with_idiomatric_spacing(instructions):
-		text = json.dumps(instructions)
-		text = text.replace(": ", ":")
-		text = text.replace("{}", "{ }")
-		return text
 	machine_instructions = {}
 	human_instructions = {}
 	if obj.name in instructions:
@@ -356,8 +350,8 @@ for obj in blocks.objects:
 			machine_instructions = instructions[obj.name]["machine"]
 		if "human" in instructions[obj.name] and instructions[obj.name]["human"]:
 			human_instructions = instructions[obj.name]["human"]
-	out.append(f'\t"machine":{to_json_with_idiomatric_spacing(machine_instructions)},')
-	out.append(f'\t"human":{to_json_with_idiomatric_spacing(human_instructions)}')
+	out.append(f'\t"machine":{json.dumps(machine_instructions)},')
+	out.append(f'\t"human":{json.dumps(human_instructions)}')
 	out.append(f'}}')
 
 with open(outfile,'wb') as f:
