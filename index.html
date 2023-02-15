@@ -2768,7 +2768,7 @@ window.visWireCells = visWireCells; //DEBUG
 
 class VisTubes extends Geometry {
 	static BYTES_PER_ATTRIB = 4*3 + 4*3 + 4*2 + 4*1 + 4*1; //Position, Normal, UV, Color, CellID
-	constructor(solid=true, respectVisibility=true) {
+	constructor(solid=true, fixedVisibility=null) {
 		const BYTES_PER_ATTRIB = VisTubes.BYTES_PER_ATTRIB;
 
 		const buffer = gl.createBuffer();
@@ -2787,10 +2787,12 @@ class VisTubes extends Geometry {
 		this.resolution = 6;
 		this.radius = 0.08;
 		this.solid = solid;
-		this.respectVisibility = respectVisibility;
+		this.col_rgb = [1.0, 0.6, 0.5];
+		this.col_transparent = rgba2Uint32([...this.col_rgb, 0.1]);
+		this.col_opaque = rgb2Uint32(this.col_rgb);
+		this.selectedColor = [1.0, 0.4, 0.3, 1.0];
+		this.fixedVisibility = fixedVisibility;
 		this.empty = false;
-
-		this.selectedColor = [-1., -1., -1., -1.]; // set later in set()
 	}
 	set(body) {
 		const BYTES_PER_ATTRIB = VisTubes.BYTES_PER_ATTRIB;
@@ -2798,7 +2800,7 @@ class VisTubes extends Geometry {
 		//figure out how much space to allocate for attributes:
 		let totalAttribs = 0;
 		for (const cell of body.cells) {
-			if (this.respectVisibility && (checkCellVisible(cell) !== this.solid)) continue;
+			if (this.fixedVisibility === false || (this.fixedVisibility == null && checkCellVisible(cell) !== this.solid)) continue;
 			for (const yarn of cell.template.yarns) {
 				totalAttribs += (yarn.pts.length-1) * 6 * this.resolution;
 			}
@@ -2882,15 +2884,11 @@ class VisTubes extends Geometry {
 			}
 		}
 
-		const col_rgb = [1.0, 0.6, 0.5];
-		const col_transparent = rgba2Uint32([...col_rgb, 0.1]);
-		const col_opaque = rgb2Uint32(col_rgb);
-		this.selectedColor = [1.0, 0.4, 0.3, 1.0];
 		for (let cellID = 0; cellID < body.cells.length; ++cellID) {
 			const cell = body.cells[cellID];
-			if (this.respectVisibility && (checkCellVisible(cell) !== this.solid)) continue;
+			if (this.fixedVisibility === false || (this.fixedVisibility == null && checkCellVisible(cell) !== this.solid)) continue;
 
-			const col = this.solid ? col_opaque : col_transparent;
+			const col = this.solid ? this.col_opaque : this.col_transparent;
 
 			//yarns:
 			const xf = cell.xform;
@@ -3009,15 +3007,20 @@ class VisTubes extends Geometry {
 
 const visTubes = new VisTubes(true);
 const visTransparentTubes = new VisTubes(false);
-const visTemplateTubes = new VisTubes(true, false);
+const visTemplateTubes = new VisTubes(true, true /* always solid */);
 window.visTubes = visTubes; //DEBUG
 window.visTransparentTubes = visTransparentTubes; //DEBUG
 window.visTemplateTubes = visTemplateTubes; //DEBUG
+const visPreviewTubes = new VisTubes(true, true /* always opaque */);
+visPreviewTubes.col_rgb = [0.8, 0.6, 1.0];
+visPreviewTubes.col_opaque = rgb2Uint32(visPreviewTubes.col_rgb);
+// visPreviewTubes.col_transparent = rgba2Uint32([...visPreviewTubes.col_rgb, 0.1]);
+// visPreviewTubes.col_rgb = rgba2Uint32([...visPreviewTubes.col_rgb, 0.5]); // increase opacity
 
-class VisDebug extends Geometry {
+class VisPreviewLines extends Geometry {
 	static BYTES_PER_ATTRIB = 4*3 + 1*4; //Position, Color
 	constructor() {
-		const BYTES_PER_ATTRIB = VisDebug.BYTES_PER_ATTRIB;
+		const BYTES_PER_ATTRIB = VisPreviewLines.BYTES_PER_ATTRIB;
 
 		const buffer = gl.createBuffer();
 
@@ -3032,7 +3035,7 @@ class VisDebug extends Geometry {
 		this.buffer = buffer;
 	}
 	update() {
-		const BYTES_PER_ATTRIB = VisDebug.BYTES_PER_ATTRIB;
+		const BYTES_PER_ATTRIB = VisPreviewLines.BYTES_PER_ATTRIB;
 
 		let attribs = []; //x,y,z,color
 
@@ -3081,18 +3084,18 @@ class VisDebug extends Geometry {
 			setCellDrawingInfo(cell);
 
 			//yarns:
-			const xf = cell.xform;
-			for (const yarn of cell.template.yarns) {
-				let prev = null;
-				let col = rgb2Uint32([1.0, 0.6, 0.5]);
-				for (const pt of yarn.pts) {
-					let at = gm.mul_mat4x3_vec4(xf, [...pt, 1]);
-					if (prev !== null) {
-						line(prev,at, col);
-					}
-					prev = at;
-				}
-			}
+			// const xf = cell.xform;
+			// for (const yarn of cell.template.yarns) {
+			// 	let prev = null;
+			// 	let col = rgb2Uint32([1.0, 0.6, 0.5]);
+			// 	for (const pt of yarn.pts) {
+			// 		let at = gm.mul_mat4x3_vec4(xf, [...pt, 1]);
+			// 		if (prev !== null) {
+			// 			line(prev,at, col);
+			// 		}
+			// 		prev = at;
+			// 	}
+			// }
 
 			//faces:
 			for (let fi = 0; fi < cell.template.faces.length; ++fi) {
@@ -3183,7 +3186,7 @@ class VisDebug extends Geometry {
 		gl.bufferData(gl.ARRAY_BUFFER, arrayBuffer, gl.STREAM_DRAW);
 	}
 }
-const visDebug = new VisDebug();
+const visPreviewLines = new VisPreviewLines();
 
 let yarnVisMode = "Tube";
 function setYarnVisMode(mode) {
@@ -3557,7 +3560,9 @@ function redrawPattern(pixelRatio) {
 		delete visTubes.dirty;
 	}
 
-	visDebug.update();
+	visPreviewLines.update();
+	const cell = previewCell();
+	visPreviewTubes.set({cells: (cell ? [cell] : [])});
 
 	//update status line:
 	{
@@ -3579,7 +3584,7 @@ function redrawPattern(pixelRatio) {
 
 
 	gl.lineWidth(2.0 * pixelRatio);
-	visDebug.draw(colorProgram);
+	visPreviewLines.draw(colorProgram);
 
 	gl.lineWidth(1.0 * pixelRatio);
 	grid.draw(colorProgram);
@@ -3593,9 +3598,8 @@ function redrawPattern(pixelRatio) {
 
 		gl.useProgram(textureProgram.program);
 		// draw opaque tubes
-		if (!visTubes.empty) {
-			visTubes.draw(textureProgram);
-		}
+		if (!visTubes.empty) visTubes.draw(textureProgram);
+		if (!visPreviewTubes.empty) visPreviewTubes.draw(textureProgram);
 
 		// draw transparent tubes per https://xem.github.io/articles/webgl-guide-part-2.html#1a
 		if (!visTransparentTubes.empty) {
@@ -3623,7 +3627,7 @@ function redrawPattern(pixelRatio) {
 	gl.depthFunc(gl.GREATER);
 	gl.depthMask(false);
 	gl.lineWidth(2.0 * pixelRatio);
-	visDebug.draw(colorProgram);
+	visPreviewLines.draw(colorProgram);
 
 	gl.depthFunc(gl.LESS);
 	gl.depthMask(true);
@@ -3668,7 +3672,7 @@ function redrawTemplate(pixelRatio) {
 		STATUS_LINE.innerText = info;
 	}
 
-	visDebug.update();
+	visPreviewLines.update();
 
 	gl.lineWidth(1.0 * pixelRatio);
 	grid.draw(colorProgram);
@@ -3698,7 +3702,7 @@ function redrawTemplate(pixelRatio) {
 	gl.depthFunc(gl.GREATER);
 	gl.depthMask(false);
 	gl.lineWidth(2.0 * pixelRatio);
-	visDebug.draw(colorProgram);
+	visPreviewLines.draw(colorProgram);
 
 	gl.depthFunc(gl.LESS);
 	gl.depthMask(true);
