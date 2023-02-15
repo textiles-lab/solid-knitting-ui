@@ -89,8 +89,13 @@ body {
 #view-3d {
 	grid-column: 1 ;
 	grid-row: 2 ;
-	position:relative;
 	/*background: #0f08 ;*/
+	display: grid;
+	grid-template-rows: auto 1fr;
+	grid-template-columns: 1fr;
+}
+#canvas-wrapper {
+	position:relative;
 }
 #canvas {
 	position:absolute;
@@ -107,6 +112,22 @@ body {
 	color: black;
 	padding: 0.15em 0.3em;
 }
+#render-options {
+	padding: 0.5em;
+	position: absolute;
+	top: 0;
+	left: 0;
+	background: #181818AA;
+
+}
+#render-options > summary {
+	font-size: 2em;
+	list-style: none;
+}
+#render-options > summary::-webkit-details-marker {
+ 	display: none;
+}
+
 #sidebar {
 	grid-column: 2 ;
 	grid-row: 2 ;
@@ -119,47 +140,68 @@ body {
 	background-color: #232220;
 	color: #C4C0AD;
 }
-#sidebar-menu {
+.tab-menu {
 	margin: 0;
 	padding: 0;
 	display: grid;
 	background-color: #414038;
 	box-sizing: border-box;
 	overflow: hidden;
+}
+#sidebar-menu {
 	border-bottom: 1px solid #232220;
 }
-#select-sidebar-mode {
+#viewmode-options {
+	border-bottom: 1px solid #181818;
+}
+.tab-menu form {
 	box-sizing: border-box;
 	margin: 0;
 	padding: 0;
 	display: grid;
 	grid-template-rows: 1fr;
-	grid-template-columns: max-content max-content max-content max-content;
+	grid-template-columns: repeat(8, max-content);
 	background-color: #414038;
 }
-#sidebar-menu input { /* invisible radio button to save state https://stackoverflow.com/a/8037883 */
+.tab-menu input { /* invisible radio button to save state https://stackoverflow.com/a/8037883 */
 	visibility: hidden;
 	width: 0;
 	height: 0;
 	margin: 0;
 	padding: 0;
 }
-#sidebar-menu label {
+.tab-menu label {
 	border: 0;
 	font-family: sans-serif;
-	color: #C4C0AD;
-	background-color: #23222066;
 	border-radius: 0.25em 0.25em 0 0;
 	padding: 0.5em 1em 0.25em 1em ;
+	border: solid 1pt #616058;;
+	border-bottom-style: none;
+}
+#sidebar-menu label {
+	color: #C4C0AD;
+	background-color: #23222066;
 }
 #sidebar-menu label:hover {
-	background-color: #232220CC;
+	background-color: #232220AA;
 }
 #sidebar-menu label.active {
 	color: #C4C0AD;
 	background-color: #232220;
 }
-#sidebar h2, summary {
+#viewmode-options label {
+	color: #C4C0AD;
+	background-color: #18181866;
+}
+#viewmode-options label:hover {
+	color: #C4C0AD;
+	background-color: #181818AA;
+}
+#viewmode-options label.active {
+	color: #C4C0AD;
+	background-color: #181818;
+}
+#sidebar h2, #sidebar summary {
 	font-size:20px;
 	font-weight: bold;
 	line-height:20px;
@@ -364,53 +406,53 @@ body {
 <button id="save-knitout" class="controlsButton">Save Knitout</button>
 <button id="reallocate-spots" class="controlsButton">Reallocate Needle Locations</button>
 
-<div id="yarn-vis-options" class="controls-section">
-	Yarn Visualization:
-	<select id="select-yarn-vis-option">
-		<option value="Tube" selected>Tube</option>
-		<option value="Wire">Wire</option>
-		<option value="Body">Body</option>
-	</select>
-</div>
-
-<div id="layer-visibility-options" class="controls-section">
-	Layer Visibility:
-	<form id="layer-visibility-form" style="display:inline-block;">
-		<input type="checkbox" name="layer-visible" value="0" checked>0
-		<input type="checkbox" name="layer-visible" value="1" checked>1
-		<input type="checkbox" name="layer-visible" value="2" checked>2
-		<input type="checkbox" name="layer-visible" value="3" checked>3
-		<input type="checkbox" name="layer-visible" value="4" checked>4
-	</form>
-</div>
-
-<div id="yarn-direction-vis-options" class="controls-section">
-	<form id="show-yarn-direction-form" style="display:inline-block;">
-		<input type="checkbox" name="show-yarn-direction" value="0"> Show Yarn Direction
-	</form>
-</div>
-
-<div id="viewmode-options" class="controls-section">
-	View Mode:
-	<select id="select-viewmode-option">
-		<option value="Pattern" selected>Pattern</option>
-		<option value="Template">Template</option>
-	</select>
-</div>
-
 </div>
 
 <!-- 3d view -->
 <div id="view-3d">
-<canvas id="canvas" width="120" height="120"></canvas>
-<div id="status-line">(Status Line)</div>
+
+	<div id="viewmode-options" class="tab-menu">
+		<form id="select-3dview-mode">
+			<input type="radio" name="3dview-mode" id="3dview-pattern-mode" value="Pattern" checked><label id="3dview-set-pattern-mode" for="3dview-pattern-mode" class="tab">Pattern</label><input type="radio" name="3dview-mode" id="3dview-template-mode" value="Template" class="tab"><label id="3dview-set-template-mode" for="3dview-template-mode">Templates</label>
+		</form>
+	</div>
+	<div id="canvas-wrapper">
+		<canvas id="canvas" width="120" height="120"></canvas>
+		<div id="status-line">(Status Line)</div>
+		<details id="render-options">
+			<summary>&#9881;</summary>
+			<div id="yarn-vis-options" class="controls-section">
+				Yarn Visualization:
+				<select id="select-yarn-vis-option">
+					<option value="Tube" selected>Tube</option>
+					<option value="Wire">Wire</option>
+					<option value="Body">Body</option>
+				</select>
+			</div>
+			<div id="layer-visibility-options" class="controls-section">
+				Layer Visibility:
+				<form id="layer-visibility-form" style="display:inline-block;">
+					<input type="checkbox" name="layer-visible" value="0" checked>0
+					<input type="checkbox" name="layer-visible" value="1" checked>1
+					<input type="checkbox" name="layer-visible" value="2" checked>2
+					<input type="checkbox" name="layer-visible" value="3" checked>3
+					<input type="checkbox" name="layer-visible" value="4" checked>4
+				</form>
+			</div>
+			<div id="yarn-direction-vis-options" class="controls-section">
+				<form id="show-yarn-direction-form" style="display:inline-block;">
+					<input type="checkbox" name="show-yarn-direction" value="0"> Show Yarn Direction
+				</form>
+			</div>
+		</details>
+	</div>
 </div>
 
 <!-- library panel -->
 <div id="sidebar">
-<div id="sidebar-menu">
+<div id="sidebar-menu" class="tab-menu">
 	<form id="select-sidebar-mode">
-		<input type="radio" name="sidebar-mode" id="sidebar-design-mode" value="PatternDesign" checked><label id="sidebar-set-design-mode" for="sidebar-design-mode">Pattern Design</label><input type="radio" name="sidebar-mode" id="sidebar-codegen-mode" value="CodeGen"><label id="sidebar-set-codegen-mode" for="sidebar-codegen-mode">Code Generation</label>
+		<input type="radio" name="sidebar-mode" id="sidebar-design-mode" value="PatternDesign" checked><label id="sidebar-set-design-mode" for="sidebar-design-mode" class="tab">Pattern Design</label><input type="radio" name="sidebar-mode" id="sidebar-codegen-mode" value="CodeGen"><label id="sidebar-set-codegen-mode" for="sidebar-codegen-mode" class="tab">Code Generation</label>
 	</form>
 </div>
 <div id="library">
@@ -3138,10 +3180,18 @@ function setYarnVisMode(mode) {
 }
 
 function setViewMode(mode) {
+	const patternButton = document.getElementById("3dview-set-pattern-mode");
+	const templateButton = document.getElementById("3dview-set-template-mode");
+	// clear current mode
+	patternButton.classList.remove("active");
+	templateButton.classList.remove("active");
+
 	if (mode == "Pattern") {
+		patternButton.classList.add("active");
 		viewMode = ViewMode.Pattern;
 		bodyDirty();
 	} else if (mode == "Template") {
+		templateButton.classList.add("active");
 		viewMode = ViewMode.Template;
 		templateDirty();
 	} else {
@@ -3195,8 +3245,16 @@ for (const elem of document.getElementById('show-yarn-direction-form').children)
 	elem.addEventListener('click', function() {bodyDirty();});
 }
 
-document.getElementById("select-viewmode-option").addEventListener("change", function() {setViewMode(this.value);});
-setViewMode(document.getElementById("select-viewmode-option").value);
+// document.getElementById("select-viewmode-option").addEventListener("change", function() {setViewMode(this.value);});
+// setViewMode(document.getElementById("select-viewmode-option").value);
+document.getElementById("select-3dview-mode").addEventListener("change", function(e) {setViewMode(e.target.value);});
+// set sidebar to current selection
+for (let child of document.getElementById("select-3dview-mode").children) {
+	if (child.checked) {
+		setViewMode(child.value);
+		break;
+	}
+}
 
 document.getElementById("select-sidebar-mode").addEventListener("change", function(e) {setSidebar(e.target.value);});
 // set sidebar to current selection
