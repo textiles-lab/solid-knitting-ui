@@ -112,13 +112,52 @@ body {
 	grid-row: 2 ;
 
 	display:grid;
-	grid-template-rows: 1fr min-content;
+	grid-template-rows: min-content 1fr min-content;
 	width: 24em;
 	min-height: 0; /* don't expand past parent height https://stackoverflow.com/a/43312314 */
 /*	background: #00f8 ;*/
-
 	background-color: #232220;
 	color: #C4C0AD;
+}
+#sidebar-menu {
+	margin: 0;
+	padding: 0;
+	display: grid;
+	background-color: #414038;
+	box-sizing: border-box;
+	overflow: hidden;
+	border-bottom: 1px solid #232220;
+}
+#select-sidebar-mode {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	grid-template-rows: 1fr;
+	grid-template-columns: max-content max-content max-content max-content;
+	background-color: #414038;
+}
+#sidebar-menu input { /* invisible radio button to save state https://stackoverflow.com/a/8037883 */
+	visibility: hidden;
+	width: 0;
+	height: 0;
+	margin: 0;
+	padding: 0;
+}
+#sidebar-menu label {
+	border: 0;
+	font-family: sans-serif;
+	color: #C4C0AD;
+	background-color: #23222066;
+	border-radius: 0.25em 0.25em 0 0;
+	padding: 0.5em 1em 0.25em 1em ;
+}
+#sidebar-menu label:hover {
+	background-color: #232220CC;
+}
+#sidebar-menu label.active {
+	color: #C4C0AD;
+	background-color: #232220;
 }
 #sidebar h2, summary {
 	font-size:20px;
@@ -187,7 +226,6 @@ body {
 #view-knitout {
 	margin: 0;
 	padding: 0;
-	padding-top: 0.5em;
 	overflow: auto;
 	font-family: monospace;
 	background-color: #272822;
@@ -197,9 +235,10 @@ body {
 }
 #view-knitout #view-knitout-options {
 	padding: 0.5em 1em;
-	background-color: #373832;
+	background-color: #232220;
 }
 #knitout-source {
+	padding-top: 0.5em;
 	min-height: 0;
 	overflow-y: scroll;
 	margin-bottom: 0.5em;
@@ -359,15 +398,6 @@ body {
 	</select>
 </div>
 
-<div id="sidebar-options" class="controls-section">
-	Sidebar:
-	<select id="select-sidebar-option">
-		<option value="Library" selected>Library</option>
-		<option value="Knitout">Knitout</option>
-		<option value="BlockData">Block Data</option>
-		<option value="KnitoutAndBlockData">Knitout & Block Data</option>
-	</select>
-</div>
 </div>
 
 <!-- 3d view -->
@@ -378,6 +408,11 @@ body {
 
 <!-- library panel -->
 <div id="sidebar">
+<div id="sidebar-menu">
+	<form id="select-sidebar-mode">
+		<input type="radio" name="sidebar-mode" id="sidebar-design-mode" value="PatternDesign" checked><label id="sidebar-set-design-mode" for="sidebar-design-mode">Pattern Design</label><input type="radio" name="sidebar-mode" id="sidebar-codegen-mode" value="CodeGen"><label id="sidebar-set-codegen-mode" for="sidebar-codegen-mode">Code Generation</label>
+	</form>
+</div>
 <div id="library">
 <h2>Block Library:</h2>
 <ul id="library-list">
@@ -386,13 +421,13 @@ body {
 
 <!-- preview generated knitout -->
 <div id="view-knitout">
-	<div id="knitout-source"></div>
 	<div id="view-knitout-options">
 		<form id="group-knitout-passes-form" style="display:inline-block;">
 		<label for="group-knitout-passes">Group knitout passes:</label>
 		<input type="checkbox" name="group-knitout-passes">
 		</form>
 	</div>
+	<div id="knitout-source"></div>
 </div>
 
 <!-- see information about highlighted block -->
@@ -3114,31 +3149,35 @@ function setViewMode(mode) {
 	}
 	requestRedraw()
 }
+
 function setSidebar(mode) {
+	const designButton = document.getElementById("sidebar-set-design-mode");
+	const codegenButton = document.getElementById("sidebar-set-codegen-mode");
 	const library = document.getElementById("library");
 	const knitout = document.getElementById("view-knitout");
 	const blockData = document.getElementById("view-block-data");
 	const commands = document.getElementById("view-shortcuts");
-	if (mode == "Library") {
+
+	// clear current mode
+	designButton.classList.remove("active");
+	codegenButton.classList.remove("active");
+	library.style.display="none";
+	knitout.style.display="none";
+	blockData.style.display="none";
+	commands.style.display = "none";
+
+	if (mode == "PatternDesign") {
 		library.style.display="grid";
 		knitout.style.display="none";
 		blockData.style.display="none";
 		commands.style.display = "grid";
-	} else if (mode == "Knitout") {
-		library.style.display="none";
-		knitout.style.display="grid";
-		blockData.style.display="none";
-		commands.style.display = "grid";
-	} else if (mode == "BlockData") {
-		library.style.display="none";
-		knitout.style.display="none";
-		blockData.style.display="grid";
-		commands.style.display = "grid";
-	} else if (mode == "KnitoutAndBlockData") {
+		designButton.classList.add("active");
+	} else if (mode == "CodeGen") {
 		library.style.display="none";
 		knitout.style.display="grid";
 		blockData.style.display="grid";
 		commands.style.display = "none";
+		codegenButton.classList.add("active");
 	} else {
 		console.log("Error, invalid sidebar mode ", mode);
 	}
@@ -3159,8 +3198,14 @@ for (const elem of document.getElementById('show-yarn-direction-form').children)
 document.getElementById("select-viewmode-option").addEventListener("change", function() {setViewMode(this.value);});
 setViewMode(document.getElementById("select-viewmode-option").value);
 
-document.getElementById("select-sidebar-option").addEventListener("change", function() {setSidebar(this.value);});
-setSidebar(document.getElementById("select-sidebar-option").value);
+document.getElementById("select-sidebar-mode").addEventListener("change", function(e) {setSidebar(e.target.value);});
+// set sidebar to current selection
+for (let child of document.getElementById("select-sidebar-mode").children) {
+	if (child.checked) {
+		setSidebar(child.value);
+		break;
+	}
+}
 
 // To change the displayed knitout, set knitoutCode.text to a different value and call knitoutDirty() to request a refresh
 const knitoutCode = {text: `;;!solid-knitout-VERSION
