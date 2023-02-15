@@ -1029,7 +1029,15 @@ document.getElementById("delete").onclick = function () {
 	cursorDirty();
 };
 document.getElementById("grab").onclick = startGrabCell;
-document.getElementById("start-connection").onclick = startConnectFace;
+document.getElementById("start-connection").onclick = function () {
+	if (ACTION) {
+		if (ACTION.type === "Connect") {
+			ACTION.keydown({code: "KeyC"});
+		}
+	} else {
+		startConnectFace();
+	}
+}
 document.getElementById("check-for-cycles").onclick = function () {
 	// probably will change keycode. 
 	// Run topological sort. 
@@ -1067,8 +1075,10 @@ document.getElementById("escape-from-action").onclick = function () {
 };
 
 window.addEventListener('keydown', function(evt){
-
-	if (ACTION) { // actions take priority over ordinary keybindings
+	if (evt.code == 'KeyS') { // selection takes priority over everything since it's helpful during actions
+		selectMouseOver();
+		requestRedraw();
+	} else if (ACTION) { // actions take priority over ordinary keybindings
 		if (ACTION.keydown) ACTION.keydown(evt);
 	} else {
 		if (CURSOR.frozen && evt.code == 'Escape') {
@@ -1099,6 +1109,7 @@ window.addEventListener('keydown', function(evt){
 		} else if (evt.code == 'KeyG') {
 			startGrabCell(); //start drag
 		} else if (evt.code == 'KeyC') {
+			// warning: keybinding also hardcoded into action and button
 			startConnectFace(); //start connection
 		} else if (evt.code == 'KeyU') {
 			// probably will change keycode. 
@@ -1117,10 +1128,7 @@ window.addEventListener('keydown', function(evt){
 		} else if (evt.code == 'KeyK') {
 			prevCompatibleTemplate();
 			requestRedraw();
-		} else if (evt.code == 'KeyS') {
-			selectMouseOver();
-			requestRedraw();
-		}
+		} 
 		//console.log(evt.code); //when you want more keys
 	}
 });
@@ -1767,8 +1775,8 @@ function startConnectFace() {
 	if (!CURSOR.over) return;
 	const cell = CURSOR.over.cell;
 	const face = CURSOR.over.face;
-	let oldCURSOR = {x: CURSOR.x, y: CURSOR.y, over: CURSOR.over, grid: CURSOR.grid };
-	if (CURSOR.frozen) oldCURSOR.frozen = true;
+	// let oldCURSOR = {x: CURSOR.x, y: CURSOR.y, over: CURSOR.over, grid: CURSOR.grid };
+	// if (CURSOR.frozen) oldCURSOR.frozen = true;
 	delete CURSOR.frozen;
 
 	//is face already connected?
@@ -1825,6 +1833,7 @@ function startConnectFace() {
 	console.log("Starting connect.");
 
 	ACTION = {
+		type: "Connect",
 		mousedown:(evt,mouse) => {
 			if (evt.button === 0) {
 				startCameraMove();
@@ -1844,7 +1853,7 @@ function startConnectFace() {
 				console.log("Confirming connect.");
 				setConnection.pending = false;
 				ACTION = null;
-				CURSOR = oldCURSOR;
+				// CURSOR = oldCURSOR;
 				pushCommand({type: "confirmConnect", cellIndex: body.cells.indexOf(cell), face: face, oldConnection: oldConnection});
 			} else if (evt.code === 'Escape') {
 				cancelConnect();
