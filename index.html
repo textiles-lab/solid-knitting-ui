@@ -121,10 +121,11 @@ body {
 
 }
 #render-options > summary {
+	cursor:pointer;
 	font-size: 2em;
 	list-style: none;
 }
-#render-options > summary::-webkit-details-marker {
+#render-options > summary::-webkit-details-marker { /* hide details triangle https://stackoverflow.com/a/56649741 */
  	display: none;
 }
 
