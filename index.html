@@ -1390,7 +1390,8 @@ function checkTemplateCompatible(cell, face, template, verbose = false) {
 
 				// check if faces are compatible
 				if (face.type ==='x' && preview.template.faces[pfi].type === 'x') {
-					// this case is okay
+					// this case is okay, but not a connection
+					continue;
 				} else if (preview.connections[pfi] != null) {
 					if (verbose) console.log("preview connection already exists");
 					return null;
