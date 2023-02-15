@@ -932,7 +932,7 @@ function setCursorOver() {
 		// if a location is selected, do nothing
 	} else {
 		// otherwise, deep copy mouse position
-		CURSOR = {x: MOUSE.x, y: MOUSE.y, over: MOUSE.over, grid: MOUSE.grid, ray: mouseRay() };
+		CURSOR = {x: MOUSE.x, y: MOUSE.y, over: MOUSE.over, grid: MOUSE.grid};
 	}
 }
 
@@ -947,8 +947,17 @@ function relativeMouse(evt, elt) {
 }
 
 function selectMouseOver() {
+	const oldCursor = {x: CURSOR.x, y: CURSOR.y, over: CURSOR.over, grid: CURSOR.grid};
+	if (CURSOR.frozen) {
+		oldCursor.frozen = true;
+	}
+
+	CURSOR.frozen = false; // unfreeze cursor so that we select even if something is already selected
 	setCursorOver();
 	CURSOR.frozen = true;
+	const newCursor = {x: CURSOR.x, y: CURSOR.y, over: CURSOR.over, grid: CURSOR.grid, frozen: true};
+
+	pushCommand({type: "Select", oldCursor: oldCursor, newCursor: newCursor});
 }
 
 canvas.addEventListener('wheel', function(evt){
@@ -1163,6 +1172,8 @@ function undoLatestCommand() {
 		}
 		ACTION = null; // just in case
 		bodyDirty();
+	} else if (command.type === "Select") {
+		CURSOR = command.oldCursor;
 	} else {
 		console.error("unknown command type ", command.type, " in command ", command);
 		return;
