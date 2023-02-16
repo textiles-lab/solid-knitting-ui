@@ -125,6 +125,9 @@ body {
 	font-size: 2em;
 	list-style: none;
 }
+#render-options > summary:hover {
+	color: #efdbb6;
+}
 #render-options > summary::-webkit-details-marker { /* hide details triangle https://stackoverflow.com/a/56649741 */
  	display: none;
 }
@@ -163,6 +166,8 @@ body {
 	grid-template-rows: 1fr;
 	grid-template-columns: repeat(8, max-content);
 	background-color: #414038;
+
+	border-bottom: solid 2pt #616058;
 }
 .tab-menu input { /* invisible radio button to save state https://stackoverflow.com/a/8037883 */
 	visibility: hidden;
@@ -176,8 +181,10 @@ body {
 	font-family: sans-serif;
 	border-radius: 0.25em 0.25em 0 0;
 	padding: 0.5em 1em 0.25em 1em ;
-	border: solid 1pt #616058;;
+	margin-top: 4pt;
+	border: solid 2pt #616058;
 	border-bottom-style: none;
+	cursor: pointer;
 }
 #sidebar-menu label {
 	color: #C4C0AD;
@@ -189,6 +196,8 @@ body {
 #sidebar-menu label.active {
 	color: #C4C0AD;
 	background-color: #232220;
+	border-bottom: solid 4pt #232220;
+	margin-bottom: -4pt;
 }
 #viewmode-options label {
 	color: #C4C0AD;
@@ -201,6 +210,8 @@ body {
 #viewmode-options label.active {
 	color: #C4C0AD;
 	background-color: #181818;
+	border-bottom: solid 4pt #181818;
+	margin-bottom: -4pt;
 }
 #sidebar h2, #sidebar summary {
 	font-size:20px;
@@ -3546,7 +3557,7 @@ function displayHoveredBlockInfo(over) {
 		id = "";
 		ports = "";
 		longname = "";
-		posString = "( , , )";
+		posString = "";
 		schedulingData = {};
 	}
 
