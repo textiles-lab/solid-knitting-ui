@@ -1271,7 +1271,7 @@ function prevTemplate() {
 //select next template from library:
 // (uses global 'library' and 'template' variables)
 function nextCompatibleTemplate() {
-	if (CURSOR.over === null) return null;
+	if (CURSOR.over === null) return nextTemplate();
 
 	const cell = CURSOR.over.cell;
 	const face = CURSOR.over.face;
@@ -1292,7 +1292,7 @@ function nextCompatibleTemplate() {
 //select previous template from library:
 // (uses global 'library' and 'template' variables)
 function prevCompatibleTemplate() {
-	if (CURSOR.over === null) return null;
+	if (CURSOR.over === null) return prevTemplate();
 
 	const cell = CURSOR.over.cell;
 	const face = CURSOR.over.face;
