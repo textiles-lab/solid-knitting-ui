@@ -7,12 +7,12 @@ body {
 	padding:0;
 	margin:0;
 
-	--far-background-color: #414038;
+	--far-background-color: #333230;
 	--background-color: #232220;
-	--background-color-medium: #23222099;
+	--background-color-medium: #232220bb;
 	--background-color-light: #23222066;
 	--background-color-highlight: #dde1;
-	--separator-color: #616058;
+	--separator-color: #434240;
 	--main-font-color: #C4C0AD;
 	--far-font-color: #E4E0CD;
 	--font-color-highlight: #D4D0CD;
@@ -50,6 +50,7 @@ body {
 	grid-template-columns: 1fr auto ;
 	grid-template-rows: auto 1.0fr;
 	overflow: none;
+	grid-gap: 5px;
 
 	/*background: #0008 ;*/
 }
@@ -105,10 +106,13 @@ body {
 	grid-template-columns: 1fr;
 
 	color: var(--main-font-color);
-	background-color: var(--background-color);
 }
 #canvas-wrapper {
 	position:relative;
+	overflow: hidden;
+	background-color: var(--background-color);
+	border-top: solid 2pt var(--separator-color);
+	border-radius: 0 5px 5px 0;
 }
 #canvas {
 	position:absolute;
@@ -152,15 +156,18 @@ body {
 
 	display:grid;
 	grid-template-rows: min-content 1fr min-content;
+	grid-gap: 5px;
+
 	width: 24em;
 	min-height: 0; /* don't expand past parent height https://stackoverflow.com/a/43312314 */
 /*	background: #00f8 ;*/
 
 	color: var(--main-font-color);
-	background-color: var(--background-color);
+	background-color: var(--far-background-color);
 }
 .tab-menu {
 	margin: 0;
+	margin-left: 0.25em;
 	padding: 0;
 	display: grid;
 	box-sizing: border-box;
@@ -170,7 +177,6 @@ body {
 	align-items: center; /* center-align text in menu items */
 	background-color: var(--far-background-color);
 	color: var(--far-font-color);
-	border-bottom: solid 2pt var(--separator-color);
 }
 
 .tab-menu span {
@@ -210,6 +216,7 @@ body {
 	background-color: var(--background-color);
 	border-bottom: solid 2pt var(--background-color);
 	margin-bottom: -2pt;
+	z-index: 1;
 }
 #sidebar h2, #sidebar summary {
 	font-size:20px;
@@ -228,7 +235,11 @@ body {
 	display:grid; /* set to grid from javascript later too */
 	grid-template-rows: auto 1fr;
 	padding-bottom: 0.5em;
-	border-left: 2pt solid var(--separator-color);
+/*	border-left: 2pt solid var(--separator-color);*/
+	border-radius: 5px 0 0 5px;
+	background-color: var(--background-color);
+	margin-top: -5px;
+	border-top: solid 2pt var(--separator-color);
 }
 #library-list {
 /*	grid-row: 2 ;*/
@@ -259,10 +270,12 @@ body {
 	border: 1pt solid var(--separator-color);
 }
 #view-shortcuts {
-	border-top: 2px solid var(--separator-color);
+	/*border-top: 2px solid var(--separator-color);
+	border-left: 2pt solid var(--separator-color);*/
 	padding-left: 0.25em;
 	padding-top: 0.5em;
-	border-left: 2pt solid var(--separator-color);
+	border-radius: 5px;
+	background-color: var(--background-color);
 }
 #shortcuts {
 	grid-row: 3 ;
@@ -283,7 +296,11 @@ body {
 	overflow: auto;
 	display:grid; /* set to grid from javascript later too */
 	grid-template-rows: 1fr auto;
-	border-left: 2pt solid var(--separator-color);
+/*	border-left: 2pt solid var(--separator-color);*/
+	border-radius: 5px 0 0 5px;
+	background-color: var(--background-color);
+	margin-top: -5px;
+	border-top: solid 2pt var(--separator-color);
 }
 #view-knitout #view-knitout-options {
 	padding: 0.5em 1em;
@@ -372,8 +389,10 @@ body {
 	grid-template-rows: auto 1fr;
 	gap: 0;
 	padding-bottom: 0.5em;
-	border-top: 2pt solid var(--separator-color);
-	border-left: 2pt solid var(--separator-color);
+	/*border-top: 2pt solid var(--separator-color);
+	border-left: 2pt solid var(--separator-color);*/
+	border-radius: 5px 0 0 5px;
+	background-color: var(--background-color);
 }
 #view-block-data h2 {
 	padding: 0.5em 0 0 0.5em; /* top right bottom left */
