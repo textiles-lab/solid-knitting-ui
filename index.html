@@ -150,14 +150,16 @@ body {
 	display: grid;
 	background-color: #414038;
 	box-sizing: border-box;
-	overflow: hidden;
+	grid-template-columns: auto 1fr;
+	grid-template-rows: auto;
+	border-bottom: solid 2pt #616058;
+	align-items: center; /* center-align text in menu items */
 }
-#sidebar-menu {
-	border-bottom: 1px solid #232220;
+
+.tab-menu span {
+	padding: 0.25em 0.5em;
 }
-#viewmode-options {
-	border-bottom: 1px solid #181818;
-}
+
 .tab-menu form {
 	box-sizing: border-box;
 	margin: 0;
@@ -165,9 +167,8 @@ body {
 	display: grid;
 	grid-template-rows: 1fr;
 	grid-template-columns: repeat(8, max-content);
+	grid-gap: 1pt;
 	background-color: #414038;
-
-	border-bottom: solid 2pt #616058;
 }
 .tab-menu input { /* invisible radio button to save state https://stackoverflow.com/a/8037883 */
 	visibility: hidden;
@@ -180,8 +181,7 @@ body {
 	border: 0;
 	font-family: sans-serif;
 	border-radius: 0.25em 0.25em 0 0;
-	padding: 0.5em 1em 0.25em 1em ;
-	margin-top: 4pt;
+	padding: 0.5em 1em 0.25em 1em;
 	border: solid 2pt #616058;
 	border-bottom-style: none;
 	cursor: pointer;
@@ -196,8 +196,8 @@ body {
 #sidebar-menu label.active {
 	color: #C4C0AD;
 	background-color: #232220;
-	border-bottom: solid 4pt #232220;
-	margin-bottom: -4pt;
+	border-bottom: solid 2pt #232220;
+	margin-bottom: -2pt;
 }
 #viewmode-options label {
 	color: #C4C0AD;
@@ -210,8 +210,8 @@ body {
 #viewmode-options label.active {
 	color: #C4C0AD;
 	background-color: #181818;
-	border-bottom: solid 4pt #181818;
-	margin-bottom: -4pt;
+	border-bottom: solid 2pt #181818;
+	margin-bottom: -2pt;
 }
 #sidebar h2, #sidebar summary {
 	font-size:20px;
@@ -408,7 +408,6 @@ body {
 
 <!-- controls bar at the top of the window -->
 <div id="controls">
-<span id="fileName">(no file loaded)</span>
 <input id="file" type="file" />
 <label id="fileLabel" for="file" class="controlsButton">Load</label>
 <!-- <button id="benchmark">benchmark</button>
@@ -424,6 +423,7 @@ body {
 <div id="view-3d">
 
 	<div id="viewmode-options" class="tab-menu">
+		<span id="fileName">(no file loaded)</span>
 		<form id="select-3dview-mode">
 			<input type="radio" name="3dview-mode" id="3dview-pattern-mode" value="Pattern" checked><label id="3dview-set-pattern-mode" for="3dview-pattern-mode" class="tab">Pattern</label><input type="radio" name="3dview-mode" id="3dview-template-mode" value="Template" class="tab"><label id="3dview-set-template-mode" for="3dview-template-mode">Templates</label>
 		</form>
