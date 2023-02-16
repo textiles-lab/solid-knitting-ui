@@ -1673,7 +1673,7 @@ function allocateSpots(x0=1, y0=4) {
 	currCell.schedulingData.embedding = gm.vec3(0, 0, 0);
 
 	//== find directions & beds for all stitches and embeddings for knit stitches (abstract 3d coordinates that we'll use to get needle/holder positions)
-	let xMax=0, yMax=0, xMin=0, yMin=0, zMin=0;
+	let xMax=-10, yMax=-10, xMin=10, yMin=10, zMin=10;
 	while (currCell != null) {
 		currCell.schedulingData.direction = (currDirection > 0) ? "+" : "-";
 		currCell.schedulingData.waleDirection = (currWaleDirection > 0) ? "+" : "-";
