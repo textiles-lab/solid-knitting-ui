@@ -3589,8 +3589,11 @@ function displayHoveredBlockInfo(over) {
 		posString = "( " + pos[0].toFixed(2) + ", " + pos[1].toFixed(2) + ", " + pos[2].toFixed(2) + " )";
 		schedulingData = over.cell.schedulingData ? over.cell.schedulingData : {};
 
-		const emb = over.cell.schedulingData.embedding;
-		if (emb) embString = "( " + emb[0].toFixed(2) + ", " + emb[1].toFixed(2) + ", " + emb[2].toFixed(2) + " )";
+
+		if (over.cell.schedulingData && over.cell.schedulingData.embedding) {
+			const emb = over.cell.schedulingData.embedding;
+			embString = "( " + emb[0].toFixed(2) + ", " + emb[1].toFixed(2) + ", " + emb[2].toFixed(2) + " )";	
+		}
 	} else {
 		id = null;
 		ports = null;
