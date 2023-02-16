@@ -62,7 +62,7 @@ body {
 	padding: 5px 5px;
 	display:flex;
 	flex-flow: row wrap;
-	align-items:center;
+	align-items: center;
 	/*background: #f008 ;*/
 }
 
@@ -295,7 +295,7 @@ body {
 	min-height: 0;
 	overflow-y: scroll;
 	margin-bottom: 0.5em;
-	background-color: #272822;
+/*	background-color: #272822;*/
 }
 /* code styling */
 #knitout-source span {
@@ -381,17 +381,21 @@ body {
 #hovered-block-info {
 	display: grid;
 	grid-template-columns: auto 1fr;
+	grid-template-rows: max-content;
 	align-content: start;
 	gap: 0;
+	align-items: stretch;
 }
 /* shade every other row https://stackoverflow.com/a/44937583 */
 #hovered-block-info > :nth-child(4n+1), #hovered-block-info > :nth-child(4n+2) {
 	background-color: var(--background-color-highlight);
 }
 #hovered-block-info .field-name {
-	text-align: right;
 	padding: 0.15em 0.25em 0.15em 0.5em; /* top right bottom left */
 	min-height: 0;
+	display: inline-flex;
+	align-items: center;         /* vertically-center text */
+	justify-content: flex-end;   /* align right */
 }
 #hovered-block-info .field-name:after {
 	content: ":";
@@ -404,7 +408,7 @@ body {
 	font-family: monospace;
 	width: 100%;
 	border: none;
-	background-color: #fff2;
+	background-color: #fff1;
 	color: var(--main-font-color);
 	border-radius: 2pt;
 	border: 1pt var(--separator-color) solid;
