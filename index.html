@@ -7,8 +7,18 @@ body {
 	padding:0;
 	margin:0;
 
-	background-color: #414038;
-	color: #E4E0CD;
+	--far-background-color: #414038;
+	--background-color: #232220;
+	--background-color-medium: #23222099;
+	--background-color-light: #23222066;
+	--background-color-highlight: #dde1;
+	--separator-color: #616058;
+	--main-font-color: #C4C0AD;
+	--far-font-color: #E4E0CD;
+	--font-color-highlight: #D4D0CD;
+
+	background-color: var(--far-background-color);
+	color: var(--far-font-color);
 }
 #dropTarget {
 	position:fixed;
@@ -93,6 +103,9 @@ body {
 	display: grid;
 	grid-template-rows: auto 1fr;
 	grid-template-columns: 1fr;
+
+	color: var(--main-font-color);
+	background-color: var(--background-color);
 }
 #canvas-wrapper {
 	position:relative;
@@ -103,6 +116,7 @@ body {
 	left:0;
 	width:100%;
 	height:100%;
+	background-color: var(--background-color);
 }
 #status-line {
 	position:absolute;
@@ -117,7 +131,7 @@ body {
 	position: absolute;
 	top: 0;
 	left: 0;
-	background: #181818CC;
+	background: var(--background-color-medium);
 
 }
 #render-options > summary {
@@ -141,19 +155,22 @@ body {
 	width: 24em;
 	min-height: 0; /* don't expand past parent height https://stackoverflow.com/a/43312314 */
 /*	background: #00f8 ;*/
-	background-color: #232220;
-	color: #C4C0AD;
+
+	color: var(--main-font-color);
+	background-color: var(--background-color);
 }
 .tab-menu {
 	margin: 0;
 	padding: 0;
 	display: grid;
-	background-color: #414038;
 	box-sizing: border-box;
 	grid-template-columns: auto 1fr;
 	grid-template-rows: auto;
-	border-bottom: solid 2pt #616058;
+
 	align-items: center; /* center-align text in menu items */
+	background-color: var(--far-background-color);
+	color: var(--far-font-color);
+	border-bottom: solid 2pt var(--separator-color);
 }
 
 .tab-menu span {
@@ -168,7 +185,6 @@ body {
 	grid-template-rows: 1fr;
 	grid-template-columns: repeat(8, max-content);
 	grid-gap: 1pt;
-	background-color: #414038;
 }
 .tab-menu input { /* invisible radio button to save state https://stackoverflow.com/a/8037883 */
 	visibility: hidden;
@@ -182,35 +198,17 @@ body {
 	font-family: sans-serif;
 	border-radius: 0.25em 0.25em 0 0;
 	padding: 0.5em 1em 0.25em 1em;
-	border: solid 2pt #616058;
+	border: solid 2pt var(--separator-color);
 	border-bottom-style: none;
 	cursor: pointer;
+	background-color: var(--background-color-light);
 }
-#sidebar-menu label {
-	color: #C4C0AD;
-	background-color: #23222066;
+.tab-menu label:hover {
+	background-color: var(--background-color-medium);
 }
-#sidebar-menu label:hover {
-	background-color: #232220AA;
-}
-#sidebar-menu label.active {
-	color: #C4C0AD;
-	background-color: #232220;
-	border-bottom: solid 2pt #232220;
-	margin-bottom: -2pt;
-}
-#viewmode-options label {
-	color: #C4C0AD;
-	background-color: #18181866;
-}
-#viewmode-options label:hover {
-	color: #C4C0AD;
-	background-color: #181818AA;
-}
-#viewmode-options label.active {
-	color: #C4C0AD;
-	background-color: #181818;
-	border-bottom: solid 2pt #181818;
+.tab-menu label.active {
+	background-color: var(--background-color);
+	border-bottom: solid 2pt var(--background-color);
 	margin-bottom: -2pt;
 }
 #sidebar h2, #sidebar summary {
@@ -230,6 +228,7 @@ body {
 	display:grid; /* set to grid from javascript later too */
 	grid-template-rows: auto 1fr;
 	padding-bottom: 0.5em;
+	border-left: 2pt solid var(--separator-color);
 }
 #library-list {
 /*	grid-row: 2 ;*/
@@ -248,21 +247,22 @@ body {
 	padding:0.15em 0.5em;
 	border-radius:0.2em;
 	cursor:pointer;
-	border: 1pt solid #fff0;
+	border: 1pt solid var(--background-color);
 }
 #library li:hover {
-	background-color: #dde2;
-	color: #D4D0CD;
+	background-color: var(--background-color-highlight);
+	color: var(--font-color-highlight);
 }
 #library .library-active-template {
-	background-color: #dde2;
-	color: #D4D0CD;
-	border: 1pt solid #94908D;
+	background-color: var(--background-color-highlight);
+	color: var(--font-color-highlight);
+	border: 1pt solid var(--separator-color);
 }
 #view-shortcuts {
-	border-top: 2px solid #44402D;
+	border-top: 2px solid var(--separator-color);
 	padding-left: 0.25em;
 	padding-top: 0.5em;
+	border-left: 2pt solid var(--separator-color);
 }
 #shortcuts {
 	grid-row: 3 ;
@@ -281,21 +281,21 @@ body {
 	margin: 0;
 	padding: 0;
 	overflow: auto;
-	font-family: monospace;
-	background-color: #272822;
-	color: white;
 	display:grid; /* set to grid from javascript later too */
 	grid-template-rows: 1fr auto;
+	border-left: 2pt solid var(--separator-color);
 }
 #view-knitout #view-knitout-options {
 	padding: 0.5em 1em;
-	background-color: #232220;
+	background-color: var(--background-color);
 }
 #knitout-source {
+	font-family: monospace;
 	padding-top: 0.5em;
 	min-height: 0;
 	overflow-y: scroll;
 	margin-bottom: 0.5em;
+	background-color: #272822;
 }
 /* code styling */
 #knitout-source span {
@@ -372,6 +372,8 @@ body {
 	grid-template-rows: auto 1fr;
 	gap: 0;
 	padding-bottom: 0.5em;
+	border-top: 2pt solid var(--separator-color);
+	border-left: 2pt solid var(--separator-color);
 }
 #view-block-data h2 {
 	padding: 0.5em 0 0 0.5em; /* top right bottom left */
@@ -385,7 +387,7 @@ body {
 }
 /* shade every other row https://stackoverflow.com/a/44937583 */
 #hovered-block-info > :nth-child(4n+1), #hovered-block-info > :nth-child(4n+2) {
-	background-color: #dde1;
+	background-color: var(--background-color-highlight);
 }
 #hovered-block-info .field-name {
 	text-align: right;
@@ -3758,6 +3760,8 @@ function redrawTemplate(pixelRatio) {
 function redraw() {
 	const pixelRatio = window.devicePixelRatio;
 
+	let clearColor = [0.1, 0.1, 0.1];
+
 	//make sure canvas size matches element size:
 	(function resize() {
 		const style = getComputedStyle(canvas);
@@ -3769,6 +3773,13 @@ function redraw() {
 		canvas.height = height;
 		gl.viewport(0,0,width,height);
 		camera.aspect = width / height;
+
+		// read clearColor from CSS
+		const rgbColor = style["background-color"];
+		// Use a regular expression to extract the r,g,b components from a string of the form "rgb(r, g, b)".
+		// The unescaped parentheses capture the r,g,b values which can be accessed as elements 1,2,3 of the returned match
+		const matchResult = rgbColor.match(/^rgb\s*\(\s*(\d+),\s*(\d+),\s*(\d+)\)\s*$/);
+		if (matchResult.length >= 4) clearColor = [matchResult[1]/255., matchResult[2]/255., matchResult[3]/255.];
 	})();
 
 	// Update displayed knitout code if necessary
@@ -3781,7 +3792,7 @@ function redraw() {
 	//update mouse info:
 	if (CURSOR.dirty || MOUSE.dirty) setCursorOver();
 
-	gl.clearColor(0.1, 0.1, 0.1, 1.0);
+	gl.clearColor(clearColor[0], clearColor[1], clearColor[2], 1.0);
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	gl.enable(gl.DEPTH_TEST);
 	gl.depthFunc(gl.LESS);
