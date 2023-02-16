@@ -4213,20 +4213,26 @@ function redraw() {
 		gl.useProgram(colorProgram.program);
 	}
 	
+	// draw yarn
 	if (viewMode === ViewMode.Pattern) {
 		redrawPatternYarn(pixelRatio);
-
-		postprocess.begin_ui();
-		gl.clearColor(clearColor[0], clearColor[1], clearColor[2], 1.0);
-
-		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-		gl.enable(gl.DEPTH_TEST);
-		gl.depthFunc(gl.LESS);
-
-		gl.useProgram(colorProgram.program);
-		redrawPatternUI(pixelRatio);
 	} else if (viewMode === ViewMode.Template) {
 		redrawTemplate(pixelRatio);
+	}
+
+	// prepare for UI pass (only used in pattern mode)
+	postprocess.begin_ui();
+	gl.clearColor(clearColor[0], clearColor[1], clearColor[2], 1.0);
+
+	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+	gl.enable(gl.DEPTH_TEST);
+	gl.depthFunc(gl.LESS);
+
+	gl.useProgram(colorProgram.program);
+
+	// if in pattern mode, draw UI separately
+	if (viewMode === ViewMode.Pattern) {
+		redrawPatternUI(pixelRatio);
 	}
 
 	postprocess.end();
