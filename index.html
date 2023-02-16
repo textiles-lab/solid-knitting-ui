@@ -3,10 +3,8 @@
 <head>
 <title>Solid Knitting UI</title>
 <style>
-body {
-	padding:0;
-	margin:0;
 
+body.darkmode {
 	--far-background-color: #333230;
 	--background-color: #232220;
 	--background-color-medium: #232220bb;
@@ -16,10 +14,28 @@ body {
 	--main-font-color: #C4C0AD;
 	--far-font-color: #E4E0CD;
 	--font-color-highlight: #D4D0CD;
+}
+
+body.lightmode {
+	--far-background-color: #d4ccd2;
+	--background-color: #eef;
+	--background-color-medium: #eefb;
+	--background-color-light: #eef6;
+	--background-color-highlight: #2221;
+	--separator-color: #c4bcc2;
+	--main-font-color: #222;
+	--far-font-color: #111;
+	--font-color-highlight: #222;
+}
+
+body {
+	padding:0;
+	margin:0;
 
 	background-color: var(--far-background-color);
 	color: var(--far-font-color);
 }
+
 #dropTarget {
 	position:fixed;
 	left:0;
@@ -130,6 +146,19 @@ body {
 	color: black;
 	padding: 0.15em 0.3em;
 }
+#darkmode-checkbox {
+	width: 0;
+	height: 0;
+	visibility: hidden;
+}
+
+body.darkmode #darkmode-checkbox-label::after {
+	content: "\263C";
+}
+body.lightmode #darkmode-checkbox-label::after {
+	content: "\263D";
+}
+
 #render-options {
 	padding: 0 0.5em;
 	position: absolute;
@@ -144,7 +173,7 @@ body {
 	list-style: none;
 }
 #render-options > summary:hover {
-	color: #efdbb6;
+	color: var(--font-color-highlight);
 }
 #render-options > summary::-webkit-details-marker { /* hide details triangle https://stackoverflow.com/a/56649741 */
  	display: none;
@@ -165,13 +194,13 @@ body {
 	color: var(--main-font-color);
 	background-color: var(--far-background-color);
 }
-.tab-menu {
+.tab-menu-container {
 	margin: 0;
 	margin-left: 0.25em;
 	padding: 0;
 	display: grid;
 	box-sizing: border-box;
-	grid-template-columns: auto 1fr;
+	grid-template-columns: auto 1fr auto;
 	grid-template-rows: auto;
 
 	align-items: center; /* center-align text in menu items */
@@ -183,7 +212,7 @@ body {
 	padding: 0.25em 0.5em;
 }
 
-.tab-menu form {
+.tab-menu {
 	box-sizing: border-box;
 	margin: 0;
 	padding: 0;
@@ -192,7 +221,7 @@ body {
 	grid-template-columns: repeat(8, max-content);
 	grid-gap: 1pt;
 }
-.tab-menu input { /* invisible radio button to save state https://stackoverflow.com/a/8037883 */
+.tab-menu input[type=radio] { /* invisible radio button to save state https://stackoverflow.com/a/8037883 */
 	visibility: hidden;
 	width: 0;
 	height: 0;
@@ -434,7 +463,7 @@ body {
 }
 </style>
 </head>
-<body>
+<body class="lightmode">
 
 <div id="views">
 
@@ -453,11 +482,13 @@ body {
 
 <!-- 3d view -->
 <div id="view-3d">
-
-	<div id="viewmode-options" class="tab-menu">
+	<div id="viewmode-options" class="tab-menu-container">
 		<span id="fileName">(no file loaded)</span>
-		<form id="select-3dview-mode">
+		<form id="select-3dview-mode" class="tab-menu">
 			<input type="radio" name="3dview-mode" id="3dview-pattern-mode" value="Pattern" checked><label id="3dview-set-pattern-mode" for="3dview-pattern-mode" class="tab">Pattern</label><input type="radio" name="3dview-mode" id="3dview-template-mode" value="Template" class="tab"><label id="3dview-set-template-mode" for="3dview-template-mode">Templates</label>
+		</form>
+		<form id="darkmode-toggle">
+			<input type="checkbox" id="darkmode-checkbox" name="darkmode" value="darkmode" checked><label for="darkmode-checkbox" id="darkmode-checkbox-label"></label>
 		</form>
 	</div>
 	<div id="canvas-wrapper">
@@ -494,8 +525,8 @@ body {
 
 <!-- library panel -->
 <div id="sidebar">
-<div id="sidebar-menu" class="tab-menu">
-	<form id="select-sidebar-mode">
+<div id="sidebar-menu" class="tab-menu-container">
+	<form id="select-sidebar-mode" class="tab-menu">
 		<input type="radio" name="sidebar-mode" id="sidebar-design-mode" value="PatternDesign" checked><label id="sidebar-set-design-mode" for="sidebar-design-mode" class="tab">Pattern Design</label><input type="radio" name="sidebar-mode" id="sidebar-codegen-mode" value="CodeGen"><label id="sidebar-set-codegen-mode" for="sidebar-codegen-mode" class="tab">Code Generation</label>
 	</form>
 </div>
@@ -3368,6 +3399,20 @@ for (let child of document.getElementById("select-sidebar-mode").children) {
 		break;
 	}
 }
+
+function setDarkMode(setDark) {
+	const body = document.getElementsByTagName("body")[0];
+	if (setDark) {
+		body.classList.remove("lightmode");
+		body.classList.add("darkmode");
+	} else {
+		body.classList.add("lightmode");
+		body.classList.remove("darkmode");
+	}
+	requestRedraw(); // refresh canvas background
+}
+document.getElementById("darkmode-checkbox").addEventListener("change", function() {setDarkMode(this.checked);});
+setDarkMode(document.getElementById("darkmode-checkbox").checked);
 
 // To change the displayed knitout, set knitoutCode.text to a different value and call knitoutDirty() to request a refresh
 const knitoutCode = {text: `;;!solid-knitout-VERSION
