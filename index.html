@@ -383,7 +383,6 @@ body {
 	grid-template-columns: auto 1fr;
 	align-content: start;
 	gap: 0;
-	overflow-y: scroll;
 }
 /* shade every other row https://stackoverflow.com/a/44937583 */
 #hovered-block-info > :nth-child(4n+1), #hovered-block-info > :nth-child(4n+2) {
@@ -398,9 +397,17 @@ body {
 	content: ":";
 }
 #hovered-block-info .field-value {
-	padding: 0.15em 0 0.15em 0.25em; /* top right bottom left */
+	padding: 0.25em 1em 0.25em 0.5em; /* top right bottom left */
 	font-family: monospace;
-	min-height: 0;
+}
+#hovered-block-info input[type=text] {
+	font-family: monospace;
+	width: 100%;
+	border: none;
+	background-color: #fff2;
+	color: var(--main-font-color);
+	border-radius: 2pt;
+	border: 1pt var(--separator-color) solid;
 }
 </style>
 </head>
@@ -489,7 +496,7 @@ body {
 <!-- see information about highlighted block -->
 <div id="view-block-data">
 	<h2> Block Info:</h2>
-	<div id="hovered-block-info"></div>
+	<form id="hovered-block-info"></form>
 </div>
 
 <!-- also list shortcuts -->
@@ -1195,6 +1202,9 @@ function undoLatestCommand() {
 		bodyDirty();
 	} else if (command.type === "Select") {
 		CURSOR = command.oldCursor;
+	} else if (command.type === "editSchedulingData") {
+		// {type: "editSchedulingData", cell: over.cell, field: variableName, oldValue: over.cell.schedulingData[variableName], newValue: textInput.value}
+		command.cell.schedulingData[command.field] = command.oldValue;
 	} else {
 		console.error("unknown command type ", command.type, " in command ", command);
 		return;
@@ -3556,21 +3566,39 @@ function displayHoveredBlockInfo(over) {
 		const emb = over.cell.schedulingData.embedding;
 		if (emb) embString = "( " + emb[0].toFixed(2) + ", " + emb[1].toFixed(2) + ", " + emb[2].toFixed(2) + " )";
 	} else {
-		id = "";
-		ports = "";
-		longname = "";
-		posString = "";
+		id = null;
+		ports = null;
+		longname = null;
+		posString = null;
 		schedulingData = {};
 	}
 
-	const displayData = function(name, value) {
-		const nameElem = document.createElement('span');
+	const displayData = function(name, value, variableName) {
+		const nameElem = document.createElement('label');
 		nameElem.innerHTML = name;
 		nameElem.classList.add("field-name");
+		nameElem.for = "input-" + name;
 		infoArea.appendChild(nameElem);
-		const valueElem = document.createElement('span');
-		valueElem.innerHTML = value == null ? "" : value;
+		const valueElem = document.createElement('div');
 		valueElem.classList.add("field-value");
+		if (variableName == null) {
+			valueElem.innerHTML = value == null ? "&nbsp;" : value; // print space to set line height
+		} else {
+			const textInput = document.createElement('input');
+			textInput.type = "text";
+			textInput.id = "input-"+name;
+			textInput.name = name;
+			textInput.value = value == null ? "" : value; // print space to set line height
+			if (over == null) {
+				textInput.disabled = true;
+			} else {
+				textInput.onchange = function() {
+					pushCommand({type: "editSchedulingData", cell: over.cell, field: variableName, oldValue: over.cell.schedulingData[variableName], newValue: textInput.value});
+					over.cell.schedulingData[variableName] = textInput.value;
+				};
+			}
+			valueElem.appendChild(textInput);
+		}
 		infoArea.appendChild(valueElem);
 	};
 	
@@ -3579,12 +3607,12 @@ function displayHoveredBlockInfo(over) {
 	displayData("Ports", ports);
 	displayData("Position", posString);
 	displayData("Embedding", embString);
-	displayData("Bed", schedulingData.bed);
-	displayData("Nx", schedulingData.Nx);
-	displayData("Hxy", schedulingData.Hxy);
-	displayData("D", schedulingData.D);
-	displayData("CS", schedulingData.CS);
-	displayData("Layer", schedulingData.layer);
+	displayData("Bed", schedulingData.bed, "bed");
+	displayData("Nx", schedulingData.Nx, "Nx");
+	displayData("Hxy", schedulingData.Hxy, "Hxy");
+	displayData("D", schedulingData.D, "D");
+	displayData("CS", schedulingData.CS, "CS");
+	displayData("Layer", schedulingData.layer, "layer");
 }
 
 function redrawPattern(pixelRatio) {
