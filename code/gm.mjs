@@ -90,6 +90,10 @@ export function vec3(...args) {
 }
 //addAliases(Vec3, 3);
 
+export function copyVec3(v) {
+	return vec3(v[0], v[1], v[2]);
+}
+
 export function vec4(...args) {
 	let ret = [...flatten(4, args)];
 	//addAliases(ret, 4);

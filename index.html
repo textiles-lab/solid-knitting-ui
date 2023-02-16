@@ -1571,16 +1571,16 @@ function checkGlobalCellCorrectness() {
 // currently computes locations for knit, next-row, yarn-next-layer, loop-next-layer, cast-on, bind-off
 function allocateSpots(x0=1, y0=4) {
 	// identify extreme stitch
-	let origin = null;
-	for (let cell of body.cells) {
-		if (cell.template.name != "knit") continue;
-		if (origin === null) {
-			origin = gm.xformTranslation(cell.xform);
-		} else {
-			const cellPosition = gm.xformTranslation(cell.xform);
-			origin = gm.min(origin, cellPosition);
-		}
-	}
+	// let origin = null;
+	// for (let cell of body.cells) {
+	// 	if (cell.template.name != "knit") continue;
+	// 	if (origin === null) {
+	// 		origin = gm.xformTranslation(cell.xform);
+	// 	} else {
+	// 		const cellPosition = gm.xformTranslation(cell.xform);
+	// 		origin = gm.min(origin, cellPosition);
+	// 	}
+	// }
 
 	// follow yarn through body
 	function getYarnExitFace(cell) {
@@ -1621,9 +1621,10 @@ function allocateSpots(x0=1, y0=4) {
 
 	let currBed = 1; // somewhat confusingly, bed is the stitch that the bed gets made on, which is opposite to the bed used for the needle
 	let currWaleDirection = 1; // TODO: how do you determine this?
+	currCell.schedulingData.embedding = gm.vec3(0, 0, 0);
 
-	let xMax=0, yMax=0;
-	// find directions & beds for all stitches and embeddings for knit stitches (abstract 3d coordinates that we'll use to get needle/holder positions)
+	//== find directions & beds for all stitches and embeddings for knit stitches (abstract 3d coordinates that we'll use to get needle/holder positions)
+	let xMax=0, yMax=0, xMin=0, yMin=0, zMin=0;
 	while (currCell != null) {
 		currCell.schedulingData.direction = (currDirection > 0) ? "+" : "-";
 		currCell.schedulingData.waleDirection = (currWaleDirection > 0) ? "+" : "-";
@@ -1636,19 +1637,63 @@ function allocateSpots(x0=1, y0=4) {
 			currBed *= -1;
 		}
 
-		// guess knit locations from position. Others will be guessed from knits later
-		// TODO: solve fancy optimization problem? what are the constraints?
-		if (currCell.template.name.startsWith("knit")) {
-			const cellPosition = gm.sub(gm.xformTranslation(currCell.xform), origin);
-			const x = Math.round(cellPosition[0] / 2.);
-			const y = Math.round(cellPosition[1]);
-			const z = Math.round(cellPosition[2]);
-			currCell.schedulingData.embedding = gm.vec3(x, y, z);
-			xMax = Math.max(xMax, x);
-			yMax = Math.max(yMax, y);
-		}
+		//== locate yarn out and propagate embedding. Leave the embedding of yarn-next-row/yarn-next-layer blocks to be filled in later
+		let exitFace = null;
+		for (let iF=0; iF<currCell.template.faces.length; ++iF) {
+			const faceType = currCell.template.faces[iF].type;
 
-		let exitFace = getYarnExitFace(currCell);
+			if (faceType.startsWith("+y")) exitFace = iF;
+
+			if (currCell.connections[iF] == null || currCell.template.name.startsWith("yarn-next") || currCell.template.name.startsWith("loop-next")) continue;
+			const connection = currCell.connections[iF].cell;
+			if (connection.template.name.startsWith("yarn-next") || connection.template.name.startsWith("loop-next")) continue;
+
+			let offset = null;
+			if (faceType.startsWith("+y")) {
+				offset = gm.vec3(currDirection, 0, 0);
+			} else if (faceType.startsWith("-y")) {
+				offset = gm.vec3(-currDirection, 0, 0);
+			} else if (faceType.startsWith("+L")) {
+				offset = gm.vec3(0, 0, 1);
+			} else if (faceType.startsWith("-L")) {
+				offset = gm.vec3(0, 0, -1);
+			} else if (faceType.startsWith("+l")) {
+				offset = gm.vec3(0, currWaleDirection, 0);
+				// special case for cast-on which shares location
+				if (currCell.template.name.startsWith("cast-on")) offset = gm.vec3(0, 0, 0);
+			} else if (faceType.startsWith("-l")) {
+				offset = gm.vec3(0, -currWaleDirection, 0);
+				// special case for bind-off which shares location
+				if (currCell.template.name.startsWith("bind-off")) offset = gm.vec3(0, 0, 0);
+			} else {
+				console.log("cannot propagate face type ", faceType);
+				continue;
+			}
+
+			const connectionEmbedding = gm.add(currCell.schedulingData.embedding, offset);
+			if (connection.schedulingData.embedding == null) {
+				connection.schedulingData.embedding = connectionEmbedding;
+				if (!connection.template.name.startsWith("yarn-out")) { // ignore yarn-out when computing bounds
+					xMax = Math.max(xMax, connectionEmbedding[0]);
+					yMax = Math.max(yMax, connectionEmbedding[1]);
+					xMin = Math.min(xMin, connectionEmbedding[0]);
+					yMin = Math.min(yMin, connectionEmbedding[1]);
+					zMin = Math.min(yMin, connectionEmbedding[2]);
+				}
+			} else {
+				// don't check yarn-next-row/yarn-next-layer or cast-on/bind-off blocks for now since they have special rules
+				if (connection.template.name.startsWith("yarn-next")
+				   || connection.template.name.startsWith("loop-next")
+				   || connection.template.name.startsWith("cast-on")  || currCell.template.name.startsWith("cast-on")
+				   || connection.template.name.startsWith("bind-off") || currCell.template.name.startsWith("bind-of")) continue;
+
+				if ((Math.abs(connectionEmbedding[0] - connection.schedulingData.embedding[0]) > 0.01)
+				 || (Math.abs(connectionEmbedding[1] - connection.schedulingData.embedding[1]) > 0.01)
+				 || (Math.abs(connectionEmbedding[2] - connection.schedulingData.embedding[2]) > 0.01)) {
+					console.error("mismatched neighbors ", currCell, connection);
+				}
+			}
+		}
 
 		if (exitFace != null) {
 			currCell = currCell.connections[exitFace].cell;
@@ -1657,14 +1702,13 @@ function allocateSpots(x0=1, y0=4) {
 		}
 	}
 
-	function holderPositions(x, y) {
-		return {f: "hf" + (x+x0) + "," + (y0+y), b: "hb" + (x+x0) + "," + (y0+yMax-y)};
-	}
-
+	// shift embedding to start at the origin and assign embeddings for loop-next-layer blocks
 	for (let cell of body.cells) {
-			
-		let x = null, y = null, z = null;
-		if (cell.template.name.startsWith("loop-next-layer")) {
+		if (cell.schedulingData.embedding) {
+			cell.schedulingData.embedding[0] -= xMin;
+			cell.schedulingData.embedding[1] -= yMin;
+			cell.schedulingData.embedding[2] -= zMin;
+		} else if (cell.template.name.startsWith("loop-next-layer")) {
 			// make sure to look at loop in to specify correct holder for xfer
 			for (let iF=0; iF<cell.template.faces.length; iF++){
 				if (!cell.connections[iF]) continue;
@@ -1672,44 +1716,30 @@ function allocateSpots(x0=1, y0=4) {
 					// loop in
 					const bed = cell.connections[iF].cell.schedulingData.bed
 					cell.schedulingData.bed = bed;
-					x = cell.connections[iF].cell.schedulingData.embedding[0];
-					y = cell.connections[iF].cell.schedulingData.embedding[1];
-					// z = cell.connections[iF].cell.schedulingData.embedding[2];
+					cell.schedulingData.embedding = gm.copyVec3(cell.connections[iF].cell.schedulingData.embedding);
 					if (bed === "f") {
-						y += 1; // xfer to front -> bump up y coord
+						cell.schedulingData.embedding[1] += 1; // xfer to front -> bump up y coord
 					} else {
-						y -= 1; // xfer to back -> bump down y coord
+						cell.schedulingData.embedding[1] -= 1; // xfer to back -> bump down y coord
 					}
+					// move z coord between layers
+					cell.schedulingData.embedding[2] += 0.5;
 				}
 			}
-			z = null; // layer not well-defined for next-layer blocks
-		} else if (cell.template.name.startsWith("knit")) {
-			x = cell.schedulingData.embedding[0];
-			y = cell.schedulingData.embedding[1];
-			z = cell.schedulingData.embedding[2];
-		} else if (cell.template.name.startsWith("cast-on")) {
-			// TODO: there's something weird with the direction. Clarify what cast-on looks like with Yuichi
-
-			// look at loop out to specify correct holder for cast-on tuck
-			for (let iF=0; iF<cell.template.faces.length; iF++){
-				if (!cell.connections[iF]) continue;
-				if (cell.template.faces[iF].type.startsWith("+l")) {
-					// loop out
-					const bed = cell.connections[iF].cell.schedulingData.bed
-					cell.schedulingData.bed = bed;
-					x = cell.connections[iF].cell.schedulingData.embedding[0];
-					y = cell.connections[iF].cell.schedulingData.embedding[1];
-					z = cell.connections[iF].cell.schedulingData.embedding[2];
-				}
-			}
-		} else {
-			// TODO: grab data from a knit neighbor
-
 		}
-		if (x != null) {
+	}
+	xMax -= xMin; yMax -= yMin; // shift maxima
+	xMin = 0; yMin = 0; zMin = 0; // shift minima
+
+	function holderPositions(x, y) {
+		return {f: "hf" + (x+x0) + "," + (y0+y), b: "hb" + (x+x0) + "," + (y0+yMax-y)};
+	}
+
+	for (let cell of body.cells) {
+		if (cell.schedulingData.embedding != null) {
+			let x = cell.schedulingData.embedding[0], y = cell.schedulingData.embedding[1], z = cell.schedulingData.embedding[2];
 			// somewhat confusingly, bed is the stitch that the bed gets made on, which is opposite to the bed used for the needle
 			const needleBed = (cell.schedulingData.bed === "f") ? "b" : "f";
-
 			const holders = holderPositions(x, y);
 			cell.schedulingData.Hxy = (cell.schedulingData.bed === "f") ? holders.f : holders.b;
 			cell.schedulingData.Nx = needleBed + (x+x0); 
@@ -3501,7 +3531,7 @@ function displayHoveredBlockInfo(over) {
 	const infoArea = document.getElementById("hovered-block-info");
 	infoArea.innerHTML = "";
 
-	let posString, id, ports, longname, schedulingData;
+	let posString, embString, id, ports, longname, schedulingData;
 	if (over != null) {
 		id = over.cellID;
 		ports = over.cell.template.signature().substr(over.cell.template.name.length + 1);
@@ -3509,6 +3539,9 @@ function displayHoveredBlockInfo(over) {
 		const pos = gm.xformTranslation(over.cell.xform); // TODO: shift cube coordinates to be integer?
 		posString = "( " + pos[0].toFixed(2) + ", " + pos[1].toFixed(2) + ", " + pos[2].toFixed(2) + " )";
 		schedulingData = over.cell.schedulingData ? over.cell.schedulingData : {};
+
+		const emb = over.cell.schedulingData.embedding;
+		if (emb) embString = "( " + emb[0].toFixed(2) + ", " + emb[1].toFixed(2) + ", " + emb[2].toFixed(2) + " )";
 	} else {
 		id = "";
 		ports = "";
@@ -3532,6 +3565,7 @@ function displayHoveredBlockInfo(over) {
 	displayData("Long Name", longname);
 	displayData("Ports", ports);
 	displayData("Position", posString);
+	displayData("Embedding", embString);
 	displayData("Bed", schedulingData.bed);
 	displayData("Nx", schedulingData.Nx);
 	displayData("Hxy", schedulingData.Hxy);
