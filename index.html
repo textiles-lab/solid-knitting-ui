@@ -14,6 +14,14 @@ body.darkmode {
 	--main-font-color: #C4C0AD;
 	--far-font-color: #E4E0CD;
 	--font-color-highlight: #D4D0CD;
+
+	/* syntax highlighting */
+	--comment: #74705D;
+	--location: #A6E42C;
+	--direction: #AC7DFF;
+	--keyword: #FF2275;
+	--carrier: #EEEEEE;
+	--string: #EDE277;
 }
 
 body.lightmode {
@@ -26,6 +34,14 @@ body.lightmode {
 	--main-font-color: #222;
 	--far-font-color: #111;
 	--font-color-highlight: #222;
+
+	/* syntax highlighting, from solarized https://en.wikipedia.org/wiki/Solarized */
+	--comment: #839496;
+	--location: #2aa198;
+	--direction: #268bd2;
+	--keyword: #cb4b16;
+	--carrier: #073642;
+	--string: #b58900;
 }
 
 body {
@@ -386,31 +402,31 @@ body.lightmode #darkmode-checkbox-label::after {
 }
 #knitout-source .line:hover {
 	color: #C4C0BD;
-	background-color: #373832;
+	background-color: var(--background-color-highlight);
 }
 #knitout-source .code {
-	border-left: 2px solid #44402D;
+	border-left: 2px solid var(--separator-color);
 /*	box-shadow: inset 8px 0 8px -10px black;*/
 	padding-left: 0.5em;
 	width: 100%;
 }
 #knitout-source .comment {
-	color: #74705D;
+	color: var(--comment);
 }
 #knitout-source .location {
-	color: #A6E42C;
+	color: var(--location);
 }
 #knitout-source .direction {
-	color: #AC7DFF;
+	color: var(--direction);
 }
 #knitout-source .keyword {
-	color: #FF2275;
+	color: var(--keyword);
 }
 #knitout-source .carrier {
-	color: #EEEEEE;
+	color: var(--carrier);
 }
 #knitout-source .string {
-	color: #EDE277;
+	color: var(--string);
 }
 
 #view-block-data {
