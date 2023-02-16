@@ -141,7 +141,24 @@ export class Body {
 					connections.push({cell:con.cell.index, face:con.face});
 				}
 			}
-			data.push({template, vertices, connections});
+			if (cell.schedulingData) {
+				const schedulingData = cell.schedulingData;
+				data.push({template, vertices, connections, schedulingData});
+			} else {
+				data.push({template, vertices, connections});
+			}
+		}
+
+		//check reflexivity:
+		for (const cell of body.cells) {
+			for (let i = 0; i < cell.connections.length; ++i) {
+				const connection = cell.connections[i];
+				if (connection === null) continue;
+				if (connection.cell.connections[connection.face].cell !== cell
+				 || connection.cell.connections[connection.face].face !== i) {
+					throw new Error("Non-reflexive connection.");
+				}
+			}
 		}
 
 		for (const cell of this.cells) {
@@ -187,6 +204,9 @@ export class Body {
 	
 				dataToBody.push(body.cells.length);
 				body.cells.push(new Cell({template, vertices, connections, xform}));
+				if (cell.schedulingData) {
+					body.cells[body.cells.length - 1].schedulingData = cell.schedulingData;
+				}
 			} catch (e) {
 				console.warn(`Skipping cell in file: ${e}`);
 				dataToBody.push(null);
