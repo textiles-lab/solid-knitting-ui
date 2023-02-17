@@ -584,6 +584,8 @@ body.lightmode #darkmode-checkbox-label::after {
 	<li> <button class="controlsButton" id="select-hovered-template">Select hovered template</button> (<span class="key">enter</span>)</li>
 	<li> <button class="controlsButton" id="delete">Delete cell</button> (<span class="key">X</span>)</li>
 	<li> <button class="controlsButton" id="grab">Grab cell</button> (<span class="key">G</span>)</li>
+	<li> <button class="controlsButton" id="add">Add cell</button> (<span class="key">G</span>)</li>
+	<li> <button class="controlsButton" id="extrude">Extrude cell</button> (<span class="key">G</span>)</li>
 	<li> <button class="controlsButton" id="start-connection">Start/make connection</button> (<span class="key">C</span>)</li>
 	<li> <button class="controlsButton" id="check-for-cycles">Check for cycles</button> (<span class="key">U</span>)</li>
 	<li> <button class="controlsButton" id="prev-template">Prev template</button> (<span class="key">up</span>)</li>
@@ -1129,6 +1131,8 @@ document.getElementById("delete").onclick = function () {
 	cursorDirty();
 };
 document.getElementById("grab").onclick = startGrabCell;
+document.getElementById("add").onclick = addCell;
+document.getElementById("extrude").onclick = extrudeCell;
 document.getElementById("start-connection").onclick = function () {
 	if (ACTION) {
 		if (ACTION.type === "Connect") {
@@ -1194,6 +1198,8 @@ window.addEventListener('keydown', function(evt){
 			bodyDirty();
 		} else if (evt.code == 'KeyA') {
 			addCell();
+		} else if (evt.code == 'KeyE') {
+			extrudeCell();
 		} else if (evt.code == 'Enter') {
 			if (CURSOR.over) {
 				setActiveTemplate(CURSOR.over.cell.template);
@@ -1592,6 +1598,64 @@ function addCell() {
 	if (!checkGlobalCellCorrectness()) console.log("Warning: There is exists a cycle in yarn directions!");
 }
 
+function findOppositeYarnDirectionTemplate(template) {
+	const oppName = template.longname.replace("left", "LEFT").replace("right", "left").replace("LEFT", "right");
+	for (const t of Object.values(library.templates)) {
+		if (t.longname === oppName) return t;
+	}
+	return null;
+}
+
+/**
+ * extrudeCell (): 
+ * Adds a properly-transformed copy of selected cell adjacent to selected face. */
+function extrudeCell() {
+	if (CURSOR.dirty) setCursorOver();
+
+	if (CURSOR.over == null) return;
+
+	const cell = CURSOR.over.cell;
+	const face = CURSOR.over.face;
+
+	if (cell.template.name != "knit") {
+		console.error("Currently only knits can be extruded");
+		return;
+	}
+
+	console.log(face);
+
+	if (face.type.length < 2) {
+		return; // we can't attach to this face
+	}
+
+	let preview = null;
+	if (face.type[1] === "y") {
+		// yarnwise-connected: keep same direction
+		preview = checkTemplateCompatible(cell, face, cell.template);
+	} else if (face.type[1] === "l") {
+		// neighboring rows: we should flip direction
+		preview = checkTemplateCompatible(cell, face, findOppositeYarnDirectionTemplate(cell.template));
+	} else {
+		// neighboring layers: we should flip direction unless we're "same"
+		if (cell.template.longname.endsWith("same")) {
+			preview = checkTemplateCompatible(cell, face, cell.template);
+		} else {
+			preview = checkTemplateCompatible(cell, face, findOppositeYarnDirectionTemplate(cell.template));
+		}
+	}
+
+	//if doesn't exist, don't create anything:
+	if (preview === null) return;
+
+	const newCellIndex = body.cells.length;
+	unsafeAddCell(preview, newCellIndex);
+
+	// Record command in undo queue
+	pushCommand({type: "addCell", newCellIndex: newCellIndex});
+
+	// Check global correctness from preview cell. 
+	if (!checkGlobalCellCorrectness()) console.log("Warning: There is exists a cycle in yarn directions!");
+}
 
 // Topological sort to check correctness using BFS using Kahn's accross entire implementation.
 // Overall complexity of O(|E| + |V).
