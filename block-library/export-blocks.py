@@ -13,10 +13,18 @@ for i in range(0,len(sys.argv)):
 	if sys.argv[i] == '--':
 		args = sys.argv[i+1:]
 
-if len(args) != 2:
-	print("\n\nUsage:\nblender --background --python export-blocks.py -- <infile.blend> <outfile.json>\nExports all blocks (meshes in the \"Blocks\" collection) to a block library json file.\n")
+if len(args) not in [2, 3]:
+	print("\n\nUsage:\nblender --background --python export-blocks.py -- <infile.blend> <outfile.json> [instructions.json]\nExports all blocks (meshes in the \"Blocks\" collection) to a block library json file. Optionally reads machine an human instructions for the blocks from a separate json file\n")
 	exit(1)
 
+import json
+
+instructions = {}
+if len(args) == 3:
+	with open(args[2]) as f:
+		strip_comment = lambda line : line if line.find("//") < 0 else line[:line.find("//")]
+		uncommented_text = "".join(strip_comment(line) for line in f)
+		instructions = json.loads(uncommented_text)
 
 import bpy
 from mathutils import Vector
@@ -196,29 +204,30 @@ for obj in blocks.objects:
 						yarn["cps"].reverse()
 						yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
 					determined_orientation = True
-				elif found_course_dir: # for other types of yarn, guess orientation if a block orientation is known
-					if end is not None and ((face_types[begin][1] == "+l" and face_types[end][1] == "+l") or (face_types[begin][1] == "-l" and face_types[end][1] == "-l")):
-						determined_orientation = False # can't orient l-l loops
-					elif face_types[begin][:2] == "-l": # ensure that -l yarn points in course direction
-						if (left_to_right and cps[0][0] > cps[-1][0]) or ((not left_to_right) and cps[0][0] < cps[-1][0]):
-							yarn["cps"].reverse()
-							yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
-						determined_orientation = True
-					elif end is not None and face_types[end][:2] == "+l": # ensure that -l yarn points in course direction
-						if (left_to_right and cps[0][0] < cps[-1][0]) or ((not left_to_right) and cps[0][0] > cps[-1][0]):
-							yarn["cps"].reverse()
-							yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
-						determined_orientation = True
-					elif face_types[begin][:2] == "+l": # ensure that +l yarns points opposite course direction
-						if (left_to_right and cps[0][0] < cps[-1][0]) or ((not left_to_right) and cps[0][0] > cps[-1][0]):
-							yarn["cps"].reverse()
-							yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
-						determined_orientation = True
-					elif end is not None and face_types[end][:2] == "-l": # ensure that +l yarns points opposite course direction
-						if (left_to_right and cps[0][0] > cps[-1][0]) or ((not left_to_right) and cps[0][0] < cps[-1][0]):
-							yarn["cps"].reverse()
-							yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
-						determined_orientation = True
+				# TODO: I think that some of these orientations are wrong. I'm not sure if there are valid heuristics that we can use
+				# elif found_course_dir: # for other types of yarn, guess orientation if a block orientation is known
+				# 	if end is not None and ((face_types[begin][1] == "+l" and face_types[end][1] == "+l") or (face_types[begin][1] == "-l" and face_types[end][1] == "-l")):
+				# 		determined_orientation = False # can't orient l-l loops
+				# 	elif face_types[begin][:2] == "-l": # ensure that -l yarn points in course direction
+				# 		if (left_to_right and cps[0][0] > cps[-1][0]) or ((not left_to_right) and cps[0][0] < cps[-1][0]):
+				# 			yarn["cps"].reverse()
+				# 			yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
+				# 		determined_orientation = True
+				# 	elif end is not None and face_types[end][:2] == "+l": # ensure that -l yarn points in course direction
+				# 		if (left_to_right and cps[0][0] < cps[-1][0]) or ((not left_to_right) and cps[0][0] > cps[-1][0]):
+				# 			yarn["cps"].reverse()
+				# 			yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
+				# 		determined_orientation = True
+				# 	elif face_types[begin][:2] == "+l": # ensure that +l yarns points opposite course direction
+				# 		if (left_to_right and cps[0][0] < cps[-1][0]) or ((not left_to_right) and cps[0][0] > cps[-1][0]):
+				# 			yarn["cps"].reverse()
+				# 			yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
+				# 		determined_orientation = True
+				# 	elif end is not None and face_types[end][:2] == "-l": # ensure that +l yarns points opposite course direction
+				# 		if (left_to_right and cps[0][0] > cps[-1][0]) or ((not left_to_right) and cps[0][0] < cps[-1][0]):
+				# 			yarn["cps"].reverse()
+				# 			yarn["begin"], yarn["end"] = yarn["end"], yarn["begin"]
+				# 		determined_orientation = True
 
 				if not determined_orientation:
 					print(f"failed to determine orientation on yarn {len(yarns)} of {obj.name}")
@@ -302,6 +311,7 @@ for obj in blocks.objects:
 
 	out.append(f'{{')
 	out.append(f'\t"name":"{shortname}", //from {obj.name}')
+	out.append(f'\t"longname": "{obj.name}",')
 	out.append(f'\t"vertices":[')
 	for vi in vertex_order:
 		v = mesh.vertices[vi]
@@ -332,10 +342,17 @@ for obj in blocks.objects:
 		info += f' "oriented": {"true" if yarn["oriented"] else "false"} }}{comma}'
 		out.append(info)
 		#was: out.append(f'\t\t{{ "begin":{yarn["begin"]}, "end":{yarn["end"]}, "cps":[{",".join(cps)}] }}{comma}')
-
 	out.append(f'\t],')
-	out.append(f'\t"machine":{{ }},')
-	out.append(f'\t"human":{{ }}')
+
+	machine_instructions = {}
+	human_instructions = {}
+	if obj.name in instructions:
+		if "machine" in instructions[obj.name]:
+			machine_instructions = instructions[obj.name]["machine"]
+		if "human" in instructions[obj.name] and instructions[obj.name]["human"]:
+			human_instructions = instructions[obj.name]["human"]
+	out.append(f'\t"machine":{json.dumps(machine_instructions)},')
+	out.append(f'\t"human":{json.dumps(human_instructions)}')
 	out.append(f'}}')
 
 with open(outfile,'wb') as f:

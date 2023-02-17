@@ -141,7 +141,24 @@ export class Body {
 					connections.push({cell:con.cell.index, face:con.face});
 				}
 			}
-			data.push({template, vertices, connections});
+			if (cell.schedulingData) {
+				const schedulingData = cell.schedulingData;
+				data.push({template, vertices, connections, schedulingData});
+			} else {
+				data.push({template, vertices, connections});
+			}
+		}
+
+		//check reflexivity:
+		for (const cell of body.cells) {
+			for (let i = 0; i < cell.connections.length; ++i) {
+				const connection = cell.connections[i];
+				if (connection === null) continue;
+				if (connection.cell.connections[connection.face].cell !== cell
+				 || connection.cell.connections[connection.face].face !== i) {
+					throw new Error("Non-reflexive connection.");
+				}
+			}
 		}
 
 		for (const cell of this.cells) {
@@ -187,6 +204,9 @@ export class Body {
 	
 				dataToBody.push(body.cells.length);
 				body.cells.push(new Cell({template, vertices, connections, xform}));
+				if (cell.schedulingData) {
+					body.cells[body.cells.length - 1].schedulingData = cell.schedulingData;
+				}
 			} catch (e) {
 				console.warn(`Skipping cell in file: ${e}`);
 				dataToBody.push(null);
@@ -284,11 +304,12 @@ export class Library {
 			lib.templates[key] = template;
 		}
 		return lib;
-	}
+	} 
 	static fromArrayBuffer(buffer) {
 		const text = new TextDecoder("utf-8").decode(buffer);
 		const json = stripComments(text);
 		const data = JSON.parse(json);
+		// console.log(data)
 		return Library.fromData(data);
 	}
 }
@@ -296,6 +317,8 @@ export class Library {
 export class Template {
 	constructor({
 		name = "",
+		longname = "",
+		from = "",
 		vertices = [],
 		faces = [],
 		yarns = [],
@@ -303,6 +326,7 @@ export class Template {
 		human = {}
 	} = {}) {
 		this.name = name;
+		this.longname = longname;
 
 		//vertices should be 3D, lexicographic [by x,y,z] order:
 		if (!Array.isArray(vertices)) throw new Error("LibraryBlock.vertices should be an array.");
@@ -395,6 +419,14 @@ export class Template {
 	//return a unique name made from the name and face.type fields:
 	signature() {
 		let sig = this.name;
+		for (let face of this.faces) {
+			sig += ' ' + face.type;
+		}
+		return sig;
+	}
+
+	longsignature() { // signature, but use longname rather than name
+		let sig = this.longname;
 		for (let face of this.faces) {
 			sig += ' ' + face.type;
 		}

@@ -3,13 +3,55 @@
 <head>
 <title>Solid Knitting UI</title>
 <style>
+
+body.darkmode {
+	--far-background-color: #333230;
+	--background-color: #232220;
+	--background-color-medium: #232220bb;
+	--background-color-light: #23222066;
+	--background-color-highlight: #dde1;
+	--separator-color: #434240;
+	--main-font-color: #C4C0AD;
+	--far-font-color: #E4E0CD;
+	--font-color-highlight: #D4D0CD;
+
+	/* syntax highlighting */
+	--comment: #74705D;
+	--location: #A6E42C;
+	--direction: #AC7DFF;
+	--keyword: #FF2275;
+	--carrier: #EEEEEE;
+	--string: #EDE277;
+}
+
+body.lightmode {
+	--far-background-color: #d4ccd2;
+	--background-color: #f6f0ee;
+	--background-color-medium: #f6f0eebb;
+	--background-color-light: #f6f0ee66;
+	--background-color-highlight: #2221;
+	--separator-color: #c4bcc2;
+	--main-font-color: #222;
+	--far-font-color: #111;
+	--font-color-highlight: #222;
+
+	/* syntax highlighting, from solarized https://en.wikipedia.org/wiki/Solarized */
+	--comment: #839496;
+	--location: #2aa198;
+	--direction: #268bd2;
+	--keyword: #cb4b16;
+	--carrier: #073642;
+	--string: #b58900;
+}
+
 body {
 	padding:0;
 	margin:0;
 
-	background-color: #414038;
-	color: #E4E0CD;
+	background-color: var(--far-background-color);
+	color: var(--far-font-color);
 }
+
 #dropTarget {
 	position:fixed;
 	left:0;
@@ -40,6 +82,7 @@ body {
 	grid-template-columns: 1fr auto ;
 	grid-template-rows: auto 1.0fr;
 	overflow: none;
+	grid-gap: 5px;
 
 	/*background: #0008 ;*/
 }
@@ -52,14 +95,14 @@ body {
 	padding: 5px 5px;
 	display:flex;
 	flex-flow: row wrap;
-	align-items:center;
+	align-items: center;
 	/*background: #f008 ;*/
 }
 
 .controlsButton {
 	box-sizing:border-box;
 	cursor:pointer;
-	display:block;
+	display:inline-block;
 	background:#cfbb96;
 	padding:4px 8px;
 	margin:0;
@@ -89,8 +132,19 @@ body {
 #view-3d {
 	grid-column: 1 ;
 	grid-row: 2 ;
-	position:relative;
 	/*background: #0f08 ;*/
+	display: grid;
+	grid-template-rows: auto 1fr;
+	grid-template-columns: 1fr;
+
+	color: var(--main-font-color);
+}
+#canvas-wrapper {
+	position:relative;
+	overflow: hidden;
+	background-color: var(--background-color);
+	border-top: solid 2pt var(--separator-color);
+	border-radius: 0 5px 5px 0;
 }
 #canvas {
 	position:absolute;
@@ -98,6 +152,7 @@ body {
 	left:0;
 	width:100%;
 	height:100%;
+	background-color: var(--background-color);
 }
 #status-line {
 	position:absolute;
@@ -107,20 +162,108 @@ body {
 	color: black;
 	padding: 0.15em 0.3em;
 }
+#darkmode-checkbox {
+	width: 0;
+	height: 0;
+	visibility: hidden;
+}
+
+body.darkmode #darkmode-checkbox-label::after {
+	content: "\263C";
+}
+body.lightmode #darkmode-checkbox-label::after {
+	content: "\263D";
+}
+
+#render-options {
+	padding: 0 0.5em;
+	position: absolute;
+	top: 0;
+	left: 0;
+	background: var(--background-color-medium);
+
+}
+#render-options > summary {
+	cursor:pointer;
+	font-size: 2em;
+	list-style: none;
+}
+#render-options > summary:hover {
+	color: var(--font-color-highlight);
+}
+#render-options > summary::-webkit-details-marker { /* hide details triangle https://stackoverflow.com/a/56649741 */
+ 	display: none;
+}
+
 #sidebar {
 	grid-column: 2 ;
 	grid-row: 2 ;
 
 	display:grid;
-	grid-template-rows: 1fr min-content;
+	grid-template-rows: min-content 1fr min-content;
+	grid-gap: 5px;
+
 	width: 24em;
 	min-height: 0; /* don't expand past parent height https://stackoverflow.com/a/43312314 */
 /*	background: #00f8 ;*/
 
-	background-color: #232220;
-	color: #C4C0AD;
+	color: var(--main-font-color);
+	background-color: var(--far-background-color);
 }
-#sidebar h2, summary {
+.tab-menu-container {
+	margin: 0;
+	margin-left: 0.25em;
+	padding: 0;
+	display: grid;
+	box-sizing: border-box;
+	grid-template-columns: auto 1fr auto;
+	grid-template-rows: auto;
+
+	align-items: center; /* center-align text in menu items */
+	background-color: var(--far-background-color);
+	color: var(--far-font-color);
+}
+
+.tab-menu span {
+	padding: 0.25em 0.5em;
+}
+
+.tab-menu {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	grid-template-rows: 1fr;
+	grid-template-columns: repeat(8, max-content);
+	grid-gap: 1pt;
+}
+.tab-menu input[type=radio] { /* invisible radio button to save state https://stackoverflow.com/a/8037883 */
+	visibility: hidden;
+	width: 0;
+	height: 0;
+	margin: 0;
+	padding: 0;
+}
+.tab-menu label {
+	border: 0;
+	font-family: sans-serif;
+	border-radius: 0.25em 0.25em 0 0;
+	padding: 0.5em 1em 0.25em 1em;
+	border: solid 2pt var(--separator-color);
+	border-bottom-style: none;
+	cursor: pointer;
+	background-color: var(--background-color-light);
+}
+.tab-menu label:hover {
+	background-color: var(--background-color-medium);
+}
+.tab-menu label.active {
+	background-color: var(--background-color);
+	border-bottom: solid 2pt var(--background-color);
+	margin-bottom: -2pt;
+	z-index: 1;
+}
+#sidebar h2, #sidebar summary {
 	font-size:20px;
 	font-weight: bold;
 	line-height:20px;
@@ -137,6 +280,11 @@ body {
 	display:grid; /* set to grid from javascript later too */
 	grid-template-rows: auto 1fr;
 	padding-bottom: 0.5em;
+/*	border-left: 2pt solid var(--separator-color);*/
+	border-radius: 5px 0 0 5px;
+	background-color: var(--background-color);
+	margin-top: -5px;
+	border-top: solid 2pt var(--separator-color);
 }
 #library-list {
 /*	grid-row: 2 ;*/
@@ -155,21 +303,24 @@ body {
 	padding:0.15em 0.5em;
 	border-radius:0.2em;
 	cursor:pointer;
-	border: 1pt solid #fff0;
+	border: 1pt solid var(--background-color);
 }
 #library li:hover {
-	background-color: #dde2;
-	color: #D4D0CD;
+	background-color: var(--background-color-highlight);
+	color: var(--font-color-highlight);
 }
 #library .library-active-template {
-	background-color: #dde2;
-	color: #D4D0CD;
-	border: 1pt solid #94908D;
+	background-color: var(--background-color-highlight);
+	color: var(--font-color-highlight);
+	border: 1pt solid var(--separator-color);
 }
 #view-shortcuts {
-	border-top: 2px solid #44402D;
+	/*border-top: 2px solid var(--separator-color);
+	border-left: 2pt solid var(--separator-color);*/
 	padding-left: 0.25em;
 	padding-top: 0.5em;
+	border-radius: 5px;
+	background-color: var(--background-color);
 }
 #shortcuts {
 	grid-row: 3 ;
@@ -187,22 +338,26 @@ body {
 #view-knitout {
 	margin: 0;
 	padding: 0;
-	padding-top: 0.5em;
 	overflow: auto;
-	font-family: monospace;
-	background-color: #272822;
-	color: white;
 	display:grid; /* set to grid from javascript later too */
 	grid-template-rows: 1fr auto;
+/*	border-left: 2pt solid var(--separator-color);*/
+	border-radius: 5px 0 0 5px;
+	background-color: var(--background-color);
+	margin-top: -5px;
+	border-top: solid 2pt var(--separator-color);
 }
 #view-knitout #view-knitout-options {
 	padding: 0.5em 1em;
-	background-color: #373832;
+	background-color: var(--background-color);
 }
 #knitout-source {
+	font-family: monospace;
+	padding-top: 0.5em;
 	min-height: 0;
 	overflow-y: scroll;
 	margin-bottom: 0.5em;
+/*	background-color: #272822;*/
 }
 /* code styling */
 #knitout-source span {
@@ -247,31 +402,31 @@ body {
 }
 #knitout-source .line:hover {
 	color: #C4C0BD;
-	background-color: #373832;
+	background-color: var(--background-color-highlight);
 }
 #knitout-source .code {
-	border-left: 2px solid #44402D;
+	border-left: 2px solid var(--separator-color);
 /*	box-shadow: inset 8px 0 8px -10px black;*/
 	padding-left: 0.5em;
 	width: 100%;
 }
 #knitout-source .comment {
-	color: #74705D;
+	color: var(--comment);
 }
 #knitout-source .location {
-	color: #A6E42C;
+	color: var(--location);
 }
 #knitout-source .direction {
-	color: #AC7DFF;
+	color: var(--direction);
 }
 #knitout-source .keyword {
-	color: #FF2275;
+	color: var(--keyword);
 }
 #knitout-source .carrier {
-	color: #EEEEEE;
+	color: var(--carrier);
 }
 #knitout-source .string {
-	color: #EDE277;
+	color: var(--string);
 }
 
 #view-block-data {
@@ -279,6 +434,10 @@ body {
 	grid-template-rows: auto 1fr;
 	gap: 0;
 	padding-bottom: 0.5em;
+	/*border-top: 2pt solid var(--separator-color);
+	border-left: 2pt solid var(--separator-color);*/
+	border-radius: 5px 0 0 5px;
+	background-color: var(--background-color);
 }
 #view-block-data h2 {
 	padding: 0.5em 0 0 0.5em; /* top right bottom left */
@@ -286,36 +445,46 @@ body {
 #hovered-block-info {
 	display: grid;
 	grid-template-columns: auto 1fr;
+	grid-template-rows: max-content;
 	align-content: start;
 	gap: 0;
-	overflow-y: scroll;
+	align-items: stretch;
 }
 /* shade every other row https://stackoverflow.com/a/44937583 */
 #hovered-block-info > :nth-child(4n+1), #hovered-block-info > :nth-child(4n+2) {
-	background-color: #dde1;
+	background-color: var(--background-color-highlight);
 }
 #hovered-block-info .field-name {
-	text-align: right;
 	padding: 0.15em 0.25em 0.15em 0.5em; /* top right bottom left */
 	min-height: 0;
+	display: inline-flex;
+	align-items: center;         /* vertically-center text */
+	justify-content: flex-end;   /* align right */
 }
 #hovered-block-info .field-name:after {
 	content: ":";
 }
 #hovered-block-info .field-value {
-	padding: 0.15em 0 0.15em 0.25em; /* top right bottom left */
+	padding: 0.25em 1em 0.25em 0.5em; /* top right bottom left */
 	font-family: monospace;
-	min-height: 0;
+}
+#hovered-block-info input[type=text] {
+	font-family: monospace;
+	width: 100%;
+	border: none;
+	background-color: #fff1;
+	color: var(--main-font-color);
+	border-radius: 2pt;
+	border: 1pt var(--separator-color) solid;
 }
 </style>
 </head>
-<body>
+<body class="lightmode">
 
 <div id="views">
 
 <!-- controls bar at the top of the window -->
 <div id="controls">
-<span id="fileName">(no file loaded)</span>
 <input id="file" type="file" />
 <label id="fileLabel" for="file" class="controlsButton">Load</label>
 <!-- <button id="benchmark">benchmark</button>
@@ -327,59 +496,58 @@ body {
 <button id="save-knitout" class="controlsButton">Save Knitout</button>
 <button id="reallocate-spots" class="controlsButton">Reallocate Needle Locations</button>
 
-<div id="yarn-vis-options" class="controls-section">
-	Yarn Visualization:
-	<select id="select-yarn-vis-option">
-		<option value="Tube" selected>Tube</option>
-		<option value="Wire">Wire</option>
-		<option value="Body">Body</option>
-	</select>
-</div>
-
-<div id="layer-visibility-options" class="controls-section">
-	Layer Visibility:
-	<form id="layer-visibility-form" style="display:inline-block;">
-		<input type="checkbox" name="layer-visible" value="0" checked>0
-		<input type="checkbox" name="layer-visible" value="1" checked>1
-		<input type="checkbox" name="layer-visible" value="2" checked>2
-		<input type="checkbox" name="layer-visible" value="3" checked>3
-		<input type="checkbox" name="layer-visible" value="4" checked>4
-	</form>
-</div>
-
-<div id="yarn-direction-vis-options" class="controls-section">
-	<form id="show-yarn-direction-form" style="display:inline-block;">
-		<input type="checkbox" name="show-yarn-direction" value="0"> Show Yarn Direction
-	</form>
-</div>
-
-<div id="viewmode-options" class="controls-section">
-	View Mode:
-	<select id="select-viewmode-option">
-		<option value="Pattern" selected>Pattern</option>
-		<option value="Template">Template</option>
-	</select>
-</div>
-
-<div id="sidebar-options" class="controls-section">
-	Sidebar:
-	<select id="select-sidebar-option">
-		<option value="Library" selected>Library</option>
-		<option value="Knitout">Knitout</option>
-		<option value="BlockData">Block Data</option>
-		<option value="KnitoutAndBlockData">Knitout & Block Data</option>
-	</select>
-</div>
 </div>
 
 <!-- 3d view -->
 <div id="view-3d">
-<canvas id="canvas" width="120" height="120"></canvas>
-<div id="status-line">(Status Line)</div>
+	<div id="viewmode-options" class="tab-menu-container">
+		<span id="fileName">(no file loaded)</span>
+		<form id="select-3dview-mode" class="tab-menu">
+			<input type="radio" name="3dview-mode" id="3dview-pattern-mode" value="Pattern" checked><label id="3dview-set-pattern-mode" for="3dview-pattern-mode" class="tab">Pattern</label><input type="radio" name="3dview-mode" id="3dview-template-mode" value="Template" class="tab"><label id="3dview-set-template-mode" for="3dview-template-mode">Templates</label>
+		</form>
+		<form id="darkmode-toggle">
+			<input type="checkbox" id="darkmode-checkbox" name="darkmode" value="darkmode" checked><label for="darkmode-checkbox" id="darkmode-checkbox-label"></label>
+		</form>
+	</div>
+	<div id="canvas-wrapper">
+		<canvas id="canvas" width="120" height="120"></canvas>
+		<div id="status-line">(Status Line)</div>
+		<details id="render-options">
+			<summary>&#9881;</summary>
+			<div id="yarn-vis-options" class="controls-section">
+				Yarn Visualization:
+				<select id="select-yarn-vis-option">
+					<option value="Tube" selected>Tube</option>
+					<option value="Wire">Wire</option>
+					<option value="Body">Body</option>
+				</select>
+			</div>
+			<div id="layer-visibility-options" class="controls-section">
+				Layer Visibility:
+				<form id="layer-visibility-form" style="display:inline-block;">
+					<input type="checkbox" name="layer-visible" value="0" checked>0
+					<input type="checkbox" name="layer-visible" value="1" checked>1
+					<input type="checkbox" name="layer-visible" value="2" checked>2
+					<input type="checkbox" name="layer-visible" value="3" checked>3
+					<input type="checkbox" name="layer-visible" value="4" checked>4
+				</form>
+			</div>
+			<div id="yarn-direction-vis-options" class="controls-section">
+				<form id="show-yarn-direction-form" style="display:inline-block;">
+					<input type="checkbox" name="show-yarn-direction" value="0"> Show Yarn Direction
+				</form>
+			</div>
+		</details>
+	</div>
 </div>
 
 <!-- library panel -->
 <div id="sidebar">
+<div id="sidebar-menu" class="tab-menu-container">
+	<form id="select-sidebar-mode" class="tab-menu">
+		<input type="radio" name="sidebar-mode" id="sidebar-design-mode" value="PatternDesign" checked><label id="sidebar-set-design-mode" for="sidebar-design-mode" class="tab">Pattern Design</label><input type="radio" name="sidebar-mode" id="sidebar-codegen-mode" value="CodeGen"><label id="sidebar-set-codegen-mode" for="sidebar-codegen-mode" class="tab">Code Generation</label>
+	</form>
+</div>
 <div id="library">
 <h2>Block Library:</h2>
 <ul id="library-list">
@@ -388,37 +556,38 @@ body {
 
 <!-- preview generated knitout -->
 <div id="view-knitout">
-	<div id="knitout-source"></div>
 	<div id="view-knitout-options">
 		<form id="group-knitout-passes-form" style="display:inline-block;">
 		<label for="group-knitout-passes">Group knitout passes:</label>
 		<input type="checkbox" name="group-knitout-passes">
 		</form>
 	</div>
+	<div id="knitout-source"></div>
 </div>
 
 <!-- see information about highlighted block -->
 <div id="view-block-data">
 	<h2> Block Info:</h2>
-	<div id="hovered-block-info"></div>
+	<form id="hovered-block-info"></form>
 </div>
 
 <!-- also list shortcuts -->
 <details id="view-shortcuts" open>
 <summary>Commands:</summary>
 <ul id="shortcuts">
-	<li> <span class="key">space</span> or <span class="key">R</span>: relax shape</li>
-	<li> <span class="key">enter</span>: select hovered template</li>
-	<li> <span class="key">X</span>: delete cell</li>
-	<li> <span class="key">G</span>: grab cell</li>
-	<li> <span class="key">C</span>: start connection</li>
-	<li> <span class="key">U</span>: check for cycles</li>
-	<li> <span class="key">up</span>: prev template</li>
-	<li> <span class="key">down</span>: next template</li>
-	<li> <span class="key">K</span>: prev compatible template</li>
-	<li> <span class="key">J</span>: next compatible template</li>
-	<li> <span class="key">ctrl-Z</span>: undo</li>
-	<li> <span class="key">esc</span>: escape from grab/connect</li>
+	<li> <button class="controlsButton" id="relax-shape">Relax shape</button> (<span class="key">space</span> or <span class="key">R</span>)</li>
+	<li> <button class="controlsButton" id="select-hovered-template">Select hovered template</button> (<span class="key">enter</span>)</li>
+	<li> <button class="controlsButton" id="delete">Delete cell</button> (<span class="key">X</span>)</li>
+	<li> <button class="controlsButton" id="grab">Grab cell</button> (<span class="key">G</span>)</li>
+	<li> <button class="controlsButton" id="start-connection">Start/make connection</button> (<span class="key">C</span>)</li>
+	<li> <button class="controlsButton" id="check-for-cycles">Check for cycles</button> (<span class="key">U</span>)</li>
+	<li> <button class="controlsButton" id="prev-template">Prev template</button> (<span class="key">up</span>)</li>
+	<li> <button class="controlsButton" id="next-template">Next template</button> (<span class="key">down</span>)</li>
+	<li> <button class="controlsButton" id="prev-compatible-template">Prev compatible template</button> (<span class="key">K</span>)</li>
+	<li> <button class="controlsButton" id="next-compatible-template">Next compatible template</button> (<span class="key">J</span>)</li>
+	<li> <button class="controlsButton" id="select-hovered-block">Select hovered block</button> (<span class="key">S</span>)</li>
+	<li> <button class="controlsButton" id="undo">Undo</button> (<span class="key">ctrl-Z</span>)</li>
+	<li> <button class="controlsButton" id="escape-from-action">Escape from grab/connect/selection</button> (<span class="key">esc</span>)</li>
 </ul>
 </details>
 </div>
@@ -455,7 +624,7 @@ function readFile(file) {
 		window.body = sv.Body.fromArrayBuffer(reader.result, library);
 
 		bodyDirty();
-		mouseDirty();
+		cursorDirty();
 		resetCamera();
 		requestRedraw();
 		window.currentFile = file;
@@ -653,8 +822,11 @@ document.getElementById("reallocate-spots").addEventListener('click', function(e
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Getting_started_with_WebGL
 
 const canvas = document.getElementById("canvas");
-const gl = canvas.getContext('webgl', {alpha:false});
+const gl = canvas.getContext('webgl', {alpha:false, antialias:false});
 window.gl = gl; //DEBUG
+
+//enable extensions:
+const ext_WEBGL_depth_texture = gl.getExtension("WEBGL_depth_texture"); //used for postprocessing
 
 const STATUS_LINE = document.getElementById("status-line");
 window.STATUS_LINE = STATUS_LINE;
@@ -733,6 +905,7 @@ window.resetCamera = resetCamera;
 //--- controls ---
 
 const MOUSE = {x:NaN, y:NaN, over:null, grid:null};
+let CURSOR = MOUSE; // <-- if anything is selected, set to selection. Otherwise, set to MOUSE
 let ACTION = null; //<-- current action; gets all events if not null
 
 let camFlipX = false; //used for camera rotation control
@@ -761,6 +934,20 @@ function mouseDirty() {
 }
 window.mouseDirty = mouseDirty;
 
+function cursorDirty() {
+	mouseDirty(); // always update MOUSE
+
+	// if CURSOR is frozen, we shouldn't update
+	if (CURSOR.frozen) return;
+
+	CURSOR.over = null;
+	CURSOR.grid = null;
+
+	CURSOR.dirty = true;
+	requestRedraw();
+}
+window.cursorDirty = cursorDirty;
+
 function bodyDirty() {
 	visBody.dirty = true;
 	visWire.dirty = true;
@@ -786,6 +973,7 @@ function knitoutDirty() {
 window.knitoutDirty = knitoutDirty; // for debugging
 
 function setMouseOver() {
+	delete MOUSE.dirty;
 	MOUSE.over = null;
 	MOUSE.grid = null;
 	if (MOUSE.x !== MOUSE.x) return;
@@ -895,6 +1083,17 @@ function setMouseOver() {
 
 }
 
+function setCursorOver() {
+	delete CURSOR.dirty;
+	setMouseOver(); // update mouse position
+	if (CURSOR.frozen) {
+		// if a location is selected, do nothing
+	} else {
+		// otherwise, deep copy mouse position
+		CURSOR = {x: MOUSE.x, y: MOUSE.y, over: MOUSE.over, grid: MOUSE.grid};
+	}
+}
+
 //mouse in elt-is-[-1,1]x[-1,1] space:
 function relativeMouse(evt, elt) {
 	//based on: https://developer.mozilla.org/en-US/docs/Web/API/Element/mousemove_event
@@ -903,6 +1102,20 @@ function relativeMouse(evt, elt) {
 		x:2.0 * (evt.clientX - rect.left) / rect.width - 1.0,
 		y:-2.0 * (evt.clientY - rect.top) / rect.height + 1.0
 	};
+}
+
+function selectMouseOver() {
+	const oldCursor = {x: CURSOR.x, y: CURSOR.y, over: CURSOR.over, grid: CURSOR.grid};
+	if (CURSOR.frozen) {
+		oldCursor.frozen = true;
+	}
+
+	CURSOR.frozen = false; // unfreeze cursor so that we select even if something is already selected
+	setCursorOver();
+	CURSOR.frozen = true;
+	const newCursor = {x: CURSOR.x, y: CURSOR.y, over: CURSOR.over, grid: CURSOR.grid, frozen: true};
+
+	pushCommand({type: "Select", oldCursor: oldCursor, newCursor: newCursor});
 }
 
 canvas.addEventListener('wheel', function(evt){
@@ -927,7 +1140,7 @@ canvas.addEventListener('mousedown', function(evt){
 	}
 	MOUSE.x = mouse.x;
 	MOUSE.y = mouse.y;
-	mouseDirty();
+	cursorDirty();
 	evt.preventDefault();
 });
 
@@ -940,7 +1153,7 @@ canvas.addEventListener('mousemove', function(evt){
 	}
 	MOUSE.x = mouse.x;
 	MOUSE.y = mouse.y;
-	mouseDirty();
+	cursorDirty();
 	evt.preventDefault();
 });
 
@@ -953,15 +1166,83 @@ canvas.addEventListener('mouseup', function(evt){
 	}
 	MOUSE.x = mouse.x;
 	MOUSE.y = mouse.y;
-	mouseDirty();
+	cursorDirty();
 	evt.preventDefault();
 });
 
-window.addEventListener('keydown', function(evt){
+// set up command buttons
+document.getElementById("relax-shape").onclick = function () { body.relax(); bodyDirty(); };
+document.getElementById("select-hovered-template").onclick = function () {
+	if (CURSOR.over) {
+		setActiveTemplate(CURSOR.over.cell.template);
+		requestRedraw();
+	} else {
+		setActiveTemplate(null);
+		requestRedraw();
+	}
+};
+document.getElementById("delete").onclick = function () {
+	deleteCell();
+	delete CURSOR.frozen;
+	cursorDirty();
+};
+document.getElementById("grab").onclick = startGrabCell;
+document.getElementById("start-connection").onclick = function () {
+	if (ACTION) {
+		if (ACTION.type === "Connect") {
+			ACTION.keydown({code: "KeyC"});
+		}
+	} else {
+		startConnectFace();
+	}
+}
+document.getElementById("check-for-cycles").onclick = function () {
+	// probably will change keycode. 
+	// Run topological sort. 
+	if (!checkGlobalCellCorrectness()) console.log("Warning: There is exists a cycle in yarn directions!");
+	else console.log("No cycles detected in yarn directions");
+};
+document.getElementById("prev-template").onclick = function () {
+	prevTemplate();
+	requestRedraw();
+};
+document.getElementById("next-template").onclick = function () {
+	nextTemplate();
+	requestRedraw();
+};
+document.getElementById("prev-compatible-template").onclick = function () {
+	prevCompatibleTemplate();
+	requestRedraw();
+};
+document.getElementById("next-compatible-template").onclick = function () {
+	nextCompatibleTemplate();
+	requestRedraw();
+};
+document.getElementById("select-hovered-block").onclick = function () {
+	selectMouseOver();
+	requestRedraw();
+};
+document.getElementById("undo").onclick = undoLatestCommand;
+document.getElementById("escape-from-action").onclick = function () {
+	if (ACTION) {
+		ACTION.keydown({code : 'Escape'});
+	} else if (CURSOR.frozen) {
+		delete CURSOR.frozen;
+		cursorDirty();
+	}
+};
 
-	if (ACTION) { // actions take priority over ordinary keybindings
+window.addEventListener('keydown', function(evt){
+	if (evt.code == 'KeyS') { // selection takes priority over everything since it's helpful during actions
+		selectMouseOver();
+		requestRedraw();
+	} else if (ACTION) { // actions take priority over ordinary keybindings
 		if (ACTION.keydown) ACTION.keydown(evt);
 	} else {
+		if (CURSOR.frozen && evt.code == 'Escape') {
+			delete CURSOR.frozen;
+			cursorDirty();
+		}
 		if (evt.code == 'KeyZ' && (evt.ctrlKey || evt.metaKey)) { 
 			// allow control-z or command-z on all systems since it seems tricky to check which is expected
 			undoLatestCommand();
@@ -972,8 +1253,8 @@ window.addEventListener('keydown', function(evt){
 		} else if (evt.code == 'KeyA') {
 			addCell();
 		} else if (evt.code == 'Enter') {
-			if (MOUSE.over) {
-				setActiveTemplate(MOUSE.over.cell.template);
+			if (CURSOR.over) {
+				setActiveTemplate(CURSOR.over.cell.template);
 				requestRedraw();
 			} else {
 				setActiveTemplate(null);
@@ -981,9 +1262,12 @@ window.addEventListener('keydown', function(evt){
 			}
 		} else if (evt.code == 'KeyX') {
 			deleteCell();
+			delete CURSOR.frozen;
+			cursorDirty();
 		} else if (evt.code == 'KeyG') {
 			startGrabCell(); //start drag
 		} else if (evt.code == 'KeyC') {
+			// warning: keybinding also hardcoded into action and button
 			startConnectFace(); //start connection
 		} else if (evt.code == 'KeyU') {
 			// probably will change keycode. 
@@ -1002,7 +1286,7 @@ window.addEventListener('keydown', function(evt){
 		} else if (evt.code == 'KeyK') {
 			prevCompatibleTemplate();
 			requestRedraw();
-		}
+		} 
 		//console.log(evt.code); //when you want more keys
 	}
 });
@@ -1054,6 +1338,11 @@ function undoLatestCommand() {
 		}
 		ACTION = null; // just in case
 		bodyDirty();
+	} else if (command.type === "Select") {
+		CURSOR = command.oldCursor;
+	} else if (command.type === "editSchedulingData") {
+		// {type: "editSchedulingData", cell: over.cell, field: variableName, oldValue: over.cell.schedulingData[variableName], newValue: textInput.value}
+		command.cell.schedulingData[command.field] = command.oldValue;
 	} else {
 		console.error("unknown command type ", command.type, " in command ", command);
 		return;
@@ -1085,7 +1374,7 @@ function listTemplates(templates) {
 	}
 	for (const signature of Object.keys(signature_names).sort()) {
 		const item = document.createElement('li');
-		item.innerHTML = signature_names[signature];
+		item.innerHTML = templates[signature_names[signature]].longname;
 		item.setAttribute('id', stripSpaces(signature));
 		item.onclick = function() {setTemplateFromSignature(stripSpaces(signature));};
 		library_list.appendChild(item);
@@ -1099,7 +1388,10 @@ function setActiveTemplate(t) {
 		elem.classList.remove('library-active-template');
 	}
 	if (template) {
-		document.getElementById(stripSpaces(template.signature())).classList.add('library-active-template');
+		const templateElem = document.getElementById(stripSpaces(template.signature()));
+		templateElem.classList.add('library-active-template');
+		templateElem.scrollIntoView({behavior: "smooth", block: "nearest"});
+		// if ()
 	}
 	templateDirty();
 }
@@ -1120,6 +1412,7 @@ function nextTemplate() {
 		selected = t;
 	}
 	setActiveTemplate(selected);
+	requestRedraw();
 }
 
 //select previous template from library:
@@ -1135,15 +1428,16 @@ function prevTemplate() {
 		selected = t;
 	}
 	setActiveTemplate(selected);
+	requestRedraw();
 }
 
 //select next template from library:
 // (uses global 'library' and 'template' variables)
 function nextCompatibleTemplate() {
-	if (MOUSE.over === null) return null;
+	if (CURSOR.over === null) return nextTemplate();
 
-	const cell = MOUSE.over.cell;
-	const face = MOUSE.over.face;
+	const cell = CURSOR.over.cell;
+	const face = CURSOR.over.face;
 
 	let selected = null;
 	for (const t of Object.values(library.templates)) {
@@ -1156,15 +1450,16 @@ function nextCompatibleTemplate() {
 		selected = t;
 	}
 	setActiveTemplate(selected);
+	requestRedraw();
 }
 
 //select previous template from library:
 // (uses global 'library' and 'template' variables)
 function prevCompatibleTemplate() {
-	if (MOUSE.over === null) return null;
+	if (CURSOR.over === null) return prevTemplate();
 
-	const cell = MOUSE.over.cell;
-	const face = MOUSE.over.face;
+	const cell = CURSOR.over.cell;
+	const face = CURSOR.over.face;
 
 	let selected = null;
 	for (const t of Object.values(library.templates)) {
@@ -1177,6 +1472,7 @@ function prevCompatibleTemplate() {
 		selected = t;
 	}
 	setActiveTemplate(selected);
+	requestRedraw();
 }
 
 function setTemplateFromSignature(stripped_signature) {
@@ -1259,7 +1555,8 @@ function checkTemplateCompatible(cell, face, template, verbose = false) {
 
 				// check if faces are compatible
 				if (face.type ==='x' && preview.template.faces[pfi].type === 'x') {
-					// this case is okay
+					// this case is okay, but not a connection
+					continue;
 				} else if (preview.connections[pfi] != null) {
 					if (verbose) console.log("preview connection already exists");
 					return null;
@@ -1289,20 +1586,20 @@ function previewCell() {
 	//can't add a cell if current template is no template:
 	if (template === null) return null;
 
-	if (MOUSE.grid !== null) {
-		//transform that puts center of cell at mouse position on the grid:
+	if (CURSOR.grid !== null) {
+		//transform that puts center of cell at cursor position on the grid:
 		const xform = gm.mat4x3(
 			1,0,0,
 			0,1,0,
 			0,0,1,
-			MOUSE.grid.x, MOUSE.grid.y, 0
+			CURSOR.grid.x, CURSOR.grid.y, 0
 		);
 		return sv.Cell.fromTemplate(template, xform);
 	}
 
-	if (MOUSE.over !== null) {
-		const cell = MOUSE.over.cell;
-		const face = MOUSE.over.face;
+	if (CURSOR.over !== null) {
+		const cell = CURSOR.over.cell;
+		const face = CURSOR.over.face;
 
 		return checkTemplateCompatible(cell, face, template);
 	}
@@ -1327,7 +1624,7 @@ function unsafeAddCell(cell, index) {
 	body.cells.splice(index, 0, cell);
 
 	//update UI and redraw:
-	mouseDirty();
+	cursorDirty();
 	bodyDirty();
 }
 
@@ -1335,7 +1632,7 @@ function unsafeAddCell(cell, index) {
  * addCell (): 
  * Adds cell adjacent to selected face. */
 function addCell() {
-	if (MOUSE.dirty) setMouseOver();
+	if (CURSOR.dirty) setCursorOver();
 
 	//is there a cell that could exist here? Ask the preview function:
 	const preview = previewCell();
@@ -1439,16 +1736,16 @@ function checkGlobalCellCorrectness() {
 // currently computes locations for knit, next-row, yarn-next-layer, loop-next-layer, cast-on, bind-off
 function allocateSpots(x0=1, y0=4) {
 	// identify extreme stitch
-	let origin = null;
-	for (let cell of body.cells) {
-		if (cell.template.name != "knit") continue;
-		if (origin === null) {
-			origin = gm.xformTranslation(cell.xform);
-		} else {
-			const cellPosition = gm.xformTranslation(cell.xform);
-			origin = gm.min(origin, cellPosition);
-		}
-	}
+	// let origin = null;
+	// for (let cell of body.cells) {
+	// 	if (cell.template.name != "knit") continue;
+	// 	if (origin === null) {
+	// 		origin = gm.xformTranslation(cell.xform);
+	// 	} else {
+	// 		const cellPosition = gm.xformTranslation(cell.xform);
+	// 		origin = gm.min(origin, cellPosition);
+	// 	}
+	// }
 
 	// follow yarn through body
 	function getYarnExitFace(cell) {
@@ -1458,17 +1755,21 @@ function allocateSpots(x0=1, y0=4) {
 		return null;
 	}
 
-	// initialize schedulingData and look for yarn-in to start
+	// clear schedulingData and look for yarn-in to start
 	let currCell = null;
 	for (let cell of body.cells) {
-		if (!cell.schedulingData) {
-			cell.schedulingData = {
-				xNode: null,
-				yNode: null,
-				zNode: null,
-				direction: null
-			};
-		}
+		cell.schedulingData = {
+			direction : null,
+			waleDirection : null,
+			bed : null,
+			embedding : null,
+			HFxy : null,
+			HBxy : null,
+			Nx : null, 
+			D : null,
+			CS : null,
+			layer : null
+		};
 		if (cell.template.name === "yarn-in") {
 			currCell = cell;
 		}
@@ -1489,9 +1790,10 @@ function allocateSpots(x0=1, y0=4) {
 
 	let currBed = 1; // somewhat confusingly, bed is the stitch that the bed gets made on, which is opposite to the bed used for the needle
 	let currWaleDirection = 1; // TODO: how do you determine this?
+	currCell.schedulingData.embedding = gm.vec3(0, 0, 0);
 
-	let xMax=0, yMax=0;
-	// find directions for all stitches and embeddings for knit stitches (abstract 3d coordinates that we'll use to get needle/holder positions)
+	//== find directions & beds for all stitches and embeddings for knit stitches (abstract 3d coordinates that we'll use to get needle/holder positions)
+	let xMax=-10, yMax=-10, xMin=10, yMin=10, zMin=10;
 	while (currCell != null) {
 		currCell.schedulingData.direction = (currDirection > 0) ? "+" : "-";
 		currCell.schedulingData.waleDirection = (currWaleDirection > 0) ? "+" : "-";
@@ -1504,18 +1806,64 @@ function allocateSpots(x0=1, y0=4) {
 			currBed *= -1;
 		}
 
-		// guess knit locations from position. Others will be guessed from knits later
-		if (currCell.template.name.startsWith("knit")) {
-			const cellPosition = gm.sub(gm.xformTranslation(currCell.xform), origin);
-			const x = Math.round(cellPosition[0] / 2.);
-			const y = Math.round(cellPosition[1]);
-			const z = Math.round(cellPosition[2]);
-			currCell.schedulingData.embedding = gm.vec3(x, y, z);
-			xMax = Math.max(xMax, x);
-			yMax = Math.max(yMax, y);
-		}
+		//== locate yarn out and propagate embedding. Leave the embedding of yarn-next-row/yarn-next-layer blocks to be filled in later
+		let exitFace = null;
+		for (let iF=0; iF<currCell.template.faces.length; ++iF) {
+			const faceType = currCell.template.faces[iF].type;
 
-		let exitFace = getYarnExitFace(currCell);
+			if (faceType.startsWith("+y")) exitFace = iF;
+
+			if (currCell.connections[iF] == null || currCell.template.name.startsWith("yarn-next") || currCell.template.name.startsWith("loop-next")) continue;
+			const connection = currCell.connections[iF].cell;
+			if (connection.template.name.startsWith("yarn-next") || connection.template.name.startsWith("loop-next")) continue;
+
+			let offset = null;
+			if (faceType.startsWith("+y")) {
+				offset = gm.vec3(currDirection, 0, 0);
+			} else if (faceType.startsWith("-y")) {
+				offset = gm.vec3(-currDirection, 0, 0);
+			} else if (faceType.startsWith("+L")) {
+				offset = gm.vec3(0, 0, 1);
+			} else if (faceType.startsWith("-L")) {
+				offset = gm.vec3(0, 0, -1);
+			} else if (faceType.startsWith("+l")) {
+				offset = gm.vec3(0, currWaleDirection, 0);
+				// special case for cast-on which shares location
+				if (currCell.template.name.startsWith("cast-on")) offset = gm.vec3(0, 0, 0);
+			} else if (faceType.startsWith("-l")) {
+				offset = gm.vec3(0, -currWaleDirection, 0);
+				// special case for bind-off which shares location
+				if (currCell.template.name.startsWith("bind-off")) offset = gm.vec3(0, 0, 0);
+			} else {
+				console.log("cannot propagate face type ", faceType);
+				continue;
+			}
+
+			const connectionEmbedding = gm.add(currCell.schedulingData.embedding, offset);
+			if (connection.schedulingData.embedding == null) {
+				connection.schedulingData.embedding = connectionEmbedding;
+				const name = connection.template.name;
+				if (!(name.startsWith("yarn-out") || name.startsWith("cast-on") || name.startsWith("bind-off"))) { // ignore cast-on, bind-off, yarn-out when computing bounds
+					xMax = Math.max(xMax, connectionEmbedding[0]);
+					yMax = Math.max(yMax, connectionEmbedding[1]);
+					xMin = Math.min(xMin, connectionEmbedding[0]);
+					yMin = Math.min(yMin, connectionEmbedding[1]);
+					zMin = Math.min(yMin, connectionEmbedding[2]);
+				}
+			} else {
+				// don't check yarn-next-row/yarn-next-layer or cast-on/bind-off blocks for now since they have special rules
+				if (connection.template.name.startsWith("yarn-next")
+				   || connection.template.name.startsWith("loop-next")
+				   || connection.template.name.startsWith("cast-on")  || currCell.template.name.startsWith("cast-on")
+				   || connection.template.name.startsWith("bind-off") || currCell.template.name.startsWith("bind-of")) continue;
+
+				if ((Math.abs(connectionEmbedding[0] - connection.schedulingData.embedding[0]) > 0.01)
+				 || (Math.abs(connectionEmbedding[1] - connection.schedulingData.embedding[1]) > 0.01)
+				 || (Math.abs(connectionEmbedding[2] - connection.schedulingData.embedding[2]) > 0.01)) {
+					console.error("mismatched neighbors ", currCell, connection);
+				}
+			}
+		}
 
 		if (exitFace != null) {
 			currCell = currCell.connections[exitFace].cell;
@@ -1524,14 +1872,13 @@ function allocateSpots(x0=1, y0=4) {
 		}
 	}
 
-	function holderPositions(x, y) {
-		return {f: "hf" + (x+x0) + "," + (y0+y), b: "hb" + (x+x0) + "," + (y0+yMax-y)};
-	}
-
+	// shift embedding to start at the origin and assign embeddings for loop-next-layer blocks
 	for (let cell of body.cells) {
-			
-		let x = null, y = null, z = null;
-		if (cell.template.name.startsWith("loop-next-layer")) {
+		if (cell.schedulingData.embedding) {
+			cell.schedulingData.embedding[0] -= xMin;
+			cell.schedulingData.embedding[1] -= yMin;
+			cell.schedulingData.embedding[2] -= zMin;
+		} else if (cell.template.name.startsWith("loop-next-layer")) {
 			// make sure to look at loop in to specify correct holder for xfer
 			for (let iF=0; iF<cell.template.faces.length; iF++){
 				if (!cell.connections[iF]) continue;
@@ -1539,50 +1886,39 @@ function allocateSpots(x0=1, y0=4) {
 					// loop in
 					const bed = cell.connections[iF].cell.schedulingData.bed
 					cell.schedulingData.bed = bed;
-					x = cell.connections[iF].cell.schedulingData.embedding[0];
-					y = cell.connections[iF].cell.schedulingData.embedding[1];
-					// z = cell.connections[iF].cell.schedulingData.embedding[2];
+					cell.schedulingData.embedding = gm.copyVec3(cell.connections[iF].cell.schedulingData.embedding);
 					if (bed === "f") {
-						y += 1; // xfer to front -> bump up y coord
+						cell.schedulingData.embedding[1] += 1; // xfer to front -> bump up y coord
 					} else {
-						y -= 1; // xfer to back -> bump down y coord
+						cell.schedulingData.embedding[1] -= 1; // xfer to back -> bump down y coord
 					}
+					// move z coord between layers
+					cell.schedulingData.embedding[2] += 0.5;
 				}
 			}
-			z = null; // layer not well-defined for next-layer blocks
-		} else if (cell.template.name.startsWith("knit")) {
-			x = cell.schedulingData.embedding[0];
-			y = cell.schedulingData.embedding[1];
-			z = cell.schedulingData.embedding[2];
-		} else if (cell.template.name.startsWith("cast-on")) {
-			// TODO: there's something weird with the direction. Clarify what cast-on looks like with Yuichi
-
-			// look at loop out to specify correct holder for cast-on tuck
-			for (let iF=0; iF<cell.template.faces.length; iF++){
-				if (!cell.connections[iF]) continue;
-				if (cell.template.faces[iF].type.startsWith("+l")) {
-					// loop out
-					const bed = cell.connections[iF].cell.schedulingData.bed
-					cell.schedulingData.bed = bed;
-					x = cell.connections[iF].cell.schedulingData.embedding[0];
-					y = cell.connections[iF].cell.schedulingData.embedding[1];
-					z = cell.connections[iF].cell.schedulingData.embedding[2];
-				}
-			}
-		} else {
-			// TODO: grab data from a knit neighbor
-
 		}
-		if (x != null) {
+	}
+	xMax -= xMin; yMax -= yMin; // shift maxima
+	xMin = 0; yMin = 0; zMin = 0; // shift minima
+
+	function holderPositions(x, y) {
+		return {f: "hf" + (x+x0) + "," + (y0+y), b: "hb" + (x+x0) + "," + (y0+yMax-y)};
+	}
+
+	for (let cell of body.cells) {
+		if (cell.schedulingData.embedding != null) {
+			let x = cell.schedulingData.embedding[0], y = cell.schedulingData.embedding[1], z = cell.schedulingData.embedding[2];
 			// somewhat confusingly, bed is the stitch that the bed gets made on, which is opposite to the bed used for the needle
 			const needleBed = (cell.schedulingData.bed === "f") ? "b" : "f";
-
 			const holders = holderPositions(x, y);
-			cell.schedulingData.frontHolder = holders.f;
-			cell.schedulingData.backHolder = holders.b;
+			cell.schedulingData.HFxy = holders.f;
+			cell.schedulingData.HBxy = holders.b;
+			cell.schedulingData.Nx = needleBed + (x+x0); 
+			cell.schedulingData.D = cell.schedulingData.direction;
+			cell.schedulingData.CS = [1];
+
+			// not currently used
 			cell.schedulingData.layer = z;
-			cell.schedulingData.needle = needleBed + (x+x0); 
-			cell.schedulingData.yarnID = 1;
 		}
 
 	}
@@ -1606,7 +1942,7 @@ function unsafeDeleteCell(index) {
 	body.cells.splice(index, 1);
 
 	// Update UI and redraw:
-	mouseDirty();
+	cursorDirty();
 	bodyDirty();
 }
 
@@ -1616,10 +1952,10 @@ function unsafeDeleteCell(index) {
  * Consider: When cell is selected to delete a box, instead of highlighting
  * selected face, we should highlight selected cell. */
 function deleteCell() {
-	if (MOUSE.dirty) setMouseOver();
-	if (!MOUSE.over) return;
+	if (CURSOR.dirty) setCursorOver();
+	if (!CURSOR.over) return;
 
-	const cell = MOUSE.over.cell;
+	const cell = CURSOR.over.cell;
 	const cellIndex =  body.cells.indexOf(cell);
 
 	unsafeDeleteCell(cellIndex);
@@ -1637,10 +1973,13 @@ function deleteCell() {
  */
 function startConnectFace() {
 	if (ACTION !== null) return;
-	if (MOUSE.dirty) setMouseOver();
-	if (!MOUSE.over) return;
-	const cell = MOUSE.over.cell;
-	const face = MOUSE.over.face;
+	if (CURSOR.dirty) setCursorOver();
+	if (!CURSOR.over) return;
+	const cell = CURSOR.over.cell;
+	const face = CURSOR.over.face;
+	// let oldCURSOR = {x: CURSOR.x, y: CURSOR.y, over: CURSOR.over, grid: CURSOR.grid };
+	// if (CURSOR.frozen) oldCURSOR.frozen = true;
+	delete CURSOR.frozen;
 
 	//is face already connected?
 	const oldConnection = cell.connections[face];
@@ -1665,11 +2004,11 @@ function startConnectFace() {
 		setConnection.pending = false;
 
 		clearConnection();
-		if (MOUSE.dirty) setMouseOver();
-		if (!MOUSE.over) return;
-		const toCell = MOUSE.over.cell;
+		if (CURSOR.dirty) setCursorOver();
+		if (!CURSOR.over) return;
+		const toCell = CURSOR.over.cell;
 		if (toCell === cell) return; //can't self-connect
-		const toFace = MOUSE.over.face;
+		const toFace = CURSOR.over.face;
 		if (toCell.connections[toFace]) return; //can't double-connect
 
 		if (!sv.canConnectFaces(cell.template.faces[face], toCell.template.faces[toFace])) return;
@@ -1696,6 +2035,7 @@ function startConnectFace() {
 	console.log("Starting connect.");
 
 	ACTION = {
+		type: "Connect",
 		mousedown:(evt,mouse) => {
 			if (evt.button === 0) {
 				startCameraMove();
@@ -1715,9 +2055,11 @@ function startConnectFace() {
 				console.log("Confirming connect.");
 				setConnection.pending = false;
 				ACTION = null;
+				// CURSOR = oldCURSOR;
 				pushCommand({type: "confirmConnect", cellIndex: body.cells.indexOf(cell), face: face, oldConnection: oldConnection});
 			} else if (evt.code === 'Escape') {
 				cancelConnect();
+				CURSOR = oldCURSOR;
 			}
 		},
 	};
@@ -1733,12 +2075,12 @@ function startConnectFace() {
 function startGrabCell() {
 	if (ACTION !== null) return;
 
-	if (MOUSE.dirty) setMouseOver();
+	if (CURSOR.dirty) setCursorOver();
 
-	if (!MOUSE.over) return;
+	if (!CURSOR.over) return;
 
 
-	const cell = MOUSE.over.cell;
+	const cell = CURSOR.over.cell;
 	const startXform = cell.xform;
 	const startVertices = [];
 	let center = gm.vec3(0);
@@ -2628,7 +2970,7 @@ window.visWireCells = visWireCells; //DEBUG
 
 class VisTubes extends Geometry {
 	static BYTES_PER_ATTRIB = 4*3 + 4*3 + 4*2 + 4*1 + 4*1; //Position, Normal, UV, Color, CellID
-	constructor(solid=true, respectVisibility=true) {
+	constructor(solid=true, fixedVisibility=null) {
 		const BYTES_PER_ATTRIB = VisTubes.BYTES_PER_ATTRIB;
 
 		const buffer = gl.createBuffer();
@@ -2647,10 +2989,12 @@ class VisTubes extends Geometry {
 		this.resolution = 6;
 		this.radius = 0.08;
 		this.solid = solid;
-		this.respectVisibility = respectVisibility;
+		this.col_rgb = [1.0, 0.6, 0.5];
+		this.col_transparent = rgba2Uint32([...this.col_rgb, 0.1]);
+		this.col_opaque = rgb2Uint32(this.col_rgb);
+		this.selectedColor = [1.0, 0.4, 0.3, 1.0];
+		this.fixedVisibility = fixedVisibility;
 		this.empty = false;
-
-		this.selectedColor = [-1., -1., -1., -1.]; // set later in set()
 	}
 	set(body) {
 		const BYTES_PER_ATTRIB = VisTubes.BYTES_PER_ATTRIB;
@@ -2658,7 +3002,7 @@ class VisTubes extends Geometry {
 		//figure out how much space to allocate for attributes:
 		let totalAttribs = 0;
 		for (const cell of body.cells) {
-			if (this.respectVisibility && (checkCellVisible(cell) !== this.solid)) continue;
+			if (this.fixedVisibility === false || (this.fixedVisibility == null && checkCellVisible(cell) !== this.solid)) continue;
 			for (const yarn of cell.template.yarns) {
 				totalAttribs += (yarn.pts.length-1) * 6 * this.resolution;
 			}
@@ -2742,15 +3086,11 @@ class VisTubes extends Geometry {
 			}
 		}
 
-		const col_rgb = [1.0, 0.6, 0.5];
-		const col_transparent = rgba2Uint32([...col_rgb, 0.1]);
-		const col_opaque = rgb2Uint32(col_rgb);
-		this.selectedColor = [1.0, 0.4, 0.3, 1.0];
 		for (let cellID = 0; cellID < body.cells.length; ++cellID) {
 			const cell = body.cells[cellID];
-			if (this.respectVisibility && (checkCellVisible(cell) !== this.solid)) continue;
+			if (this.fixedVisibility === false || (this.fixedVisibility == null && checkCellVisible(cell) !== this.solid)) continue;
 
-			const col = this.solid ? col_opaque : col_transparent;
+			const col = this.solid ? this.col_opaque : this.col_transparent;
 
 			//yarns:
 			const xf = cell.xform;
@@ -2869,15 +3209,20 @@ class VisTubes extends Geometry {
 
 const visTubes = new VisTubes(true);
 const visTransparentTubes = new VisTubes(false);
-const visTemplateTubes = new VisTubes(true, false);
+const visTemplateTubes = new VisTubes(true, true /* always solid */);
 window.visTubes = visTubes; //DEBUG
 window.visTransparentTubes = visTransparentTubes; //DEBUG
 window.visTemplateTubes = visTemplateTubes; //DEBUG
+const visPreviewTubes = new VisTubes(true, true /* always opaque */);
+visPreviewTubes.col_rgb = [0.8, 0.6, 1.0];
+visPreviewTubes.col_opaque = rgb2Uint32(visPreviewTubes.col_rgb);
+// visPreviewTubes.col_transparent = rgba2Uint32([...visPreviewTubes.col_rgb, 0.1]);
+// visPreviewTubes.col_rgb = rgba2Uint32([...visPreviewTubes.col_rgb, 0.5]); // increase opacity
 
-class VisDebug extends Geometry {
+class VisPreviewLines extends Geometry {
 	static BYTES_PER_ATTRIB = 4*3 + 1*4; //Position, Color
 	constructor() {
-		const BYTES_PER_ATTRIB = VisDebug.BYTES_PER_ATTRIB;
+		const BYTES_PER_ATTRIB = VisPreviewLines.BYTES_PER_ATTRIB;
 
 		const buffer = gl.createBuffer();
 
@@ -2892,7 +3237,7 @@ class VisDebug extends Geometry {
 		this.buffer = buffer;
 	}
 	update() {
-		const BYTES_PER_ATTRIB = VisDebug.BYTES_PER_ATTRIB;
+		const BYTES_PER_ATTRIB = VisPreviewLines.BYTES_PER_ATTRIB;
 
 		let attribs = []; //x,y,z,color
 
@@ -2903,8 +3248,8 @@ class VisDebug extends Geometry {
 
 		//----- make debug/UI lines ----
 		
-		//mouse cursor:
-		if (MOUSE.x === MOUSE.x) {
+		// cursor:
+		if (CURSOR.x === CURSOR.x) {
 			const ray = mouseRay();
 			let r = camera.computeRight();
 			let u = camera.computeUp();
@@ -2916,18 +3261,18 @@ class VisDebug extends Geometry {
 		}
 
 		//currently hovered face:
-		if (MOUSE.over !== null) {
-			const cell = MOUSE.over.cell;
-			const face = cell.template.faces[MOUSE.over.face];
+		if (CURSOR.over !== null) {
+			const cell = CURSOR.over.cell;
+			const face = cell.template.faces[CURSOR.over.face];
 			for (let i = 0; i < face.indices.length; ++i) {
 				line(cell.vertices[face.indices[(i == 0 ? face.indices.length : i) - 1]], cell.vertices[face.indices[i]], 0xffff0088);
 			}
 		}
 
 		//currently hovered grid cell:
-		if (MOUSE.grid !== null) {
-			const x = Math.floor(MOUSE.grid.x);
-			const y = Math.floor(MOUSE.grid.y);
+		if (CURSOR.grid !== null) {
+			const x = Math.floor(CURSOR.grid.x);
+			const y = Math.floor(CURSOR.grid.y);
 
 			line([x, y, 0], [x+1,y,0], 0xff00ffff);
 			line([x+1,y, 0], [x+1,y+1,0], 0xff00ffff);
@@ -2941,18 +3286,18 @@ class VisDebug extends Geometry {
 			setCellDrawingInfo(cell);
 
 			//yarns:
-			const xf = cell.xform;
-			for (const yarn of cell.template.yarns) {
-				let prev = null;
-				let col = rgb2Uint32([1.0, 0.6, 0.5]);
-				for (const pt of yarn.pts) {
-					let at = gm.mul_mat4x3_vec4(xf, [...pt, 1]);
-					if (prev !== null) {
-						line(prev,at, col);
-					}
-					prev = at;
-				}
-			}
+			// const xf = cell.xform;
+			// for (const yarn of cell.template.yarns) {
+			// 	let prev = null;
+			// 	let col = rgb2Uint32([1.0, 0.6, 0.5]);
+			// 	for (const pt of yarn.pts) {
+			// 		let at = gm.mul_mat4x3_vec4(xf, [...pt, 1]);
+			// 		if (prev !== null) {
+			// 			line(prev,at, col);
+			// 		}
+			// 		prev = at;
+			// 	}
+			// }
 
 			//faces:
 			for (let fi = 0; fi < cell.template.faces.length; ++fi) {
@@ -3043,7 +3388,7 @@ class VisDebug extends Geometry {
 		gl.bufferData(gl.ARRAY_BUFFER, arrayBuffer, gl.STREAM_DRAW);
 	}
 }
-const visDebug = new VisDebug();
+const visPreviewLines = new VisPreviewLines();
 
 let yarnVisMode = "Tube";
 function setYarnVisMode(mode) {
@@ -3061,10 +3406,18 @@ function setYarnVisMode(mode) {
 }
 
 function setViewMode(mode) {
+	const patternButton = document.getElementById("3dview-set-pattern-mode");
+	const templateButton = document.getElementById("3dview-set-template-mode");
+	// clear current mode
+	patternButton.classList.remove("active");
+	templateButton.classList.remove("active");
+
 	if (mode == "Pattern") {
+		patternButton.classList.add("active");
 		viewMode = ViewMode.Pattern;
 		bodyDirty();
 	} else if (mode == "Template") {
+		templateButton.classList.add("active");
 		viewMode = ViewMode.Template;
 		templateDirty();
 	} else {
@@ -3072,26 +3425,35 @@ function setViewMode(mode) {
 	}
 	requestRedraw()
 }
+
 function setSidebar(mode) {
+	const designButton = document.getElementById("sidebar-set-design-mode");
+	const codegenButton = document.getElementById("sidebar-set-codegen-mode");
 	const library = document.getElementById("library");
 	const knitout = document.getElementById("view-knitout");
 	const blockData = document.getElementById("view-block-data");
-	if (mode == "Library") {
+	const commands = document.getElementById("view-shortcuts");
+
+	// clear current mode
+	designButton.classList.remove("active");
+	codegenButton.classList.remove("active");
+	library.style.display="none";
+	knitout.style.display="none";
+	blockData.style.display="none";
+	commands.style.display = "none";
+
+	if (mode == "PatternDesign") {
 		library.style.display="grid";
 		knitout.style.display="none";
 		blockData.style.display="none";
-	} else if (mode == "Knitout") {
-		library.style.display="none";
-		knitout.style.display="grid";
-		blockData.style.display="none";
-	} else if (mode == "BlockData") {
-		library.style.display="none";
-		knitout.style.display="none";
-		blockData.style.display="grid";
-	} else if (mode == "KnitoutAndBlockData") {
+		commands.style.display = "grid";
+		designButton.classList.add("active");
+	} else if (mode == "CodeGen") {
 		library.style.display="none";
 		knitout.style.display="grid";
 		blockData.style.display="grid";
+		commands.style.display = "none";
+		codegenButton.classList.add("active");
 	} else {
 		console.log("Error, invalid sidebar mode ", mode);
 	}
@@ -3109,11 +3471,39 @@ for (const elem of document.getElementById('show-yarn-direction-form').children)
 	elem.addEventListener('click', function() {bodyDirty();});
 }
 
-document.getElementById("select-viewmode-option").addEventListener("change", function() {setViewMode(this.value);});
-setViewMode(document.getElementById("select-viewmode-option").value);
+// document.getElementById("select-viewmode-option").addEventListener("change", function() {setViewMode(this.value);});
+// setViewMode(document.getElementById("select-viewmode-option").value);
+document.getElementById("select-3dview-mode").addEventListener("change", function(e) {setViewMode(e.target.value);});
+// set sidebar to current selection
+for (let child of document.getElementById("select-3dview-mode").children) {
+	if (child.checked) {
+		setViewMode(child.value);
+		break;
+	}
+}
 
-document.getElementById("select-sidebar-option").addEventListener("change", function() {setSidebar(this.value);});
-setSidebar(document.getElementById("select-sidebar-option").value);
+document.getElementById("select-sidebar-mode").addEventListener("change", function(e) {setSidebar(e.target.value);});
+// set sidebar to current selection
+for (let child of document.getElementById("select-sidebar-mode").children) {
+	if (child.checked) {
+		setSidebar(child.value);
+		break;
+	}
+}
+
+function setDarkMode(setDark) {
+	const body = document.getElementsByTagName("body")[0];
+	if (setDark) {
+		body.classList.remove("lightmode");
+		body.classList.add("darkmode");
+	} else {
+		body.classList.add("lightmode");
+		body.classList.remove("darkmode");
+	}
+	requestRedraw(); // refresh canvas background
+}
+document.getElementById("darkmode-checkbox").addEventListener("change", function() {setDarkMode(this.checked);});
+setDarkMode(document.getElementById("darkmode-checkbox").checked);
 
 // To change the displayed knitout, set knitoutCode.text to a different value and call knitoutDirty() to request a refresh
 const knitoutCode = {text: `;;!solid-knitout-VERSION
@@ -3325,36 +3715,368 @@ groupKnitoutPassesCheckbox.addEventListener('click', function() {
 function displayHoveredBlockInfo(over) {
 	const infoArea = document.getElementById("hovered-block-info");
 	infoArea.innerHTML = "";
-	if (over !== null) {
-		const pos = gm.xformTranslation(over.cell.xform); // TODO: shift cube coordinates to be integer?
-		const posString = "( " + pos[0].toFixed(2) + ", " + pos[1].toFixed(2) + ", " + pos[2].toFixed(2) + " )";
 
-		const displayData = function(name, value) {
-			const nameElem = document.createElement('span');
-			nameElem.innerHTML = name;
-			nameElem.classList.add("field-name");
-			infoArea.appendChild(nameElem);
-			const valueElem = document.createElement('span');
-			valueElem.innerHTML = value == null ? "null" : value;
-			valueElem.classList.add("field-value");
-			infoArea.appendChild(valueElem);
-		};
-		
-		if (!over.cell.schedulingData) over.cell.schedulingData = {};
-		displayData("ID", over.cellID);
-		displayData("Signature", over.cell.template.signature());
-		displayData("Position", posString);
-		displayData("Bed", over.cell.schedulingData.bed);
-		displayData("Needle", over.cell.schedulingData.needle);
-		displayData("Front Holder", over.cell.schedulingData.frontHolder);
-		displayData("Back Holder", over.cell.schedulingData.backHolder);
-		displayData("Layer", over.cell.schedulingData.layer);
-		displayData("Direction", over.cell.schedulingData.direction);
-		displayData("Yarn ID", over.cell.schedulingData.yarnID);
+	let posString, embString, id, ports, longname, schedulingData;
+	if (over != null) {
+		id = over.cellID;
+		ports = over.cell.template.signature().substr(over.cell.template.name.length + 1);
+		longname = over.cell.template.longname;
+		const pos = gm.xformTranslation(over.cell.xform); // TODO: shift cube coordinates to be integer?
+		posString = "( " + pos[0].toFixed(2) + ", " + pos[1].toFixed(2) + ", " + pos[2].toFixed(2) + " )";
+		schedulingData = over.cell.schedulingData ? over.cell.schedulingData : {};
+
+
+		if (over.cell.schedulingData && over.cell.schedulingData.embedding) {
+			const emb = over.cell.schedulingData.embedding;
+			embString = "( " + emb[0].toFixed(2) + ", " + emb[1].toFixed(2) + ", " + emb[2].toFixed(2) + " )";	
+		}
+	} else {
+		id = null;
+		ports = null;
+		longname = null;
+		posString = null;
+		schedulingData = {};
 	}
+
+	const displayData = function(name, value, variableName) {
+		const nameElem = document.createElement('label');
+		nameElem.innerHTML = name;
+		nameElem.classList.add("field-name");
+		nameElem.for = "input-" + name;
+		infoArea.appendChild(nameElem);
+		const valueElem = document.createElement('div');
+		valueElem.classList.add("field-value");
+		if (variableName == null) {
+			valueElem.innerHTML = value == null ? "&nbsp;" : value; // print space to set line height
+		} else {
+			const textInput = document.createElement('input');
+			textInput.type = "text";
+			textInput.id = "input-"+name;
+			textInput.name = name;
+			textInput.value = value == null ? "" : value; // print space to set line height
+			if (over == null) {
+				textInput.disabled = true;
+			} else {
+				textInput.onchange = function() {
+					pushCommand({type: "editSchedulingData", cell: over.cell, field: variableName, oldValue: over.cell.schedulingData[variableName], newValue: textInput.value});
+					over.cell.schedulingData[variableName] = textInput.value;
+				};
+			}
+			valueElem.appendChild(textInput);
+		}
+		infoArea.appendChild(valueElem);
+	};
+	
+	displayData("ID", id);
+	displayData("Long Name", longname);
+	displayData("Ports", ports);
+	displayData("Position", posString);
+	displayData("Embedding", embString);
+	displayData("Bed", schedulingData.bed, "bed");
+	displayData("Nx", schedulingData.Nx, "Nx");
+	displayData("HFxy", schedulingData.HFxy, "HFxy");
+	displayData("HBxy", schedulingData.HBxy, "HBxy");
+	displayData("D", schedulingData.D, "D");
+	displayData("CS", schedulingData.CS, "CS");
+	displayData("Layer", schedulingData.layer, "layer");
 }
 
-function redrawPattern(pixelRatio) {
+const postprocessProgram = new Program(gl,
+`
+	attribute vec2 Position;
+	attribute vec2 TexCoord;
+	varying vec2 texCoord;
+	void main() {
+		gl_Position = vec4(Position,0,1);
+		texCoord = TexCoord;
+	}
+`,`
+	uniform sampler2D DEPTH_SHADED_TEX;
+	uniform sampler2D DEPTH_SHADED_DEPTH;
+	uniform sampler2D NON_DEPTH_SHADED_TEX;
+	uniform sampler2D NON_DEPTH_SHADED_DEPTH;
+	uniform highp vec2 PX;
+	varying highp vec2 texCoord;
+	void main() {
+		//gl_FragColor = vec4(1,0,1,1);
+		//gl_FragColor = vec4(texCoord,1,1);
+		//gl_FragColor = texture2D(DEPTH_SHADED_TEX, gl_FragCoord.xy/1000.0);
+		//gl_FragColor = vec4(texture2D(DEPTH_SHADED_TEX, texCoord).r, texCoord, 1);
+		mediump vec3 depth_shaded_color = texture2D(DEPTH_SHADED_TEX, texCoord).rgb;
+		mediump vec3 non_depth_shaded_color = texture2D(NON_DEPTH_SHADED_TEX, texCoord).rgb;
+		mediump float depth_shaded_depth = texture2D(DEPTH_SHADED_DEPTH, texCoord).r;
+		mediump float non_depth_shaded_depth = texture2D(NON_DEPTH_SHADED_DEPTH, texCoord).r;
+
+		//this is taken from autoknit:
+		highp float ref = texture2D(DEPTH_SHADED_DEPTH, texCoord).r;
+		highp float z = min(0.9999, ref);
+		//over from depth component space -> projected z value:
+		z = 2.0 * (z - 0.5);
+		//from projected z value to world z value:
+		#define NEAR 0.1
+		z = (2.0 * NEAR) / (z - 1.0);
+		//z is now in range [-inf, -NEAR]
+		z += 0.5; //depth offset for maximum shade
+		//back to projected space:
+		z = 1.0 + (2.0 * NEAR) / z;
+		z = 0.5 * z + 0.5;
+		highp float amt = 1.0 / (z - ref);
+
+		#define DO(X,Y) { \
+			lowp float val = texture2D(DEPTH_SHADED_DEPTH, texCoord+vec2(X,Y)*PX*1.5).r; \
+			tint += clamp((val - ref) * amt, 0.0, 1.0); \
+		}
+
+		#define R 3
+		highp float tint = 0.0;
+		mediump float w = 0.;
+		for (int dy = -R; dy <= R; dy++) {
+			for (int dx = -R; dx <= R; dx++) {
+				if (!(dx == 0 && dy == 0)) {
+					DO(dx, dy);
+					w += 1.;
+				}
+			}
+		}    
+		tint = 1.0 - (tint / w);
+		depth_shaded_color *= tint;
+		gl_FragColor = depth_shaded_depth < non_depth_shaded_depth ? vec4(depth_shaded_color, 1) : vec4(non_depth_shaded_color, 1);
+		// gl_FragColor = vec4(depth_shaded_color, 1);
+	}
+`);
+window.postprocessProgram = postprocessProgram;
+
+
+//Because lack of gl_VertexID in WEBGL1's GLSL means we can't do the lazy fullscreen-triangle-generated-by-vertex-shader trick:
+class FullscreenTriangle extends Geometry {
+	constructor() {
+		const buffer = gl.createBuffer();
+		const attribs = {
+			Position:{buffer:buffer, size:2, type:gl.FLOAT, normalize:false, stride:4*4, offset:0},
+			TexCoord:{buffer:buffer, size:2, type:gl.FLOAT, normalize:false, stride:4*4, offset:2*4}
+		};
+		super(gl, attribs, gl.TRIANGLES, 0);
+		let data = new Float32Array([ -1,-1, 0,0,   3,-1, 2,0,  -1,3, 0,2 ]);
+		this.buffer = buffer;
+		this.count = 3;
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+		gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+	}
+}
+const fullscreenTriangle = new FullscreenTriangle();
+window.fullscreenTriangle = fullscreenTriangle; //DEBUG
+
+class Postprocess {
+	constructor() {
+		this.w = 0;
+		this.h = 0;
+		if (ext_WEBGL_depth_texture) {
+			console.log("Postprocessing enabled.");
+			this.enabled = true;
+		} else {
+			console.log("Don't have WEBGL_depth_texture; postprocessing disabled.");
+			this.enabled = false;
+		}
+	}
+	resize(w,h) {
+		if (!this.enabled) return;
+		if (w === this.w && h === this.h) return;
+		this.w = w;
+		this.h = h;
+
+		if (!('depth_shaded_depth_tex' in this)) this.depth_shaded_depth_tex = gl.createTexture();
+		gl.bindTexture(gl.TEXTURE_2D, this.depth_shaded_depth_tex);
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, w, h, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.bindTexture(gl.TEXTURE_2D, null);
+
+		if (!('depth_shaded_color_tex' in this)) this.depth_shaded_color_tex = gl.createTexture();
+		gl.bindTexture(gl.TEXTURE_2D, this.depth_shaded_color_tex);
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, w, h, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.bindTexture(gl.TEXTURE_2D, null);
+
+		if (!('depth_shaded_fb' in this)) {
+			this.depth_shaded_fb = gl.createFramebuffer();
+			gl.bindFramebuffer(gl.FRAMEBUFFER, this.depth_shaded_fb);
+			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.depth_shaded_color_tex, 0);
+			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.depth_shaded_depth_tex, 0);
+			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+		}
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.depth_shaded_fb);
+		const depth_shaded_complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+		if (depth_shaded_complete !== gl.FRAMEBUFFER_COMPLETE) {
+			console.log(`Failed to resize postprocessing framebuffer: ${depth_shaded_complete}`);
+		}
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+		if (!('non_depth_shaded_depth_tex' in this)) this.non_depth_shaded_depth_tex = gl.createTexture();
+		gl.bindTexture(gl.TEXTURE_2D, this.non_depth_shaded_depth_tex);
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, w, h, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.bindTexture(gl.TEXTURE_2D, null);
+
+		if (!('non_depth_shaded_color_tex' in this)) this.non_depth_shaded_color_tex = gl.createTexture();
+		gl.bindTexture(gl.TEXTURE_2D, this.non_depth_shaded_color_tex);
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, w, h, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.bindTexture(gl.TEXTURE_2D, null);
+
+		if (!('non_depth_shaded_fb' in this)) {
+			this.non_depth_shaded_fb = gl.createFramebuffer();
+			gl.bindFramebuffer(gl.FRAMEBUFFER, this.non_depth_shaded_fb);
+			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.non_depth_shaded_color_tex, 0);
+			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.non_depth_shaded_depth_tex, 0);
+			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+		}
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.non_depth_shaded_fb);
+		const non_depth_shaded_complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+		if (non_depth_shaded_complete !== gl.FRAMEBUFFER_COMPLETE) {
+			console.log(`Failed to resize postprocessing framebuffer: ${non_depth_shaded_complete}`);
+		}
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	}
+	//call before rendering that you want to postprocess:
+	begin_depth_shaded() {
+		if (!this.enabled) return;
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.depth_shaded_fb);
+	}
+	begin_non_depth_shaded() {
+		if (!this.enabled) return;
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.non_depth_shaded_fb);
+	}
+	//call to copy post-processed stuff back to the screen:
+	end() {
+		if (!this.enabled) return;
+
+		//for DEBUG purposes:
+		if (!('check_tex' in this)) {
+			this.check_tex = gl.createTexture();
+			gl.bindTexture(gl.TEXTURE_2D, this.check_tex);
+			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 2, 2, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([
+				255,255,255,255,  0,0,0,255,
+				0,0,0,255,   255,255,255,255
+			]));
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+			// gl.bindTexture(gl.TEXTURE_2D, 0);
+		}
+
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+		gl.activeTexture(gl.TEXTURE3);
+		gl.bindTexture(gl.TEXTURE_2D, this.non_depth_shaded_depth_tex);
+
+		gl.activeTexture(gl.TEXTURE2);
+		gl.bindTexture(gl.TEXTURE_2D, this.non_depth_shaded_color_tex);
+
+		gl.activeTexture(gl.TEXTURE1);
+		gl.bindTexture(gl.TEXTURE_2D, this.depth_shaded_depth_tex);
+
+		gl.activeTexture(gl.TEXTURE0);
+		gl.bindTexture(gl.TEXTURE_2D, this.depth_shaded_color_tex);
+
+		gl.useProgram(postprocessProgram.program);
+		gl.uniform1i(postprocessProgram.uniformLocations.DEPTH_SHADED_TEX, 0);
+		gl.uniform1i(postprocessProgram.uniformLocations.DEPTH_SHADED_DEPTH, 1);
+		gl.uniform1i(postprocessProgram.uniformLocations.NON_DEPTH_SHADED_TEX, 2);
+		gl.uniform1i(postprocessProgram.uniformLocations.NON_DEPTH_SHADED_DEPTH, 3);
+		gl.uniform2f(postprocessProgram.uniformLocations.PX, 1 / canvas.width, 1 / canvas.height);
+
+		gl.disable(gl.DEPTH_TEST);
+		gl.disable(gl.BLEND);
+		// console.log("drawing");
+		gl.clearColor(0.5,0.5,0.5,1.0);
+		gl.clear(gl.COLOR_BUFFER_BIT);
+		fullscreenTriangle.draw(postprocessProgram);
+	}
+}
+const postprocess = new Postprocess();
+window.postprocess = postprocess; //DEBUG
+
+function redrawPatternNonDepthShaded(pixelRatio) {
+	visPreviewLines.update();
+
+	//update status line:
+	{
+		let info = "";
+		if (template !== null) {
+			info += `Template: ${template.longsignature()}`;
+		} else {
+			info += `No Template`;
+		}
+		if (CURSOR.over) {
+			info += `; Hovered: ${CURSOR.over.cell.template.longsignature()} / face: ${CURSOR.over.face} (${CURSOR.over.cell.template.faces[CURSOR.over.face].type})`;
+		}
+		STATUS_LINE.innerText = info;
+	}
+
+	// show info about hovered block in sidebar
+	displayHoveredBlockInfo(CURSOR.over);
+	// if (body.cells.length > 0) displayHoveredBlockInfo({cellID: 0, cell: body.cells[0]});
+
+	gl.lineWidth(2.0 * pixelRatio);
+	visPreviewLines.draw(colorProgram);
+
+	gl.lineWidth(1.0 * pixelRatio);
+	grid.draw(colorProgram);
+
+	if (yarnVisMode == "Tube") {
+		visWireCells.draw(colorProgram);
+
+		// also draw transparent tubes here, since we need to disable depth testing
+		if (visTubes.dirty) {
+			visTubes.set(body);
+			visTransparentTubes.set(body);
+			delete visTubes.dirty;
+		}
+
+		// draw transparent tubes per https://xem.github.io/articles/webgl-guide-part-2.html#1a
+		if (!visTransparentTubes.empty) {
+			gl.useProgram(textureProgram.program);
+			gl.enable(gl.BLEND);
+			gl.blendEquation(gl.FUNC_ADD);
+			gl.disable(gl.DEPTH_TEST);
+			gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+			visTransparentTubes.draw(textureProgram);
+			gl.enable(gl.DEPTH_TEST);
+			gl.disable(gl.BLEND);
+			gl.useProgram(colorProgram.program);
+		}
+	}
+
+	//show "hidden" debug lines also:
+
+	gl.enable(gl.BLEND);
+	gl.blendEquation(gl.FUNC_ADD);
+	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+	gl.uniform4f(
+		colorProgram.uniformLocations.TINT,
+		0.0, 0.0, 0.0, 0.1
+	);
+	gl.depthFunc(gl.GREATER);
+	gl.depthMask(false);
+	gl.lineWidth(2.0 * pixelRatio);
+	visPreviewLines.draw(colorProgram);
+
+	gl.depthFunc(gl.LESS);
+	gl.depthMask(true);
+	gl.disable(gl.BLEND);
+}
+
+function redrawPatternDepthShaded(pixelRatio) {
 
 	//update geometry:
 	if (yarnVisMode == "Wire" && visWire.dirty) {
@@ -3374,78 +4096,21 @@ function redrawPattern(pixelRatio) {
 		visTransparentTubes.set(body);
 		delete visTubes.dirty;
 	}
+	const cell = previewCell();
+	visPreviewTubes.set({cells: (cell ? [cell] : [])});
 
-	visDebug.update();
-
-	//update status line:
-	{
-		let info = "";
-		if (template !== null) {
-			info += `Template: ${template.signature()}`;
-		} else {
-			info += `No Template`;
-		}
-		if (MOUSE.over) {
-			info += `; Hovered: ${MOUSE.over.cell.template.signature()} / face: ${MOUSE.over.face} (${MOUSE.over.cell.template.faces[MOUSE.over.face].type})`;
-		}
-		STATUS_LINE.innerText = info;
-	}
-
-	// show info about hovered block in sidebar
-	displayHoveredBlockInfo(MOUSE.over);
-	// if (body.cells.length > 0) displayHoveredBlockInfo({cellID: 0, cell: body.cells[0]});
-
-
-	gl.lineWidth(2.0 * pixelRatio);
-	visDebug.draw(colorProgram);
-
-	gl.lineWidth(1.0 * pixelRatio);
-	grid.draw(colorProgram);
-
+	
 	if (yarnVisMode == "Body") {
 		visBody.draw(colorProgram);
 	} else if (yarnVisMode == "Wire") {
 		visWire.draw(colorProgram);
 	} else if (yarnVisMode == "Tube") {
-		visWireCells.draw(colorProgram);
-
 		gl.useProgram(textureProgram.program);
 		// draw opaque tubes
-		if (!visTubes.empty) {
-			visTubes.draw(textureProgram);
-		}
-
-		// draw transparent tubes per https://xem.github.io/articles/webgl-guide-part-2.html#1a
-		if (!visTransparentTubes.empty) {
-			gl.enable(gl.BLEND);
-			gl.blendEquation(gl.FUNC_ADD);
-			gl.disable(gl.DEPTH_TEST);
-			gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-			visTransparentTubes.draw(textureProgram);
-			gl.enable(gl.DEPTH_TEST);
-			gl.disable(gl.BLEND);
-		}
-
+		if (!visTubes.empty) visTubes.draw(textureProgram);
+		if (!visPreviewTubes.empty) visPreviewTubes.draw(textureProgram);
 		gl.useProgram(colorProgram.program);
 	}
-
-	//show "hidden" debug lines also:
-
-	gl.enable(gl.BLEND);
-	gl.blendEquation(gl.FUNC_ADD);
-	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-	gl.uniform4f(
-		colorProgram.uniformLocations.TINT,
-		0.0, 0.0, 0.0, 0.1
-	);
-	gl.depthFunc(gl.GREATER);
-	gl.depthMask(false);
-	gl.lineWidth(2.0 * pixelRatio);
-	visDebug.draw(colorProgram);
-
-	gl.depthFunc(gl.LESS);
-	gl.depthMask(true);
-	gl.disable(gl.BLEND);
 }
 
 function redrawTemplate(pixelRatio) {
@@ -3479,14 +4144,14 @@ function redrawTemplate(pixelRatio) {
 	{
 		let info = "";
 		if (template !== null) {
-			info += `Template: ${template.signature()}`;
+			info += `Template: ${template.longsignature()}`;
 		} else {
 			info += `No Template`;
 		}
 		STATUS_LINE.innerText = info;
 	}
 
-	visDebug.update();
+	visPreviewLines.update();
 
 	gl.lineWidth(1.0 * pixelRatio);
 	grid.draw(colorProgram);
@@ -3516,7 +4181,7 @@ function redrawTemplate(pixelRatio) {
 	gl.depthFunc(gl.GREATER);
 	gl.depthMask(false);
 	gl.lineWidth(2.0 * pixelRatio);
-	visDebug.draw(colorProgram);
+	visPreviewLines.draw(colorProgram);
 
 	gl.depthFunc(gl.LESS);
 	gl.depthMask(true);
@@ -3525,6 +4190,8 @@ function redrawTemplate(pixelRatio) {
 
 function redraw() {
 	const pixelRatio = window.devicePixelRatio;
+
+	let clearColor = [0.1, 0.1, 0.1];
 
 	//make sure canvas size matches element size:
 	(function resize() {
@@ -3537,6 +4204,13 @@ function redraw() {
 		canvas.height = height;
 		gl.viewport(0,0,width,height);
 		camera.aspect = width / height;
+
+		// read clearColor from CSS
+		const rgbColor = style["background-color"];
+		// Use a regular expression to extract the r,g,b components from a string of the form "rgb(r, g, b)".
+		// The unescaped parentheses capture the r,g,b values which can be accessed as elements 1,2,3 of the returned match
+		const matchResult = rgbColor.match(/^rgb\s*\(\s*(\d+),\s*(\d+),\s*(\d+)\)\s*$/);
+		if (matchResult.length >= 4) clearColor = [matchResult[1]/255., matchResult[2]/255., matchResult[3]/255.];
 	})();
 
 	// Update displayed knitout code if necessary
@@ -3547,9 +4221,14 @@ function redraw() {
 	}
 
 	//update mouse info:
-	if (MOUSE.dirty) setMouseOver();
+	if (CURSOR.dirty || MOUSE.dirty) setCursorOver();
 
-	gl.clearColor(0.1, 0.1, 0.1, 1.0);
+	//- - - - - - - - - - - - - - - - - - - -
+	postprocess.resize(canvas.width, canvas.height);
+
+	postprocess.begin_depth_shaded();
+	gl.clearColor(clearColor[0], clearColor[1], clearColor[2], 1.0);
+
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	gl.enable(gl.DEPTH_TEST);
 	gl.depthFunc(gl.LESS);
@@ -3598,7 +4277,8 @@ function redraw() {
 		);
 		gl.uniform1f(
 			textureProgram.uniformLocations.selectedCellID,
-			MOUSE.over === null ?  -1. : MOUSE.over.cellID
+			// HACK: don't highlight selected cell in template view mode. Really, we should probably make CURSOR.over depend on mode
+			(CURSOR.over === null || viewMode === ViewMode.Template) ?  -1. : CURSOR.over.cellID
 		);
 		gl.uniform4f(
 			textureProgram.uniformLocations.TINT,
@@ -3618,11 +4298,30 @@ function redraw() {
 		gl.useProgram(colorProgram.program);
 	}
 	
+	// draw yarn
 	if (viewMode === ViewMode.Pattern) {
-		redrawPattern(pixelRatio);
+		redrawPatternDepthShaded(pixelRatio);
 	} else if (viewMode === ViewMode.Template) {
 		redrawTemplate(pixelRatio);
 	}
+
+	// prepare for UI pass (only used in pattern mode)
+	postprocess.begin_non_depth_shaded();
+	gl.clearColor(clearColor[0], clearColor[1], clearColor[2], 1.0);
+
+	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+	gl.enable(gl.DEPTH_TEST);
+	gl.depthFunc(gl.LESS);
+
+	gl.useProgram(colorProgram.program);
+
+	// if in pattern mode, draw UI separately
+	if (viewMode === ViewMode.Pattern) {
+		redrawPatternNonDepthShaded(pixelRatio);
+	}
+
+	postprocess.end();
+	//- - - - - - - - - - - - - - - - - - - -
 
 	
 }
