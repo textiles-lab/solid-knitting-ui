@@ -271,6 +271,7 @@ body.lightmode #darkmode-checkbox-label::after {
 	margin: 0;
 	margin-bottom: 0.5em;
 	font-family: sans-serif;
+	cursor: pointer;
 }
 #library {
 /*	grid-row: 2 ;*/
@@ -317,10 +318,14 @@ body.lightmode #darkmode-checkbox-label::after {
 #view-shortcuts {
 	/*border-top: 2px solid var(--separator-color);
 	border-left: 2pt solid var(--separator-color);*/
-	padding-left: 0.25em;
-	padding-top: 0.5em;
+	padding: 0.5em 0 0 0.25em; /* top right bottom left */
 	border-radius: 5px;
 	background-color: var(--background-color);
+}
+#view-shortcuts summary {
+	padding-left: 0.5em;
+	margin: 0;
+	margin-bottom: 0.5em;
 }
 #shortcuts {
 	grid-row: 3 ;
@@ -433,14 +438,16 @@ body.lightmode #darkmode-checkbox-label::after {
 	display: grid; /* set to grid from javascript later too */
 	grid-template-rows: auto 1fr;
 	gap: 0;
-	padding-bottom: 0.5em;
+	padding: 0.5em 0 0 0.25em; /* top right bottom left */
 	/*border-top: 2pt solid var(--separator-color);
 	border-left: 2pt solid var(--separator-color);*/
 	border-radius: 5px 0 0 5px;
 	background-color: var(--background-color);
 }
-#view-block-data h2 {
-	padding: 0.5em 0 0 0.5em; /* top right bottom left */
+#view-block-data summary {
+	padding-left: 0.5em;
+	margin: 0;
+	margin-bottom: 0.5em;
 }
 #hovered-block-info {
 	display: grid;
@@ -564,10 +571,10 @@ body.lightmode #darkmode-checkbox-label::after {
 </div>
 
 <!-- see information about highlighted block -->
-<div id="view-block-data">
-	<h2> Block Info:</h2>
+<details id="view-block-data" open>
+	<summary> Block Info:</summary>
 	<form id="hovered-block-info"></form>
-</div>
+</details>
 
 <!-- also list shortcuts -->
 <details id="view-shortcuts" open>
