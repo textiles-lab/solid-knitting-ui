@@ -3726,24 +3726,24 @@ const postprocessProgram = new Program(gl,
 		texCoord = TexCoord;
 	}
 `,`
-	uniform sampler2D YARN_TEX;
-	uniform sampler2D YARN_DEPTH;
-	uniform sampler2D UI_TEX;
-	uniform sampler2D UI_DEPTH;
+	uniform sampler2D DEPTH_SHADED_TEX;
+	uniform sampler2D DEPTH_SHADED_DEPTH;
+	uniform sampler2D NON_DEPTH_SHADED_TEX;
+	uniform sampler2D NON_DEPTH_SHADED_DEPTH;
 	uniform highp vec2 PX;
 	varying highp vec2 texCoord;
 	void main() {
 		//gl_FragColor = vec4(1,0,1,1);
 		//gl_FragColor = vec4(texCoord,1,1);
-		//gl_FragColor = texture2D(YARN_TEX, gl_FragCoord.xy/1000.0);
-		//gl_FragColor = vec4(texture2D(YARN_TEX, texCoord).r, texCoord, 1);
-		mediump vec3 yarn_color = texture2D(YARN_TEX, texCoord).rgb;
-		mediump vec3 ui_color = texture2D(UI_TEX, texCoord).rgb;
-		mediump float yarn_depth = texture2D(YARN_DEPTH, texCoord).r;
-		mediump float ui_depth = texture2D(UI_DEPTH, texCoord).r;
+		//gl_FragColor = texture2D(DEPTH_SHADED_TEX, gl_FragCoord.xy/1000.0);
+		//gl_FragColor = vec4(texture2D(DEPTH_SHADED_TEX, texCoord).r, texCoord, 1);
+		mediump vec3 depth_shaded_color = texture2D(DEPTH_SHADED_TEX, texCoord).rgb;
+		mediump vec3 non_depth_shaded_color = texture2D(NON_DEPTH_SHADED_TEX, texCoord).rgb;
+		mediump float depth_shaded_depth = texture2D(DEPTH_SHADED_DEPTH, texCoord).r;
+		mediump float non_depth_shaded_depth = texture2D(NON_DEPTH_SHADED_DEPTH, texCoord).r;
 
 		//this is taken from autoknit:
-		highp float ref = texture2D(YARN_DEPTH, texCoord).r;
+		highp float ref = texture2D(DEPTH_SHADED_DEPTH, texCoord).r;
 		highp float z = min(0.9999, ref);
 		//over from depth component space -> projected z value:
 		z = 2.0 * (z - 0.5);
@@ -3758,7 +3758,7 @@ const postprocessProgram = new Program(gl,
 		highp float amt = 1.0 / (z - ref);
 
 		#define DO(X,Y) { \
-			lowp float val = texture2D(YARN_DEPTH, texCoord+vec2(X,Y)*PX*1.5).r; \
+			lowp float val = texture2D(DEPTH_SHADED_DEPTH, texCoord+vec2(X,Y)*PX*1.5).r; \
 			tint += clamp((val - ref) * amt, 0.0, 1.0); \
 		}
 
@@ -3774,8 +3774,9 @@ const postprocessProgram = new Program(gl,
 			}
 		}    
 		tint = 1.0 - (tint / w);
-		yarn_color *= tint;
-		gl_FragColor = yarn_depth < ui_depth ? vec4(yarn_color, 1) : vec4(ui_color, 1);
+		depth_shaded_color *= tint;
+		gl_FragColor = depth_shaded_depth < non_depth_shaded_depth ? vec4(depth_shaded_color, 1) : vec4(non_depth_shaded_color, 1);
+		// gl_FragColor = vec4(depth_shaded_color, 1);
 	}
 `);
 window.postprocessProgram = postprocessProgram;
@@ -3818,8 +3819,8 @@ class Postprocess {
 		this.w = w;
 		this.h = h;
 
-		if (!('yarn_depth_tex' in this)) this.yarn_depth_tex = gl.createTexture();
-		gl.bindTexture(gl.TEXTURE_2D, this.yarn_depth_tex);
+		if (!('depth_shaded_depth_tex' in this)) this.depth_shaded_depth_tex = gl.createTexture();
+		gl.bindTexture(gl.TEXTURE_2D, this.depth_shaded_depth_tex);
 		gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, w, h, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -3827,8 +3828,8 @@ class Postprocess {
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 		gl.bindTexture(gl.TEXTURE_2D, null);
 
-		if (!('yarn_color_tex' in this)) this.yarn_color_tex = gl.createTexture();
-		gl.bindTexture(gl.TEXTURE_2D, this.yarn_color_tex);
+		if (!('depth_shaded_color_tex' in this)) this.depth_shaded_color_tex = gl.createTexture();
+		gl.bindTexture(gl.TEXTURE_2D, this.depth_shaded_color_tex);
 		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, w, h, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -3836,22 +3837,22 @@ class Postprocess {
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 		gl.bindTexture(gl.TEXTURE_2D, null);
 
-		if (!('yarn_fb' in this)) {
-			this.yarn_fb = gl.createFramebuffer();
-			gl.bindFramebuffer(gl.FRAMEBUFFER, this.yarn_fb);
-			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.yarn_color_tex, 0);
-			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.yarn_depth_tex, 0);
+		if (!('depth_shaded_fb' in this)) {
+			this.depth_shaded_fb = gl.createFramebuffer();
+			gl.bindFramebuffer(gl.FRAMEBUFFER, this.depth_shaded_fb);
+			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.depth_shaded_color_tex, 0);
+			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.depth_shaded_depth_tex, 0);
 			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 		}
-		gl.bindFramebuffer(gl.FRAMEBUFFER, this.yarn_fb);
-		const yarn_complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
-		if (yarn_complete !== gl.FRAMEBUFFER_COMPLETE) {
-			console.log(`Failed to resize postprocessing framebuffer: ${yarn_complete}`);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.depth_shaded_fb);
+		const depth_shaded_complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+		if (depth_shaded_complete !== gl.FRAMEBUFFER_COMPLETE) {
+			console.log(`Failed to resize postprocessing framebuffer: ${depth_shaded_complete}`);
 		}
 		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-		if (!('ui_depth_tex' in this)) this.ui_depth_tex = gl.createTexture();
-		gl.bindTexture(gl.TEXTURE_2D, this.ui_depth_tex);
+		if (!('non_depth_shaded_depth_tex' in this)) this.non_depth_shaded_depth_tex = gl.createTexture();
+		gl.bindTexture(gl.TEXTURE_2D, this.non_depth_shaded_depth_tex);
 		gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, w, h, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -3859,8 +3860,8 @@ class Postprocess {
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 		gl.bindTexture(gl.TEXTURE_2D, null);
 
-		if (!('ui_color_tex' in this)) this.ui_color_tex = gl.createTexture();
-		gl.bindTexture(gl.TEXTURE_2D, this.ui_color_tex);
+		if (!('non_depth_shaded_color_tex' in this)) this.non_depth_shaded_color_tex = gl.createTexture();
+		gl.bindTexture(gl.TEXTURE_2D, this.non_depth_shaded_color_tex);
 		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, w, h, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -3868,28 +3869,28 @@ class Postprocess {
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 		gl.bindTexture(gl.TEXTURE_2D, null);
 
-		if (!('ui_fb' in this)) {
-			this.ui_fb = gl.createFramebuffer();
-			gl.bindFramebuffer(gl.FRAMEBUFFER, this.ui_fb);
-			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.ui_color_tex, 0);
-			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.ui_depth_tex, 0);
+		if (!('non_depth_shaded_fb' in this)) {
+			this.non_depth_shaded_fb = gl.createFramebuffer();
+			gl.bindFramebuffer(gl.FRAMEBUFFER, this.non_depth_shaded_fb);
+			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.non_depth_shaded_color_tex, 0);
+			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.non_depth_shaded_depth_tex, 0);
 			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 		}
-		gl.bindFramebuffer(gl.FRAMEBUFFER, this.ui_fb);
-		const ui_complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
-		if (ui_complete !== gl.FRAMEBUFFER_COMPLETE) {
-			console.log(`Failed to resize postprocessing framebuffer: ${ui_complete}`);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.non_depth_shaded_fb);
+		const non_depth_shaded_complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+		if (non_depth_shaded_complete !== gl.FRAMEBUFFER_COMPLETE) {
+			console.log(`Failed to resize postprocessing framebuffer: ${non_depth_shaded_complete}`);
 		}
 		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 	}
 	//call before rendering that you want to postprocess:
-	begin_yarn() {
+	begin_depth_shaded() {
 		if (!this.enabled) return;
-		gl.bindFramebuffer(gl.FRAMEBUFFER, this.yarn_fb);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.depth_shaded_fb);
 	}
-	begin_ui() {
+	begin_non_depth_shaded() {
 		if (!this.enabled) return;
-		gl.bindFramebuffer(gl.FRAMEBUFFER, this.ui_fb);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.non_depth_shaded_fb);
 	}
 	//call to copy post-processed stuff back to the screen:
 	end() {
@@ -3911,22 +3912,22 @@ class Postprocess {
 		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
 		gl.activeTexture(gl.TEXTURE3);
-		gl.bindTexture(gl.TEXTURE_2D, this.ui_depth_tex);
+		gl.bindTexture(gl.TEXTURE_2D, this.non_depth_shaded_depth_tex);
 
 		gl.activeTexture(gl.TEXTURE2);
-		gl.bindTexture(gl.TEXTURE_2D, this.ui_color_tex);
+		gl.bindTexture(gl.TEXTURE_2D, this.non_depth_shaded_color_tex);
 
 		gl.activeTexture(gl.TEXTURE1);
-		gl.bindTexture(gl.TEXTURE_2D, this.yarn_depth_tex);
+		gl.bindTexture(gl.TEXTURE_2D, this.depth_shaded_depth_tex);
 
 		gl.activeTexture(gl.TEXTURE0);
-		gl.bindTexture(gl.TEXTURE_2D, this.yarn_color_tex);
+		gl.bindTexture(gl.TEXTURE_2D, this.depth_shaded_color_tex);
 
 		gl.useProgram(postprocessProgram.program);
-		gl.uniform1i(postprocessProgram.uniformLocations.YARN_TEX, 0);
-		gl.uniform1i(postprocessProgram.uniformLocations.YARN_DEPTH, 1);
-		gl.uniform1i(postprocessProgram.uniformLocations.UI_TEX, 2);
-		gl.uniform1i(postprocessProgram.uniformLocations.UI_DEPTH, 3);
+		gl.uniform1i(postprocessProgram.uniformLocations.DEPTH_SHADED_TEX, 0);
+		gl.uniform1i(postprocessProgram.uniformLocations.DEPTH_SHADED_DEPTH, 1);
+		gl.uniform1i(postprocessProgram.uniformLocations.NON_DEPTH_SHADED_TEX, 2);
+		gl.uniform1i(postprocessProgram.uniformLocations.NON_DEPTH_SHADED_DEPTH, 3);
 		gl.uniform2f(postprocessProgram.uniformLocations.PX, 1 / canvas.width, 1 / canvas.height);
 
 		gl.disable(gl.DEPTH_TEST);
@@ -3940,7 +3941,7 @@ class Postprocess {
 const postprocess = new Postprocess();
 window.postprocess = postprocess; //DEBUG
 
-function redrawPatternUI(pixelRatio) {
+function redrawPatternNonDepthShaded(pixelRatio) {
 	visPreviewLines.update();
 
 	//update status line:
@@ -3969,6 +3970,26 @@ function redrawPatternUI(pixelRatio) {
 
 	if (yarnVisMode == "Tube") {
 		visWireCells.draw(colorProgram);
+
+		// also draw transparent tubes here, since we need to disable depth testing
+		if (visTubes.dirty) {
+			visTubes.set(body);
+			visTransparentTubes.set(body);
+			delete visTubes.dirty;
+		}
+
+		// draw transparent tubes per https://xem.github.io/articles/webgl-guide-part-2.html#1a
+		if (!visTransparentTubes.empty) {
+			gl.useProgram(textureProgram.program);
+			gl.enable(gl.BLEND);
+			gl.blendEquation(gl.FUNC_ADD);
+			gl.disable(gl.DEPTH_TEST);
+			gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+			visTransparentTubes.draw(textureProgram);
+			gl.enable(gl.DEPTH_TEST);
+			gl.disable(gl.BLEND);
+			gl.useProgram(colorProgram.program);
+		}
 	}
 
 	//show "hidden" debug lines also:
@@ -3990,7 +4011,7 @@ function redrawPatternUI(pixelRatio) {
 	gl.disable(gl.BLEND);
 }
 
-function redrawPatternYarn(pixelRatio) {
+function redrawPatternDepthShaded(pixelRatio) {
 
 	//update geometry:
 	if (yarnVisMode == "Wire" && visWire.dirty) {
@@ -4023,18 +4044,6 @@ function redrawPatternYarn(pixelRatio) {
 		// draw opaque tubes
 		if (!visTubes.empty) visTubes.draw(textureProgram);
 		if (!visPreviewTubes.empty) visPreviewTubes.draw(textureProgram);
-
-		// draw transparent tubes per https://xem.github.io/articles/webgl-guide-part-2.html#1a
-		if (!visTransparentTubes.empty) {
-			gl.enable(gl.BLEND);
-			gl.blendEquation(gl.FUNC_ADD);
-			gl.disable(gl.DEPTH_TEST);
-			gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-			visTransparentTubes.draw(textureProgram);
-			gl.enable(gl.DEPTH_TEST);
-			gl.disable(gl.BLEND);
-		}
-
 		gl.useProgram(colorProgram.program);
 	}
 }
@@ -4152,7 +4161,7 @@ function redraw() {
 	//- - - - - - - - - - - - - - - - - - - -
 	postprocess.resize(canvas.width, canvas.height);
 
-	postprocess.begin_yarn();
+	postprocess.begin_depth_shaded();
 	gl.clearColor(clearColor[0], clearColor[1], clearColor[2], 1.0);
 
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -4226,13 +4235,13 @@ function redraw() {
 	
 	// draw yarn
 	if (viewMode === ViewMode.Pattern) {
-		redrawPatternYarn(pixelRatio);
+		redrawPatternDepthShaded(pixelRatio);
 	} else if (viewMode === ViewMode.Template) {
 		redrawTemplate(pixelRatio);
 	}
 
 	// prepare for UI pass (only used in pattern mode)
-	postprocess.begin_ui();
+	postprocess.begin_non_depth_shaded();
 	gl.clearColor(clearColor[0], clearColor[1], clearColor[2], 1.0);
 
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -4243,7 +4252,7 @@ function redraw() {
 
 	// if in pattern mode, draw UI separately
 	if (viewMode === ViewMode.Pattern) {
-		redrawPatternUI(pixelRatio);
+		redrawPatternNonDepthShaded(pixelRatio);
 	}
 
 	postprocess.end();
