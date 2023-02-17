@@ -26,9 +26,9 @@ body.darkmode {
 
 body.lightmode {
 	--far-background-color: #d4ccd2;
-	--background-color: #eef;
-	--background-color-medium: #eefb;
-	--background-color-light: #eef6;
+	--background-color: #f6f0ee;
+	--background-color-medium: #f6f0eebb;
+	--background-color-light: #f6f0ee66;
 	--background-color-highlight: #2221;
 	--separator-color: #c4bcc2;
 	--main-font-color: #222;
@@ -1347,6 +1347,7 @@ function nextTemplate() {
 		selected = t;
 	}
 	setActiveTemplate(selected);
+	requestRedraw();
 }
 
 //select previous template from library:
@@ -1362,6 +1363,7 @@ function prevTemplate() {
 		selected = t;
 	}
 	setActiveTemplate(selected);
+	requestRedraw();
 }
 
 //select next template from library:
@@ -1383,6 +1385,7 @@ function nextCompatibleTemplate() {
 		selected = t;
 	}
 	setActiveTemplate(selected);
+	requestRedraw();
 }
 
 //select previous template from library:
@@ -1404,6 +1407,7 @@ function prevCompatibleTemplate() {
 		selected = t;
 	}
 	setActiveTemplate(selected);
+	requestRedraw();
 }
 
 function setTemplateFromSignature(stripped_signature) {
@@ -3931,8 +3935,6 @@ window.postprocess = postprocess; //DEBUG
 
 function redrawPatternUI(pixelRatio) {
 	visPreviewLines.update();
-	const cell = previewCell();
-	visPreviewTubes.set({cells: (cell ? [cell] : [])});
 
 	//update status line:
 	{
@@ -4001,6 +4003,8 @@ function redrawPatternYarn(pixelRatio) {
 		visTransparentTubes.set(body);
 		delete visTubes.dirty;
 	}
+	const cell = previewCell();
+	visPreviewTubes.set({cells: (cell ? [cell] : [])});
 
 	
 	if (yarnVisMode == "Body") {
