@@ -1067,28 +1067,24 @@ function relativeMouse(evt, elt) {
 	};
 }
 
-function selectFace(cell, face) {
+/* set CURSOR to cell, face pair. Does not store action in undo queue */
+function unsafeSelectFace(cell, face) {
 	if (cell == null || face == null) return;
 
-	const oldCursor = {x: CURSOR.x, y: CURSOR.y, over: CURSOR.over, grid: CURSOR.grid};
-	if (CURSOR.frozen) oldCursor.frozen = true;
-
-	const newCursor = {x: null, y: null, over: {cell, face}, grid: null, frozen: true};
-	pushCommand({type: "Select", oldCursor: oldCursor, newCursor: newCursor});
+	const cellID = body.cells.indexOf(cell);
+	const newCursor = {x: null, y: null, over: {cell, face, cellID}, grid: null, frozen: true};
+	CURSOR = newCursor;
 }
 
 function selectMouseOver() {
-	const oldCursor = {x: CURSOR.x, y: CURSOR.y, over: CURSOR.over, grid: CURSOR.grid};
-	if (CURSOR.frozen) {
-		oldCursor.frozen = true;
-	}
+	const oldCursor = storeCursor(CURSOR);
 
 	CURSOR.frozen = false; // unfreeze cursor so that we select even if something is already selected
 	setCursorOver();
 	CURSOR.frozen = true;
 	const newCursor = {x: CURSOR.x, y: CURSOR.y, over: CURSOR.over, grid: CURSOR.grid, frozen: true};
 
-	pushCommand({type: "Select", oldCursor: oldCursor, newCursor: newCursor});
+	pushCommand({type: "Select", oldCursor: oldCursor, newCursor: storeCursor(newCursor)});
 }
 
 canvas.addEventListener('wheel', function(evt){
@@ -1277,6 +1273,18 @@ let commandHistory = {
 	latest: 49
 };
 
+// record a cursor, but represent cursor.over.cell only using its cellID
+function storeCursor(cursor) {
+	const cellID = (cursor.over.cellID != null) ? cursor.over.cellID : body.cells.indexOf(cursor.over.cell);
+	const storedCursor = {x: cursor.x, y: cursor.y, over: {cellID: cellID, face: cursor.over.face}, grid: cursor.grid};
+	if (cursor.frozen) storedCursor.frozen = true;
+	return storedCursor;
+}
+function restoreCursor(storedCursor) {
+	CURSOR = storedCursor;
+	CURSOR.over.cell = body.cells[storedCursor.over.cellID];
+}
+
 function pushCommand(command) {
 	commandHistory.latest = (commandHistory.latest + 1) % commandHistory.commands.length;
 	commandHistory.commands[commandHistory.latest] = command;
@@ -1288,13 +1296,18 @@ function undoLatestCommand() {
 		console.log("reached end of undo history");
 		return; // no command to undo
 	}
-
-	if (command.type === "addCell") { // {type: "addCell", newCellIndex: newCellIndex}
+	console.log(command);
+	if (command.type === "addCell") { // {type: "addCell", newCellIndex: newCellIndex, [oldCursor: oldCursor]}
 		unsafeDeleteCell(command.newCellIndex);
-	} else if (command.type === "addMultipleCells") { // {type: "addMultipleCells", newCellIndices: newCellIndices}
+		if (command.oldCursor != null) {
+			restoreCursor(command.oldCursor);
+		}
+		requestRedraw();
+	} else if (command.type === "addMultipleCells") { // {type: "addMultipleCells", newCellIndices: newCellIndices, [oldCursor: oldCursor]}
 		for (let iCell of command.newCellIndices.sort().reverse()) { // remove in reverse order to prevent index problems
 			unsafeDeleteCell(iCell);
 		}
+		if (command.oldCursor != null) restoreCursor(command.oldCursor);
 	} else if (command.type === "deleteCell") { // {type: "deleteCell", cell: cell, cellIndex: cellIndex}
 		unsafeAddCell(command.cell, command.cellIndex);
 	} else if (command.type === "confirmGrabCell") {
@@ -1323,7 +1336,7 @@ function undoLatestCommand() {
 		ACTION = null; // just in case
 		cellDirty(cell);
 	} else if (command.type === "Select") {
-		CURSOR = command.oldCursor;
+		restoreCursor(command.oldCursor);
 	} else if (command.type === "editSchedulingData") {
 		// {type: "editSchedulingData", cell: over.cell, field: variableName, oldValue: over.cell.schedulingData[variableName], newValue: textInput.value}
 		command.cell.schedulingData[command.field] = command.oldValue;
@@ -1652,20 +1665,27 @@ function extrudeSelected() {
 	const newCellIndex = body.cells.length;
 
 	const result = unsafeExtrudeFace(CURSOR.over.cell, CURSOR.over.face);
-	if (result) {
-		// If successful, record command in undo queue
-		pushCommand({type: "addCell", newCellIndex: newCellIndex});
+	if (result != null) {
+		// If successful, record command in undo queue. Store old cursor since extrusion can move cursor
+		const oldCursor = storeCursor(CURSOR);
+		pushCommand({type: "addCell", newCellIndex: newCellIndex, oldCursor: oldCursor});
+
+		if (CURSOR.frozen) {
+			unsafeSelectFace(result.cell, result.face);
+			requestRedraw();
+		}
 	}
 	return result;
 }
 
 /**
  * unsafeExtrudeFace(): 
- * Adds a properly-transformed copy of cell adjacent to face. Returns true if cell was created, false otherwise. Does not store action in undo queue.*/
+ * Adds a properly-transformed copy of cell adjacent to face. Returns the new cell and its face of the same type if one was created, null otherwise.
+ * Does not store action in undo queue.*/
 function unsafeExtrudeFace(cell, face) {
 	if (cell.template.name != "knit") {
 		console.error("Currently only knits can be extruded");
-		return false;
+		return null;
 	}
 
 	// console.log(face, cell.template.faces);
@@ -1675,19 +1695,25 @@ function unsafeExtrudeFace(cell, face) {
 		return; // we can't attach to this face
 	}
 
-	let preview = null;
+	let preview = null, previewFace=null;
 	if (faceType[1] === "y") {
 		// yarnwise-connected: keep same direction
 		preview = checkTemplateCompatible(cell, face, cell.template);
+		if (preview == null) return null;
 	} else if (faceType[1] === "l") {
 		// neighboring rows: we should flip direction
 		preview = checkTemplateCompatible(cell, face, findOppositeYarnDirectionTemplate(cell.template));
+		if (preview == null) return null;
+		previewFace = preview.template.faceFromType(faceType);
 	} else if (faceType[1] === "L") {
 		// neighboring layers: confusingly, we need to flip direction if we're "same"
 		if (cell.template.longname.endsWith("same")) {
 			preview = checkTemplateCompatible(cell, face, findOppositeYarnDirectionTemplate(cell.template));
+			if (preview == null) return null;
+			previewFace = preview.template.faceFromType(faceType);
 		} else {
 			preview = checkTemplateCompatible(cell, face, cell.template);
+			previewFace = face;
 		}
 	}
 
@@ -1699,7 +1725,7 @@ function unsafeExtrudeFace(cell, face) {
 
 	// Check global correctness from preview cell. 
 	if (!checkGlobalCellCorrectness()) console.log("Warning: There is exists a cycle in yarn directions!");
-	return true;
+	return {cell: preview, face: previewFace};
 }
 
 /**
@@ -1739,14 +1765,18 @@ function extrudeContiguous() {
 		}
 	}
 
+	// Store old cursor since extrusion can move cursor
+	const oldCursor = storeCursor(CURSOR);
 	const newCellIndices = [];
-	for (let {cell, face} of regionFaces) {
+	for (let iF=0; iF<regionFaces.length; iF++) {
 		const newCellIndex = body.cells.length;
-		const success = unsafeExtrudeFace(cell, face);
-		if (success) newCellIndices.push(newCellIndex);
+		const createdFace = unsafeExtrudeFace(regionFaces[iF].cell, regionFaces[iF].face);
+		if (createdFace != null) newCellIndices.push(newCellIndex);
+		if (iF === 0 && CURSOR.frozen) {
+			unsafeSelectFace(createdFace.cell, createdFace.face);
+		}
 	}
-
-	pushCommand({type: "addMultipleCells", newCellIndices: newCellIndices});
+	pushCommand({type: "addMultipleCells", newCellIndices: newCellIndices, oldCursor: oldCursor});
 }
 
 // Topological sort to check correctness using BFS using Kahn's accross entire implementation.
@@ -2073,10 +2103,9 @@ function startConnectFace() {
 	if (ACTION !== null) return;
 	if (CURSOR.dirty) setCursorOver();
 	if (!CURSOR.over) return;
+	const oldCursor = storeCursor(CURSOR);
 	const cell = CURSOR.over.cell;
 	const face = CURSOR.over.face;
-	// let oldCURSOR = {x: CURSOR.x, y: CURSOR.y, over: CURSOR.over, grid: CURSOR.grid };
-	// if (CURSOR.frozen) oldCURSOR.frozen = true;
 	delete CURSOR.frozen;
 
 	//is face already connected?
@@ -2153,11 +2182,10 @@ function startConnectFace() {
 				console.log("Confirming connect.");
 				setConnection.pending = false;
 				ACTION = null;
-				// CURSOR = oldCURSOR;
 				pushCommand({type: "confirmConnect", cellIndex: body.cells.indexOf(cell), face: face, oldConnection: oldConnection});
 			} else if (evt.code === 'Escape') {
 				cancelConnect();
-				CURSOR = oldCURSOR;
+				restoreCursor(oldCursor);
 			}
 		},
 	};
