@@ -781,10 +781,11 @@ function exportSolidKnitout(body) {
 						toVisit = adjCell; 
 					}
 					// Edge cases pertaining to other types of cast-on blocks. 
-					// if (currCell.template.faces[adjCellFace].type[1] == 'y' && adjCell.template.faces[adjCellFace].type[0] == '-'){
+					if ((adjCell.template.name == 'loop-next-layer')&&(adjCell.template.faces[adjCellFace].type[0] == '-'))){
 						//console.log("Pushed cell! -y -> y+ connection.")
-						//toVisit.push(currCellCon[i]); 
-					// }
+						solidk = solidk + skComment('Next layer')
+						solidk = solidk + skSchedule(adjCell.template.machine, adjCell);
+					}
 				}
 			}
 		}
