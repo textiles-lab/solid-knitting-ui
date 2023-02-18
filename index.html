@@ -4243,7 +4243,7 @@ function redrawTemplate(pixelRatio) {
 		delete visTemplateBody.dirty;
 	}
 	if (yarnVisMode == "Tube" && visTemplateTubes.dirty) {
-		visTemplateTubes.set(getTemplateBody(template));
+		visTemplateTubes.setAllCells(getTemplateBody(template));
 		delete visTemplateTubes.dirty;
 	}
 
