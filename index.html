@@ -1067,6 +1067,16 @@ function relativeMouse(evt, elt) {
 	};
 }
 
+function selectFace(cell, face) {
+	if (cell == null || face == null) return;
+
+	const oldCursor = {x: CURSOR.x, y: CURSOR.y, over: CURSOR.over, grid: CURSOR.grid};
+	if (CURSOR.frozen) oldCursor.frozen = true;
+
+	const newCursor = {x: null, y: null, over: {cell, face}, grid: null, frozen: true};
+	pushCommand({type: "Select", oldCursor: oldCursor, newCursor: newCursor});
+}
+
 function selectMouseOver() {
 	const oldCursor = {x: CURSOR.x, y: CURSOR.y, over: CURSOR.over, grid: CURSOR.grid};
 	if (CURSOR.frozen) {
@@ -1281,6 +1291,10 @@ function undoLatestCommand() {
 
 	if (command.type === "addCell") { // {type: "addCell", newCellIndex: newCellIndex}
 		unsafeDeleteCell(command.newCellIndex);
+	} else if (command.type === "addMultipleCells") { // {type: "addMultipleCells", newCellIndices: newCellIndices}
+		for (let iCell of command.newCellIndices.sort().reverse()) { // remove in reverse order to prevent index problems
+			unsafeDeleteCell(iCell);
+		}
 	} else if (command.type === "deleteCell") { // {type: "deleteCell", cell: cell, cellIndex: cellIndex}
 		unsafeAddCell(command.cell, command.cellIndex);
 	} else if (command.type === "confirmGrabCell") {
@@ -1635,16 +1649,23 @@ function extrudeSelected() {
 	if (CURSOR.dirty) setCursorOver();
 	if (CURSOR.over == null) return;
 
-	return extrudeFace(CURSOR.over.cell, CURSOR.over.face);
+	const newCellIndex = body.cells.length;
+
+	const result = unsafeExtrudeFace(CURSOR.over.cell, CURSOR.over.face);
+	if (result) {
+		// If successful, record command in undo queue
+		pushCommand({type: "addCell", newCellIndex: newCellIndex});
+	}
+	return result;
 }
 
 /**
- * extrudeFace(): 
- * Adds a properly-transformed copy of cell adjacent to face. */
-function extrudeFace(cell, face) {
+ * unsafeExtrudeFace(): 
+ * Adds a properly-transformed copy of cell adjacent to face. Returns true if cell was created, false otherwise. Does not store action in undo queue.*/
+function unsafeExtrudeFace(cell, face) {
 	if (cell.template.name != "knit") {
 		console.error("Currently only knits can be extruded");
-		return;
+		return false;
 	}
 
 	// console.log(face, cell.template.faces);
@@ -1676,11 +1697,9 @@ function extrudeFace(cell, face) {
 	const newCellIndex = body.cells.length;
 	unsafeAddCell(preview, newCellIndex);
 
-	// Record command in undo queue
-	pushCommand({type: "addCell", newCellIndex: newCellIndex});
-
 	// Check global correctness from preview cell. 
 	if (!checkGlobalCellCorrectness()) console.log("Warning: There is exists a cycle in yarn directions!");
+	return true;
 }
 
 /**
@@ -1720,9 +1739,14 @@ function extrudeContiguous() {
 		}
 	}
 
+	const newCellIndices = [];
 	for (let {cell, face} of regionFaces) {
-		extrudeFace(cell, face);
+		const newCellIndex = body.cells.length;
+		const success = unsafeExtrudeFace(cell, face);
+		if (success) newCellIndices.push(newCellIndex);
 	}
+
+	pushCommand({type: "addMultipleCells", newCellIndices: newCellIndices});
 }
 
 // Topological sort to check correctness using BFS using Kahn's accross entire implementation.
