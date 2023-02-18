@@ -776,15 +776,15 @@ function exportSolidKnitout(body) {
 				let adjCell = currCellCon[currFace].cell;
 				let adjCellFace = currCellCon[currFace].face;
 				if (sv.canConnectFaces(currCell.template.faces[currFace], adjCell.template.faces[adjCellFace])){
-					if (adjCell.template.faces[adjCellFace].type[1] == 'y' && adjCell.template.faces[adjCellFace].type[0] == '-'){
-						// "Pushed cell! -y -> y+ connection."
-						toVisit = adjCell; 
-					}
-					// Edge cases pertaining to other types of cast-on blocks. 
+					// Edge cases pertaining to loop-next-layer block. 
 					if ((adjCell.template.name == 'loop-next-layer')&&(adjCell.template.faces[adjCellFace].type[0] == '-'))){
 						//console.log("Pushed cell! -y -> y+ connection.")
 						solidk = solidk + skComment('Next layer')
 						solidk = solidk + skSchedule(adjCell.template.machine, adjCell);
+					}
+					if (adjCell.template.faces[adjCellFace].type[1] == 'y' && adjCell.template.faces[adjCellFace].type[0] == '-'){
+						// "Pushed cell! -y -> y+ connection."
+						toVisit = adjCell; 
 					}
 				}
 			}
