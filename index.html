@@ -584,8 +584,9 @@ body.lightmode #darkmode-checkbox-label::after {
 	<li> <button class="controlsButton" id="select-hovered-template">Select hovered template</button> (<span class="key">enter</span>)</li>
 	<li> <button class="controlsButton" id="delete">Delete cell</button> (<span class="key">X</span>)</li>
 	<li> <button class="controlsButton" id="grab">Grab cell</button> (<span class="key">G</span>)</li>
-	<li> <button class="controlsButton" id="add">Add cell</button> (<span class="key">G</span>)</li>
+	<li> <button class="controlsButton" id="add">Add cell</button> (<span class="key">E</span>)</li>
 	<li> <button class="controlsButton" id="extrude">Extrude cell</button> (<span class="key">G</span>)</li>
+	<li> <button class="controlsButton" id="extrude-contiguous">Extrude contiguous faces</button> (<span class="key">W</span>)</li>
 	<li> <button class="controlsButton" id="start-connection">Start/make connection</button> (<span class="key">C</span>)</li>
 	<li> <button class="controlsButton" id="check-for-cycles">Check for cycles</button> (<span class="key">U</span>)</li>
 	<li> <button class="controlsButton" id="prev-template">Prev template</button> (<span class="key">up</span>)</li>
@@ -1132,7 +1133,8 @@ document.getElementById("delete").onclick = function () {
 };
 document.getElementById("grab").onclick = startGrabCell;
 document.getElementById("add").onclick = addCell;
-document.getElementById("extrude").onclick = extrudeCell;
+document.getElementById("extrude").onclick = extrudeSelected;
+document.getElementById("extrude-contiguous").onclick = extrudeContiguous;
 document.getElementById("start-connection").onclick = function () {
 	if (ACTION) {
 		if (ACTION.type === "Connect") {
@@ -1199,7 +1201,9 @@ window.addEventListener('keydown', function(evt){
 		} else if (evt.code == 'KeyA') {
 			addCell();
 		} else if (evt.code == 'KeyE') {
-			extrudeCell();
+			extrudeSelected();
+		} else if (evt.code == 'KeyW') {
+			extrudeContiguous();
 		} else if (evt.code == 'Enter') {
 			if (CURSOR.over) {
 				setActiveTemplate(CURSOR.over.cell.template);
@@ -1607,40 +1611,44 @@ function findOppositeYarnDirectionTemplate(template) {
 }
 
 /**
- * extrudeCell (): 
+ * extrudeSelected (): 
  * Adds a properly-transformed copy of selected cell adjacent to selected face. */
-function extrudeCell() {
+function extrudeSelected() {
 	if (CURSOR.dirty) setCursorOver();
-
 	if (CURSOR.over == null) return;
 
-	const cell = CURSOR.over.cell;
-	const face = CURSOR.over.face;
+	return extrudeFace(CURSOR.over.cell, CURSOR.over.face);
+}
 
+/**
+ * extrudeFace(): 
+ * Adds a properly-transformed copy of cell adjacent to face. */
+function extrudeFace(cell, face) {
 	if (cell.template.name != "knit") {
 		console.error("Currently only knits can be extruded");
 		return;
 	}
 
-	console.log(face);
+	// console.log(face, cell.template.faces);
+	const faceType = cell.template.faces[face].type;
 
-	if (face.type.length < 2) {
+	if (faceType.length < 2) {
 		return; // we can't attach to this face
 	}
 
 	let preview = null;
-	if (face.type[1] === "y") {
+	if (faceType[1] === "y") {
 		// yarnwise-connected: keep same direction
 		preview = checkTemplateCompatible(cell, face, cell.template);
-	} else if (face.type[1] === "l") {
+	} else if (faceType[1] === "l") {
 		// neighboring rows: we should flip direction
 		preview = checkTemplateCompatible(cell, face, findOppositeYarnDirectionTemplate(cell.template));
-	} else {
-		// neighboring layers: we should flip direction unless we're "same"
+	} else if (faceType[1] === "L") {
+		// neighboring layers: confusingly, we need to flip direction if we're "same"
 		if (cell.template.longname.endsWith("same")) {
-			preview = checkTemplateCompatible(cell, face, cell.template);
-		} else {
 			preview = checkTemplateCompatible(cell, face, findOppositeYarnDirectionTemplate(cell.template));
+		} else {
+			preview = checkTemplateCompatible(cell, face, cell.template);
 		}
 	}
 
@@ -1655,6 +1663,48 @@ function extrudeCell() {
 
 	// Check global correctness from preview cell. 
 	if (!checkGlobalCellCorrectness()) console.log("Warning: There is exists a cycle in yarn directions!");
+}
+
+/**
+ * extrudeContiguous (): 
+ * Attempts to extrude each face connected to the hovered face via faces of the same signature */
+function extrudeContiguous() {
+	if (CURSOR.dirty) setCursorOver();
+	if (CURSOR.over == null) return;
+
+	const cell = CURSOR.over.cell;
+	const face = CURSOR.over.face;
+	const faceType = cell.template.faces[face].type;
+	if (faceType.length < 2) return;
+
+	const sig = faceType[1];
+
+	const regionFaces = [];
+	const cellQueue = [cell];
+	const visited = new Set([cell]);
+
+	while (cellQueue.length != 0) {
+		const currCell = cellQueue.pop();
+		let found = false;
+		for (let iF = 0; iF < currCell.template.faces.length; ++iF) {
+			if (!currCell.connections[iF] && (currCell.template.faces[iF].type.length >= 2 && currCell.template.faces[iF].type[1] === sig)) {
+				regionFaces.push({cell: currCell, face: iF});
+				found = true;
+			}
+		}
+		if (found) {
+			for (let iF = 0; iF < currCell.template.faces.length; ++iF) {
+				if (currCell.connections[iF] && !visited.has(currCell.connections[iF].cell)) {
+					cellQueue.push(currCell.connections[iF].cell);
+					visited.add(currCell.connections[iF].cell);
+				}
+			}
+		}
+	}
+
+	for (let {cell, face} of regionFaces) {
+		extrudeFace(cell, face);
+	}
 }
 
 // Topological sort to check correctness using BFS using Kahn's accross entire implementation.
