@@ -1273,16 +1273,24 @@ let commandHistory = {
 	latest: 49
 };
 
-// record a cursor, but represent cursor.over.cell only using its cellID
+// records the cursor (but represents cursor.over.cell only using its cellID)
 function storeCursor(cursor) {
-	const cellID = (cursor.over.cellID != null) ? cursor.over.cellID : body.cells.indexOf(cursor.over.cell);
-	const storedCursor = {x: cursor.x, y: cursor.y, over: {cellID: cellID, face: cursor.over.face}, grid: cursor.grid};
-	if (cursor.frozen) storedCursor.frozen = true;
-	return storedCursor;
+	if (cursor.over) {
+		const cellID = (cursor.over.cellID != null) ? cursor.over.cellID : body.cells.indexOf(cursor.over.cell);
+		const storedCursor = {x: cursor.x, y: cursor.y, over: {cellID: cellID, face: cursor.over.face}, grid: cursor.grid};
+		if (cursor.frozen) storedCursor.frozen = true;
+		return storedCursor;
+	} else {
+		const storedCursor = {x: cursor.x, y: cursor.y, over: cursor.over, grid: cursor.grid};
+		if (cursor.frozen) storedCursor.frozen = true;
+		return storedCursor;
+	}
 }
 function restoreCursor(storedCursor) {
 	CURSOR = storedCursor;
-	CURSOR.over.cell = body.cells[storedCursor.over.cellID];
+	if (CURSOR.over) {
+		CURSOR.over.cell = body.cells[storedCursor.over.cellID];
+	}
 }
 
 function pushCommand(command) {
@@ -1296,7 +1304,6 @@ function undoLatestCommand() {
 		console.log("reached end of undo history");
 		return; // no command to undo
 	}
-	console.log(command);
 	if (command.type === "addCell") { // {type: "addCell", newCellIndex: newCellIndex, [oldCursor: oldCursor]}
 		unsafeDeleteCell(command.newCellIndex);
 		if (command.oldCursor != null) {
@@ -1730,7 +1737,7 @@ function unsafeExtrudeFace(cell, face) {
 
 /**
  * extrudeContiguous (): 
- * Attempts to extrude each face connected to the hovered face via faces of the same signature */
+ * Attempts to extrude each face connected to the hovered face via faces of the same signature whose normal points in the same direction */
 function extrudeContiguous() {
 	if (CURSOR.dirty) setCursorOver();
 	if (CURSOR.over == null) return;
@@ -1740,7 +1747,13 @@ function extrudeContiguous() {
 	const faceType = cell.template.faces[face].type;
 	if (faceType.length < 2) return;
 
+	function faceNormal(cell, face) {
+		const fVerts = cell.template.faces[face].indices;
+		return gm.normalize(gm.cross(gm.sub(cell.vertices[fVerts[1]], cell.vertices[fVerts[0]]), gm.sub(cell.vertices[fVerts[2]], cell.vertices[fVerts[0]])));
+	}
+
 	const sig = faceType[1];
+	const n = faceNormal(cell, face);
 
 	const regionFaces = [];
 	const cellQueue = [cell];
@@ -1750,7 +1763,9 @@ function extrudeContiguous() {
 		const currCell = cellQueue.pop();
 		let found = false;
 		for (let iF = 0; iF < currCell.template.faces.length; ++iF) {
-			if (!currCell.connections[iF] && (currCell.template.faces[iF].type.length >= 2 && currCell.template.faces[iF].type[1] === sig)) {
+			if (currCell.connections[iF] || currCell.template.faces[iF].type.length < 2) continue;
+
+			if (currCell.template.faces[iF].type[1] === sig && gm.dot(n, faceNormal(currCell, iF)) > 0.9) {
 				regionFaces.push({cell: currCell, face: iF});
 				found = true;
 			}
