@@ -785,6 +785,7 @@ const ViewMode = {
 	Template: 'Template'
 };
 let viewMode = ViewMode.Pattern;
+let viewPerspective = true;
 
 //------- camera -------
 const camera = {
@@ -1265,7 +1266,19 @@ window.addEventListener('keydown', function(evt){
 		} else if (evt.code == 'KeyK') {
 			prevCompatibleTemplate();
 			requestRedraw();
-		} 
+		} else if (evt.key === '5') {
+			viewPerspective = !viewPerspective;
+			requestRedraw();
+		} else if (evt.key === '1') {
+			viewFront();
+			requestRedraw();
+		} else if (evt.key === '3') {
+			viewSide();
+			requestRedraw();
+		} else if (evt.key === '7') {
+			viewTop();
+			requestRedraw();
+		}
 		//console.log(evt.code); //when you want more keys
 	}
 });
@@ -2334,6 +2347,21 @@ function startCameraMove() {
 //--- vector math library ---
 //TODO: clean this up and move to its own module
 
+function viewFront() {
+	camera.azimuth = Math.PI / 2.;
+	camera.elevation = 0;
+}
+
+function viewSide() {
+	camera.azimuth = 0;
+	camera.elevation = 0;
+}
+
+function viewTop() {
+	camera.azimuth = Math.PI / 2.;
+	camera.elevation = Math.PI / 2.;
+}
+
 function lookAt(eye, target, up) {
 	var out = gm.normalize(gm.sub(eye, target));
 	var proj = gm.dot(up, out);
@@ -2360,6 +2388,16 @@ function perspective(fovy, aspect, zNear) {
 		0.0, 0.0,-2.0 * zNear, 0.0
 	]);
 }
+function orthographic(r, aspect, zNear, zFar) {
+	var f = 1 / r;
+	const eps = 1. / (zFar - zNear);
+	return new Float32Array([
+		f / aspect, 0.0, 0.0, 0.0,
+		0.0, f, 0.0, 0.0,
+		0.0, 0.0, - eps, 0.0,
+		0.0, 0.0, 0.0, 1.0
+	]);
+}
 function mul(A, B) {
 	var out = new Float32Array(16);
 	for (var r = 0; r < 4; ++r) {
@@ -2382,7 +2420,7 @@ function computeMVP() {
 		0.0, 0.0, 1.0, 0.0,
 		0.0, 0.0, 0.0, 1.0
 	]);*/
-	const P = perspective(camera.fovy, camera.aspect, 0.1);
+	const P = viewPerspective ? perspective(camera.fovy, camera.aspect, 0.1) : orthographic(camera.radius * 0.35, camera.aspect, 0.1, 500.);
 	const up = camera.computeUp();
 	const MV = lookAt(
 		camera.computeAt(),
