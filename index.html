@@ -727,6 +727,9 @@ function fileSave(sourceText, fileIdentity) {
 		eventMouse.initMouseEvent("click", true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
 		workElement.dispatchEvent(eventMouse);
 		document.body.removeChild(workElement);
+		console.log(workElement);
+
+		// window.currentFile = file;
 	} else throw 'File saving not supported for this browser';
 }
 
