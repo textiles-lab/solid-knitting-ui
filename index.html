@@ -2391,6 +2391,7 @@ function perspective(fovy, aspect, zNear) {
 function orthographic(r, aspect, zNear, zFar) {
 	var f = 1 / r;
 	const eps = 1. / (zFar - zNear);
+	// TODO: get fancy depth shader working with orthographic camera
 	return new Float32Array([
 		f / aspect, 0.0, 0.0, 0.0,
 		0.0, f, 0.0, 0.0,
