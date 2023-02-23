@@ -13,8 +13,12 @@ else
 endif
 
 EXPORT_BLOCKS=export-blocks.py
+LOAD_YARNS=load-yarns-28.py
 
 all : blocks.json
 
 blocks.json : blocks.blend instructions.json $(EXPORT_BLOCKS)
 	$(BLENDER) --background --python $(EXPORT_BLOCKS) -- '$<' '$@' instructions.json
+
+renderfile : render-template.blend blocks.json
+	$(BLENDER) --background --python $(LOAD_YARNS) -- render-template.blend blocks.json render.blend
