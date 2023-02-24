@@ -78,6 +78,8 @@ example_vertex = None
 example_block = None
 example_arrow = None
 
+ground_plane = None
+
 def hide(obj):
 	obj.hide_viewport = True #blender 2.8
 	obj.hide_select = True
@@ -112,8 +114,11 @@ for obj in bpy.data.objects:
 	elif obj.name.startswith("ExampleText"):
 		hide(obj)
 		example_text = obj
+	elif obj.name.startswith("Ground"):
+		ground_plane = obj
 	elif obj.name.startswith("temp"):
 		hide(obj)
+
 def flatten(nested_list):
 	return sum(nested_list, [])
 
@@ -157,10 +162,10 @@ def do_yarn(pts, radius, color_id = 0):
 	handle_right = []
 	co = []
 
-	#first point:
+	#first point: (offet slightly to fix collision with outer box)
 	a = pts[0]
 	b = pts[1]
-	co += a
+	co += [0.99 * a[i] + 0.01 * b[i] for i in range(3)]
 	handle_left += b
 
 	handle_right += b
@@ -178,7 +183,7 @@ def do_yarn(pts, radius, color_id = 0):
 	a = pts[-2]
 	b = pts[-1]
 
-	co += b
+	co += [0.99 * b[i] + 0.01 * a[i] for i in range(3)]
 	handle_left += a
 	handle_right += a
 
@@ -214,10 +219,15 @@ def do_block(block_info):
 	vertices = block_info["vertices"]
 	faces = block_info["faces"]
 
-	#=== update bounding box
+	#=== find bounding box
+	local_box_min = (float('inf'), float('inf'), float('inf'))
+	local_box_max = (float('-inf'), float('-inf'), float('-inf'))
 	for pt in vertices:
-		box_min = ( min(box_min[0], pt[0]), min(box_min[1], pt[1]), min(box_min[2], pt[2]) )
-		box_max = ( max(box_max[0], pt[0]), max(box_max[1], pt[1]), max(box_max[2], pt[2]) )
+		local_box_min = ( min(local_box_min[0], pt[0]), min(local_box_min[1], pt[1]), min(local_box_min[2], pt[2]) )
+		local_box_max = ( max(local_box_max[0], pt[0]), max(local_box_max[1], pt[1]), max(local_box_max[2], pt[2]) )
+
+	box_min = ( min(local_box_min[0], box_min[0]), min(local_box_min[1], box_min[1]), min(local_box_min[2], box_min[2]) )
+	box_max = ( max(local_box_max[0], box_max[0]), max(local_box_max[1], box_max[1]), max(local_box_max[2], box_max[2]) )
 
 
 	# create object and fix visibility
@@ -330,7 +340,7 @@ def do_block(block_info):
 		text_obj.data.align_y = 'BOTTOM'
 		text_obj.active_material = bpy.data.materials[face["type"][:2]] if face["type"][:2] in bpy.data.materials else bpy.data.materials["x"]
 
-	return obj
+	return obj, local_box_min, local_box_max
 
 def yarn_color(yarn, block_info):
 	begin_type = block_info["faces"][yarn["begin"]]["type"] if "begin" in yarn else ""
@@ -343,11 +353,15 @@ def yarn_color(yarn, block_info):
 		return 0
 
 yarn_objects = []
+block_objects = []
 
-offset = Vector([0,0,0])
 dx = 8
+block_mins = []
+block_maxes = []
 for i, block_info in enumerate(library):
-	block_obj = do_block(block_info)
+	block_obj, bmin, bmax = do_block(block_info)
+	block_mins.append(bmin)
+	block_maxes.append(bmax)
 	for yarn in block_info["yarns"]:
 		pts = yarn["cps"]
 		radius = 0.1
@@ -356,8 +370,9 @@ for i, block_info in enumerate(library):
 			do_yarn(pts, radius, color_id)
 		)
 		yarn_objects[-1].parent = block_obj
-	block_obj.location += offset
-	offset[0] += dx
+	block_obj.location[0] += i * dx
+	block_obj.location[2] = -bmin[2] + 0.01
+	block_objects.append(block_obj)
 
 #compute bounding box of all yarns:
 
@@ -393,22 +408,26 @@ print("Bounds: " + str(box_min) + " to " + str(box_max))
 # 	1.0
 # 	)
 
-
 camera = bpy.data.objects['Camera']
-camera.location += Vector([
-	0.5 * (box_min[0] + box_max[0]),
-	0.5 * (box_min[1] + box_max[1]),
-	0.5 * (box_min[2] + box_max[2])
-])
+camera_origin = camera.location.copy()
 camera.data.sensor_fit = 'VERTICAL'
 camera.data.ortho_scale = box_max[1] - box_min[1] + 2.0 * CAMERA_MARGIN[1]
 aspect = (box_max[0] - box_min[0] + 2.0 * CAMERA_MARGIN[0]) / (box_max[1] - box_min[1] + 2.0 * CAMERA_MARGIN[1])
 bpy.context.scene.render.resolution_x = math.ceil(bpy.context.scene.render.resolution_y * aspect)
 
-# animate camera
+# animate blocks
+ground_plane.location[2] = 0
 for i, block_info in enumerate(library):
+	camera.location = camera_origin + Vector([
+		0.5 * (block_mins[i][0] + block_maxes[i][0]),
+		0.5 * (block_mins[i][1] + block_maxes[i][1]),
+		0.5 * (block_mins[i][2] + block_maxes[i][2]) - block_mins[i][2] + 0.01
+	])
 	camera.keyframe_insert(data_path="location", frame=(i+1))
-	camera.location[0] += dx
+	for obj in block_objects:
+		obj.keyframe_insert(data_path="location", frame=(i+1))
+		obj.location[0] -= dx
+
 bpy.data.scenes["Scene"].frame_end = len(library)
 
 #template = bpy.data.objects['Yarn']
