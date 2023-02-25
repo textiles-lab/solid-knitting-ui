@@ -22,3 +22,6 @@ blocks.json : blocks.blend instructions.json $(EXPORT_BLOCKS)
 
 renderfile : render-template.blend blocks.json
 	$(BLENDER) --background --python $(LOAD_YARNS) -- render-template.blend blocks.json render.blend
+
+render : render-template.blend blocks.json
+	$(BLENDER) --background --python $(LOAD_YARNS) -- render-template.blend blocks.json render.blend animation-dir:library-renders

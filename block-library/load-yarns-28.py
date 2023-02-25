@@ -14,7 +14,7 @@ for i in range(0,len(sys.argv)):
 		args = sys.argv[i+1:]
 
 if len(args) < 2 or len(args) > 5:
-	print("\n\nUsage:\nblender --python load-yarns.py -- <template.blend> <blocks.json> [save.blend] [out.png] [camera-margin:1.0,1.0] [scale-radius:0.8]\nLoad the yarns into clones of the 'Yarn' bezier curve object in the template blend file. If smobj is specified, also creates edge/vertex/face geometry. \n")
+	print("\n\nUsage:\nblender --python load-yarns.py -- <template.blend> <blocks.json> [save.blend] [animation-dir:dir] [camera-margin:1.0,1.0] [scale-radius:0.8]\nLoad the yarns into clones of the 'Yarn' bezier curve object in the template blend file. If smobj is specified, also creates edge/vertex/face geometry. \n")
 	exit(1)
 
 CAMERA_MARGIN = (1.0, 1.0)
@@ -22,17 +22,17 @@ SCALE_RADIUS = 1.0
 
 template_file = args[0]
 block_file = args[1]
-png_file = None
+animation_dir = None
 smobj_file = None
 save_file = None
 for arg in args[2:]:
-	if arg.endswith(".png"):
-		assert(png_file == None)
-		png_file = arg
-	elif arg.endswith(".blend"):
+	if arg.endswith(".blend"):
 		assert(save_file == None)
 		dirname = os.path.dirname(__file__)
 		save_file = os.path.join(dirname, arg)
+	elif arg.startswith("animation-dir:"):
+		assert(animation_dir == None)
+		animation_dir = os.path.expanduser(arg[len("animation-dir:"):]) # expand special path stuff (e.g. ~ from https://stackoverflow.com/a/2057072)
 	elif arg.startswith("camera-margin:"):
 		[x,y] = arg[14:].split(',')
 		CAMERA_MARGIN = (float(x), float(y))
@@ -51,8 +51,8 @@ if block_file:
 		library = json.loads(uncommented_text)
 
 
-if png_file:
-	print("  + rendering to '" + png_file + "'")
+if animation_dir:
+	print("  + rendering to '" + animation_dir + "'")
 
 print("  + camera margin " + str(CAMERA_MARGIN))
 
@@ -435,10 +435,17 @@ bpy.data.scenes["Scene"].frame_end = len(library)
 if save_file:
 	bpy.ops.wm.save_as_mainfile(filepath=save_file)
 
-if png_file:
+if animation_dir:
 	print("Rendering...")
 	bpy.context.scene.render.image_settings.file_format = 'PNG'
-	bpy.context.scene.render.filepath = png_file
-	bpy.ops.render.render(write_still = True)
+	for i, block_info in enumerate(library):
+		outpath = os.path.join(animation_dir, block_info["longname"])
+		print(f"\t{i}:\t{block_info['longname']} -> {outpath}")
+		bpy.context.scene.frame_set(i+1) # 1-indexed frames
+
+		bpy.context.scene.render.filepath = outpath
+		bpy.ops.render.render(write_still=True) # render still
+		if i > 1:
+			break
 	print("...done!")
 	exit(0)
