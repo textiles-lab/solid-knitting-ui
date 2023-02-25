@@ -445,7 +445,5 @@ if animation_dir:
 
 		bpy.context.scene.render.filepath = outpath
 		bpy.ops.render.render(write_still=True) # render still
-		if i > 1:
-			break
 	print("...done!")
 	exit(0)
