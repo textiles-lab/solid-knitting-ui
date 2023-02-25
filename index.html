@@ -3966,26 +3966,45 @@ function exportSolidKnitout(body) {
 	// toVisit is an array of two queues, each containing cells of a specific priority.
 	// Depending on the type of block, certain blocks will be enqued in a specific order
 	// for grouping purposes. 
-	// toVisit[0] -> P1
-	// toVisit[1] -> P2
-	var toVisit = [[start], []]
+	// toVisit[0] -> P1 (almost everything)
+	// toVisit[1] -> P2 (loop-next-layer)
+	// toVisit[2] -> P3 (yarn-next-layer)
+	var toVisit = [[start], [], []]
 	var visited = []
 
 	let iRow = 0;
 	let iLayer = 0;
 
+	// record which face we should enter each template from
+	for (let template of Object.values(library.templates)) {
+		let yarn_in_face = null, loop_in_face = null;
+		for (let iF = 0; iF < template.faces.length; iF++) {
+			if (template.faces[iF].type.startsWith("-y")) yarn_in_face = iF;
+			if (template.faces[iF].type.startsWith("-l") || template.faces[iF].type.startsWith("-L")) loop_in_face = iF;
+		}
+		if (yarn_in_face != null) {
+			template.entryFace = yarn_in_face;
+		} else if (loop_in_face != null) {
+			// TODO: what if we have both loop-in types?
+			template.entryFace = loop_in_face;
+		}
+	}
+
 	// console.log(start);
-	while (toVisit[0].length != 0 || toVisit[1].length != 0 ){
+	while (toVisit[0].length != 0 || toVisit[1].length != 0 || toVisit[2].length != 0){
 		if (toVisit[0].length != 0) {
 			// console.log("p1")
 			var currCell = toVisit[0].shift();
-		} else{
+		} else if (toVisit[1].length != 0) {
 			var currCell = toVisit[1].shift();
+		}else if (toVisit[2].length != 0) {
+			var currCell = toVisit[2].shift();
 		}
 
 		// console.log(currCell.template.machine);
 
-		let comment = currCell.template.machine.startsWith("pause") ? null : 'cell ' + currCell.schedulingData.cellID;
+		// annotate instructions with cell ID, except if instructions include pause (which would eat the comments)
+		let comment = currCell.template.machine.includes("pause") ? null : 'cell ' + currCell.schedulingData.cellID;
 		var schedule = skSchedule(currCell.template.machine, currCell, comment);
 		solidk = solidk +schedule; 
 		// Processing of strings and related information goes here. 
@@ -4017,17 +4036,18 @@ function exportSolidKnitout(body) {
 				let adjCell = currCellCon[currFace].cell;
 				let adjCellFace = currCellCon[currFace].face;
 				//if (sv.canConnectFaces(currCell.template.faces[currFace], adjCell.template.faces[adjCellFace])){
-				if (!visited.includes(adjCell)){
-					// Edge cases pertaining to loop-next-layer block. 
-					if ((adjCell.template.name == 'loop-next-layer')){
+				if (!visited.includes(adjCell) && adjCellFace === adjCell.template.entryFace){
+					// Edge cases pertaining to loop-next-layer block.
+					if ((adjCell.template.name.startsWith('loop-next-layer'))){
 						// solidk = solidk + skComment('Next layer')
 						// solidk = solidk + skSchedule(adjCell.template.machine, adjCell);
-						toVisit[0].push(adjCell); 
+						toVisit[1].push(adjCell); 
 						visited.push(currCell);
 					}
 					if (adjCell.template.faces[adjCellFace].type[1] == 'y'){
 						// "Pushed cell! -y -> y+ connection."
-						toVisit[1].push(adjCell); 
+						const priority = adjCell.template.name.startsWith('yarn-next-layer') ? 2 : 0;
+						toVisit[priority].push(adjCell); 
 						visited.push(currCell);
 					}
 				}
