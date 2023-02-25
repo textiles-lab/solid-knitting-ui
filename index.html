@@ -3981,6 +3981,7 @@ function exportSolidKnitout(body) {
 	let iLayer = 0;
 
 	// record which face we should enter each template from
+	// TODO: (Mark) I think this is a hack that would be unnecessary if we actually checked that a block's dependencies were visited before the block was (i.e. if we really did a topological sort). We should do that
 	for (let template of Object.values(library.templates)) {
 		let yarn_in_face = null, loop_in_face = null;
 		for (let iF = 0; iF < template.faces.length; iF++) {
