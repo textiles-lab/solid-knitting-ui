@@ -317,7 +317,7 @@ for obj in blocks.objects:
 		v = mesh.vertices[vi]
 		comma = ','
 		if vi == vertex_order[-1]: comma = ''
-		out.append(f'\t\t[{v.co.x:.3f},{v.co.y:.3f},{v.co.z:.3f}]{comma}')
+		out.append(f'\t\t[{v.co.x:.8f},{v.co.y:.8f},{v.co.z:.8f}]{comma}')
 	out.append(f'\t],')
 	out.append(f'\t"faces":[')
 	for face in faces:

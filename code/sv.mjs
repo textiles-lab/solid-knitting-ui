@@ -432,6 +432,13 @@ export class Template {
 		}
 		return sig;
 	}
+
+	faceFromType(faceType) {
+		for (let iF=0; iF<this.faces.length; iF++) {
+			if (this.faces[iF].type === faceType) return iF;
+		}
+		return null;
+	}
 }
 
 function initYarn(template,yarn) {
