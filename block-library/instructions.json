@@ -16,27 +16,27 @@
 		"human": {}
 	},
 	"cast-on.left": {
-		"machine": "pause Please manually set up cast-on on machine.\n",
+		"machine": "pause Please set up cast-on on machine.\n",
 		"human": {}
 	},
 	"cast-on.right": {
-		"machine": "pause Please manually set up cast-on on machine.\n",
+		"machine": "pause Please set up cast-on on machine.\n",
 		"human": {}
 	},
 	"chain.right": {
-		"machine": "; No current Solid Knitout sequence for this command.\n",
+		"machine": "; No current instructions for command.\n",
 		"human": {}
 	},
 	"chain-turn.right": {
-		"machine": "; No current Solid Knitout sequence for this command.\n",
+		"machine": "; No current instructions for command.\n",
 		"human": {}
 	},
 	"chain-yarn.right": {
-		"machine": "; No current Solid Knitout sequence for this command.\n",
+		"machine": "; No current instructions for command.\n",
 		"human": {}
 	},
 	"drop": {
-		"machine": "; No current Solid Knitout sequence for this command.\n",
+		"machine": "; No current instructions for command.\n",
 		"human": {}
 	},
 	"knit.left.same": {
@@ -84,11 +84,11 @@
 		"human": {}
 	},
 	"yarn-in.left": {
-		"machine": "; No current Solid Knitout sequence for this command.\n",
+		"machine": "; No current instructions for command.\n",
 		"human": {}
 	},
 	"yarn-in.right": {
-		"machine": "; No current Solid Knitout sequence for this command.\n",
+		"machine": "; No current instructions for command.\n",
 		"human": {}
 	},
 	"yarn-next-layer-opposite.right": {

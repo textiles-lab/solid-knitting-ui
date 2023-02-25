@@ -9,6 +9,9 @@ function tokenize(line) {
 			token : "comment",
 			regex : /^;.*$/
 		}, {
+			token : "pause",
+			regex : /^pause(\s+)(.*)\s*$/ // parentheses capture the whitespace and the string part of the command
+		}, {
 			token : "location",
 			regex : /^((h(f|b)[0-9\*]*,[0-9]*)|((f|b)[0-9]*))/
 		}, {
@@ -17,10 +20,7 @@ function tokenize(line) {
 		}, {
 			token : "keyword",
 			regex : /^(tuck)|(knit)|(xfer)|(release)|(drop)|(roll)/
-		},  {
-			token : "pause",
-			regex : /^pause(\s+)(.*)\s*$/ // parentheses capture the whitespace and the string part of the command
-		},  {
+		}, {
 			token : "direction",
 			regex : /^(\+|-)/
 		}, {
