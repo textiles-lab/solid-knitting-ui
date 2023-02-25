@@ -1918,8 +1918,8 @@ function allocateSpots(x0=1, y0=4) {
 
 	// clear schedulingData and look for yarn-in to start
 	let currCell = null;
-	for (let cell of body.cells) {
-		cell.schedulingData = {
+	for (let cellID = 0; cellID < body.cells.length; ++cellID) {
+		body.cells[cellID].schedulingData = {
 			direction : null,
 			waleDirection : null,
 			bed : null,
@@ -1929,10 +1929,11 @@ function allocateSpots(x0=1, y0=4) {
 			Nx : null, 
 			D : null,
 			CS : null,
-			layer : null
+			layer : null,
+			cellID : cellID
 		};
-		if (cell.template.name === "yarn-in") {
-			currCell = cell;
+		if (body.cells[cellID].template.name === "yarn-in") {
+			currCell = body.cells[cellID];
 		}
 	}
 	if (currCell == null) {
@@ -3911,11 +3912,11 @@ groupKnitoutPassesCheckbox.addEventListener('click', function() {
 // export machine code 
 document.getElementById("regenerate-code").addEventListener('click', function(evt){
 	console.log("Exporting...");
-	const text = exportSolidKnitout(body); 
+	knitoutCode.text = exportSolidKnitout(body); 
 	// .solidknitout, .sk, .solidk -- As a reference to the original knitout extension?
 	//console.log(text);
 		// fileSave(text, "solid-knitting.sk");
-	writeHighlightedCode(text, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
+	writeHighlightedCode(knitoutCode.text, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
 });
 
 function exportSolidKnitout(body) {
@@ -3930,7 +3931,7 @@ function exportSolidKnitout(body) {
 	}
 
 	// Add scheduling info to solid knitout text (will eventually stop using a single string to store content). 
-	function skSchedule (str, cell) {
+	function skSchedule (str, cell, comment) {
 		var tmp = str;
 		if (cell != null && cell.schedulingData != null) {
 			if (cell.schedulingData.bed == 'b'){
@@ -3950,6 +3951,9 @@ function exportSolidKnitout(body) {
 		if (tmp.includes("[Hxy]")){
 			console.log(currCell.schedulingData);
 		}
+		if (comment != null) {
+			tmp = tmp.replaceAll('\n', ' ; ' + comment + '\n')
+		}
 		return tmp;
 	}
 	const cells = body.cells;
@@ -3967,20 +3971,43 @@ function exportSolidKnitout(body) {
 	var toVisit = [[start], []]
 	var visited = []
 
+	let iRow = 0;
+	let iLayer = 0;
+
 	// console.log(start);
 	while (toVisit[0].length != 0 || toVisit[1].length != 0 ){
 		if (toVisit[0].length != 0) {
-			console.log("p1")
+			// console.log("p1")
 			var currCell = toVisit[0].shift();
 		} else{
 			var currCell = toVisit[1].shift();
 		}
 
-		console.log(currCell.template.machine);
+		// console.log(currCell.template.machine);
 
-		var schedule = skSchedule(currCell.template.machine, currCell);
+		let comment = currCell.template.machine.startsWith("pause") ? null : 'cell ' + currCell.schedulingData.cellID;
+		var schedule = skSchedule(currCell.template.machine, currCell, comment);
 		solidk = solidk +schedule; 
 		// Processing of strings and related information goes here. 
+
+		if (currCell.template.name.startsWith("yarn-next-row")) {
+			iRow++;
+			solidk = solidk + skComment("row " + iRow);
+		} else if (currCell.template.name.startsWith("yarn-next-layer")) {
+			iLayer++;
+			iRow = 0;
+			solidk = solidk + skComment("=============================");
+			solidk = solidk + skComment("         Layer " + iLayer);
+			solidk = solidk + skComment("=============================");
+			solidk = solidk + skComment("row " + iRow);
+		} else if (currCell.template.name.startsWith("yarn-in")) {
+			iLayer = 0;
+			iRow = -1;
+			solidk = solidk + skComment("=============================");
+			solidk = solidk + skComment("         Layer " + iLayer);
+			solidk = solidk + skComment("=============================");
+			solidk = solidk + skComment("row " + iRow);
+		}
 
 		/* face */
 		let currCellCon = currCell.connections;
