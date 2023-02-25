@@ -3937,8 +3937,10 @@ function exportSolidKnitout(body) {
 		if (cell != null && cell.schedulingData != null) {
 			if (cell.schedulingData.bed == 'b'){
 				tmp = tmp.replaceAll('[Hxy]', cell.schedulingData.HBxy);
+				tmp = tmp.replaceAll('[Hopxy]', cell.schedulingData.HFxy);
 			} else{
 				tmp = tmp.replaceAll('[Hxy]', cell.schedulingData.HFxy);
+				tmp = tmp.replaceAll('[Hopxy]', cell.schedulingData.HBxy);
 			}
 
 			tmp = tmp.replaceAll('[Nx]', cell.schedulingData.Nx);

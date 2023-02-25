@@ -40,43 +40,43 @@
 		"human": {}
 	},
 	"knit.left.same": {
-		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hxy] [Nx]\nknit [Nx] [Hxy]\n",
+		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n",
 		"human": {}
 	},
 	"knit.over-empty.left.same": {
-		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hxy] [Nx]\nknit [Nx] [Hxy]\n",
+		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nknit [Nx] [Hxy]\n",
 		"human": {}
 	},
 	"knit.right.same": {
-		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hxy] [Nx]\nknit [Nx] [Hxy]\n",
+		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n",
 		"human": {}
 	},
 	"knit.over-empty.right.same": {
-		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hxy] [Nx]\nknit [Nx] [Hxy]\n",
+		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nknit [Nx] [Hxy]\n",
 		"human": {}
 	},
 	"knit.left.alt": {
-		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hxy] [Nx]\nknit [Nx] [Hxy]\n",
+		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n",
 		"human": {}
 	},
 	"knit.over-empty.left.alt": {
-		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hxy] [Nx]\nknit [Nx] [Hxy]\n",
+		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nknit [Nx] [Hxy]\n",
 		"human": {}
 	},
 	"knit.right.alt": {
-		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hxy] [Nx]\nknit [Nx] [Hxy]\n",
+		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n",
 		"human": {}
 	},
 	"knit.over-empty.right.alt": {
-		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hxy] [Nx]\nknit [Nx] [Hxy]\n",
+		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nknit [Nx] [Hxy]\n",
 		"human": {}
 	},
 	"knit.under-empty.left": {
-		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hxy] [Nx]\nknit [Nx] [Hxy]\n",
+		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n", // TODO: add drop
 		"human": {}
 	},
 	"knit.under-empty.right": {
-		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hxy] [Nx]\nknit [Nx] [Hxy]\n",
+		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n", // TODO: add drop
 		"human": {}
 	},
 	"loop-next-layer": {
