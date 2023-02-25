@@ -80,7 +80,7 @@
 		"human": {}
 	},
 	"loop-next-layer": {
-		"machine":  "xfer [Hxy] [Nx]\n", //CONFIRM: Is this the right xfer direction for next layer?
+		"machine":  "xfer [Nx] [Hxy]\nxfer [Hxy] [Nopx]\n", //CONFIRM: Is this the right xfer direction for next layer?
 		"human": {}
 	},
 	"yarn-in.left": {

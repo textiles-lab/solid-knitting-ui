@@ -2076,6 +2076,7 @@ function allocateSpots(x0=1, y0=4) {
 			cell.schedulingData.HFxy = holders.f;
 			cell.schedulingData.HBxy = holders.b;
 			cell.schedulingData.Nx = needleBed + (x+x0); 
+			cell.schedulingData.Nopx = cell.schedulingData.bed + (x+x0); 
 			cell.schedulingData.D = cell.schedulingData.direction;
 			cell.schedulingData.CS = [1];
 
@@ -3939,7 +3940,9 @@ function exportSolidKnitout(body) {
 			} else{
 				tmp = tmp.replaceAll('[Hxy]', cell.schedulingData.HFxy);
 			}
+
 			tmp = tmp.replaceAll('[Nx]', cell.schedulingData.Nx);
+			tmp = tmp.replaceAll('[Nopx]', cell.schedulingData.Nopx);
 			tmp = tmp.replaceAll('[CS]', cell.schedulingData.CS);
 			tmp = tmp.replaceAll('[HBxy]', cell.schedulingData.HBxy);
 			tmp = tmp.replaceAll('[HFxy]', cell.schedulingData.HFxy);
@@ -4716,7 +4719,7 @@ async function init() {
 
 	{
 		console.log(`Fetching body...`);
-		const request = await fetch('cube-3x3.body');
+		const request = await fetch('patterns/cube-3x3-flipped.body');
 		// const request = await fetch('example.body');
 		const arrayBuffer = await request.arrayBuffer();
 		console.log(`  got ${arrayBuffer.byteLength} bytes.`);
