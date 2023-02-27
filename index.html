@@ -3962,6 +3962,7 @@ function exportSolidKnitout(body) {
 		return tmp;
 	}
 	const cells = body.cells;
+
 	// Consider writing each line into a document as we go? It could get rather lengthy.
 	// Creating Solid knitout for "starting" object. I.e. beginning at block type containing 'yarn-in'? 
 	var start = cells.find(cell => (cell != null)&&(cell.template.name == "yarn-in"));
@@ -3980,19 +3981,12 @@ function exportSolidKnitout(body) {
 	let iRow = 0;
 	let iLayer = 0;
 
-	// record which face we should enter each template from
-	// TODO: (Mark) I think this is a hack that would be unnecessary if we actually checked that a block's dependencies were visited before the block was (i.e. if we really did a topological sort). We should do that
-	for (let template of Object.values(library.templates)) {
-		let yarn_in_face = null, loop_in_face = null;
-		for (let iF = 0; iF < template.faces.length; iF++) {
-			if (template.faces[iF].type.startsWith("-y")) yarn_in_face = iF;
-			if (template.faces[iF].type.startsWith("-l") || template.faces[iF].type.startsWith("-L")) loop_in_face = iF;
-		}
-		if (yarn_in_face != null) {
-			template.entryFace = yarn_in_face;
-		} else if (loop_in_face != null) {
-			// TODO: what if we have both loop-in types?
-			template.entryFace = loop_in_face;
+	// init data for topological sort
+	for (let cell of cells) {
+		cell.topoSort = {};
+		cell.topoSort.inFaces = 0;
+		for (let iF = 0; iF < template.faces.length; ++iF) {
+			if (cell.template.faces[iF].type.startsWith("-")) cell.topoSort.inFaces++;
 		}
 	}
 
@@ -4042,7 +4036,10 @@ function exportSolidKnitout(body) {
 				let adjCell = currCellCon[currFace].cell;
 				let adjCellFace = currCellCon[currFace].face;
 				//if (sv.canConnectFaces(currCell.template.faces[currFace], adjCell.template.faces[adjCellFace])){
-				if (!visited.includes(adjCell) && adjCellFace === adjCell.template.entryFace){
+				if (!visited.includes(adjCell) && adjCell.template.faces[adjCellFace].type.startsWith("-")){
+					adjCell.topoSort.inFaces--; // record that we've satisfied a depencency
+					if (adjCell.topoSort.inFaces > 0) continue; // don't proceed if there are unfulfilled dependencies
+
 					// Edge cases pertaining to loop-next-layer block.
 					if ((adjCell.template.name.startsWith('loop-next-layer'))){
 						// solidk = solidk + skComment('Next layer')
@@ -4063,6 +4060,11 @@ function exportSolidKnitout(body) {
 			console.log(toVisit)
 			toVisit == [[],[]]; 
 		}
+	}
+
+	// clean up data for topological sort
+	for (let cell of cells) {
+		delete cell.topoSort;
 	}
 
 	// Consider writing this into a 
