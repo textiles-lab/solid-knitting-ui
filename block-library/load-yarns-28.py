@@ -46,8 +46,10 @@ print("Reading from '" + block_file + "' into template '" + template_file +"'")
 library = {}
 if block_file:
 	with open(block_file) as f:
-		strip_comment = lambda line : line if line.find("//") < 0 else line[:line.find("//")]
-		uncommented_text = "".join(strip_comment(line) for line in f)
+		strip_comment = lambda line : line if line.find("//") < 0 else (line[:line.find("//")] + "\n")
+		uncommented_lines = [strip_comment(line) for line in f]
+		uncommented_text = "".join(uncommented_lines)
+		print(uncommented_text)
 		library = json.loads(uncommented_text)
 
 

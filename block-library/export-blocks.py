@@ -299,7 +299,13 @@ for obj in blocks.objects:
 		else:
 			face["direction"] = -1
 		faces.append(face)
-	faces = sorted(faces, key=lambda x: x["indices"])
+	face_order = sorted(range(0, len(faces)), key=lambda i: faces[i]["indices"])
+	face_to_sorted = [None] * len(faces)
+
+	for i in range(0, len(face_order)):
+		assert face_to_sorted[face_order[i]] == None
+		face_to_sorted[face_order[i]] = i
+	# faces = sorted(faces, key=lambda x: x["indices"])
 
 	if len(out) > 0: out[-1] = out[-1] + ','
 
@@ -320,9 +326,10 @@ for obj in blocks.objects:
 		out.append(f'\t\t[{v.co.x:.8f},{v.co.y:.8f},{v.co.z:.8f}]{comma}')
 	out.append(f'\t],')
 	out.append(f'\t"faces":[')
-	for face in faces:
+	for i in face_order:
+		face = faces[i]
 		comma = ','
-		if face is faces[-1]: comma = ''
+		if i is face_order[-1]: comma = ''
 		out.append(f'\t\t{{ "type":"{face["type"]}", "direction":{face["direction"]}, "indices":[{",".join(map(str, face["indices"]))}], "color":"{TYPE_COLORS[face["type"]]}" }}{comma}')
 		
 	out.append(f'\t],')
@@ -335,9 +342,9 @@ for obj in blocks.objects:
 			cps.append(f'[{cp.x:.3f},{cp.y:.3f},{cp.z:.3f}]')
 		info = f'\t\t{{'
 		if yarn["begin"] == None: pass
-		else: info += f' "begin":{yarn["begin"]},'
+		else: info += f' "begin":{face_to_sorted[yarn["begin"]]},'
 		if yarn["end"] == None: pass
-		else: info += f' "end":{yarn["end"]},'
+		else: info += f' "end":{face_to_sorted[yarn["end"]]},'
 		info += f' "cps":[{",".join(cps)}],'
 		info += f' "oriented": {"true" if yarn["oriented"] else "false"} }}{comma}'
 		out.append(info)
