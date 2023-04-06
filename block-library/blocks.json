@@ -1034,7 +1034,7 @@
 },
 {
 	"name":"loop-next-row", //from loop-next-row
-	"longname": "loop-next-row",
+	"longname": "loop-next-row.alt",
 	"vertices":[
 		[-1.00000000,-0.50000000,-0.44444442],
 		[-1.00000000,-0.50000000,0.44444442],
