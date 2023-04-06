@@ -351,7 +351,7 @@ for obj in blocks.objects:
 		#was: out.append(f'\t\t{{ "begin":{yarn["begin"]}, "end":{yarn["end"]}, "cps":[{",".join(cps)}] }}{comma}')
 	out.append(f'\t],')
 
-	machine_instructions = {}
+	machine_instructions = ""
 	human_instructions = {}
 	if obj.name in instructions:
 		if "machine" in instructions[obj.name]:
