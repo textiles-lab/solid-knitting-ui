@@ -153,7 +153,7 @@ export function groupPasses(code) {
 					// if the line ends with a holder location followed by whitespace, it's an xfer to a holder
 					xfersToHolder.push(line);
 				} else {
-					console.err("failed to classify line ", line);
+					console.error("failed to classify line ", line);
 				}
 			};
 			classifyLine(line);

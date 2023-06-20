@@ -4,7 +4,7 @@
 #which is based on 'export-sprites.py' and 'glsprite.py' from TCHOW Rainbow; code used is released into the public domain.
 
 #Note: Script meant to be executed within blender 3.3, as per:
-#blender --background --python export-blocks.py -- blocks.blend blocks.json
+#blender --background --python export-blocks.py -- blocks.blend blocks.json [instructions.json]
 
 import sys,re
 
@@ -351,12 +351,12 @@ for obj in blocks.objects:
 		#was: out.append(f'\t\t{{ "begin":{yarn["begin"]}, "end":{yarn["end"]}, "cps":[{",".join(cps)}] }}{comma}')
 	out.append(f'\t],')
 
-	machine_instructions = {}
-	human_instructions = {}
+	machine_instructions = []
+	human_instructions = []
 	if obj.name in instructions:
 		if "machine" in instructions[obj.name]:
 			machine_instructions = instructions[obj.name]["machine"]
-		if "human" in instructions[obj.name] and instructions[obj.name]["human"]:
+		if "human" in instructions[obj.name]:
 			human_instructions = instructions[obj.name]["human"]
 	out.append(f'\t"machine":{json.dumps(machine_instructions)},')
 	out.append(f'\t"human":{json.dumps(human_instructions)}')

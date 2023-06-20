@@ -3956,7 +3956,9 @@ function exportSolidKnitout(body) {
 		if (tmp.includes("[Hxy]")){
 			console.log(currCell.schedulingData);
 		}
-		if (comment != null) {
+
+		// skimp comment if instruction include pause (which would eat the comments)
+		if (comment != null && !tmp.includes("pause")) {
 			tmp = tmp.replaceAll('\n', ' ; ' + comment + '\n')
 		}
 		return tmp;
@@ -4001,12 +4003,12 @@ function exportSolidKnitout(body) {
 			var currCell = toVisit[2].shift();
 		}
 
-		// console.log(currCell.template.machine);
-
-		// annotate instructions with cell ID, except if instructions include pause (which would eat the comments)
-		let comment = currCell.template.machine.includes("pause") ? null : 'cell ' + currCell.schedulingData.cellID;
-		var schedule = skSchedule(currCell.template.machine, currCell, comment);
-		solidk = solidk +schedule; 
+		// annotate instructions with cell ID,
+		let comment = 'cell ' + currCell.schedulingData.cellID;
+		for (const machineInstruction of currCell.template.machine) {
+			let schedule = skSchedule(machineInstruction, currCell, comment);
+			solidk = solidk + schedule;	
+		}
 		// Processing of strings and related information goes here. 
 
 		if (currCell.template.name.startsWith("yarn-next-row")) {

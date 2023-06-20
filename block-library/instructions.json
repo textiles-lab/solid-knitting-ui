@@ -1,126 +1,126 @@
 {
 	"bind-off-through-down.left": {
-		"machine": "roll [HFxy] [HBxy]\npause Please bind off the final row\n" ,
-		"human":{}
+		"machine": ["roll [HFxy] [HBxy]\npause Please bind off the final row\n"],
+		"human": []
 	},
 	"bind-off-through-down.right": {
-		"machine": "roll [HFxy] [HBxy]\npause Please bind off the final row\n",
-		"human": {}
+		"machine": ["roll [HFxy] [HBxy]\npause Please bind off the final row\n"],
+		"human": []
 	},
 	"bind-off-through-up.left.001": {
-		"machine": "roll [HFxy] [HBxy]\npause Please bind off the final row\n",
-		"human": {}
+		"machine": ["roll [HFxy] [HBxy]\npause Please bind off the final row\n"],
+		"human": []
 	},
 	"bind-off-through-up.right.001": {
-		"machine": "roll [HFxy] [HBxy]\npause Please bind off the final row\n",
-		"human": {}
+		"machine": ["roll [HFxy] [HBxy]\npause Please bind off the final row\n"],
+		"human": []
 	},
 	"cast-on.left": {
-		"machine": "pause Please manually set up cast-on on machine.\n",
-		"human": {}
+		"machine": ["pause Please manually set up cast-on on machine.\n"],
+		"human": []
 	},
 	"cast-on.right": {
-		"machine": "pause Please manually set up cast-on on machine.\n",
-		"human": {}
+		"machine": ["pause Please manually set up cast-on on machine.\n"],
+		"human": []
 	},
 	"chain.right": {
-		"machine": "; No current Solid Knitout sequence for this command.\n",
-		"human": {}
+		"machine": ["; No current Solid Knitout sequence for this command.\n"],
+		"human": []
 	},
 	"chain-turn.right": {
-		"machine": "; No current Solid Knitout sequence for this command.\n",
-		"human": {}
+		"machine": ["; No current Solid Knitout sequence for this command.\n"],
+		"human": []
 	},
 	"chain-yarn.right": {
-		"machine": "; No current Solid Knitout sequence for this command.\n",
-		"human": {}
+		"machine": ["; No current Solid Knitout sequence for this command.\n"],
+		"human": []
 	},
 	"drop": {
-		"machine": "; No current Solid Knitout sequence for this command.\n",
-		"human": {}
+		"machine": ["; No current Solid Knitout sequence for this command.\n"],
+		"human": []
 	},
 	"knit.left.same": {
-		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n",
-		"human": {}
+		"machine": ["tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n"],
+		"human": []
 	},
 	"knit.over-empty.left.same": {
-		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nknit [Nx] [Hxy]\n",
-		"human": {}
+		"machine": ["tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nknit [Nx] [Hxy]\n"],
+		"human": []
 	},
 	"knit.right.same": {
-		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n",
-		"human": {}
+		"machine": ["tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n"],
+		"human": []
 	},
 	"knit.over-empty.right.same": {
-		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nknit [Nx] [Hxy]\n",
-		"human": {}
+		"machine": ["tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nknit [Nx] [Hxy]\n"],
+		"human": []
 	},
 	"knit.left.alt": {
-		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n",
-		"human": {}
+		"machine": ["tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n"],
+		"human": []
 	},
 	"knit.over-empty.left.alt": {
-		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nknit [Nx] [Hxy]\n",
-		"human": {}
+		"machine": ["tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nknit [Nx] [Hxy]\n"],
+		"human": []
 	},
 	"knit.right.alt": {
-		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n",
-		"human": {}
+		"machine": ["tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n"],
+		"human": []
 	},
 	"knit.over-empty.right.alt": {
-		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nknit [Nx] [Hxy]\n",
-		"human": {}
+		"machine": ["tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nknit [Nx] [Hxy]\n"],
+		"human": []
 	},
 	"knit.under-empty.left": {
-		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n", // TODO: add drop
-		"human": {}
+		"machine": ["tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n"], // TODO: add drop
+		"human": []
 	},
 	"knit.under-empty.right": {
-		"machine": "tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n", // TODO: add drop
-		"human": {}
+		"machine": ["tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n"], // TODO: add drop
+		"human": []
 	},
 	"loop-next-layer": {
-		"machine":  "xfer [Nx] [Hxy]\nxfer [Hxy] [Nopx]\n", //CONFIRM: Is this the right xfer direction for next layer?
-		"human": {}
+		"machine": ["xfer [Nx] [Hxy]\nxfer [Hxy] [Nopx]\n"], //CONFIRM: Is this the right xfer direction for next layer?
+		"human": []
 	},
 	"yarn-in.left": {
-		"machine": "; No current Solid Knitout sequence for this command.\n",
-		"human": {}
+		"machine": ["; No current Solid Knitout sequence for this command.\n"],
+		"human": []
 	},
 	"yarn-in.right": {
-		"machine": "; No current Solid Knitout sequence for this command.\n",
-		"human": {}
+		"machine": ["; No current Solid Knitout sequence for this command.\n"],
+		"human": []
 	},
 	"yarn-next-layer-opposite.right": {
-		"machine": "release [f/b]\n",
-		"human": {}
+		"machine": ["release [f/b]\n"],
+		"human": []
 	},
 	"yarn-next-layer-opposite.left": {
-		"machine": "release [f/b]\n",
-		"human": {}
+		"machine": ["release [f/b]\n"],
+		"human": []
 	},
 	"yarn-next-layer-same.right": {
-		"machine": {},
-		"human": {}
+		"machine": [],
+		"human": []
 	},
 	"yarn-next-layer-same.left": {
-		"machine": "release [f/b]\n",
-		"human": {}
+		"machine": ["release [f/b]\n"],
+		"human": []
 	},
 	"yarn-next-row.right": {
-		"machine": "release [f/b]\n",
-		"human": {}
+		"machine": ["release [f/b]\n"],
+		"human": []
 	},
 	"yarn-next-row.left": {
-		"machine": "release [f/b]\n",
-		"human": {}
+		"machine": ["release [f/b]\n"],
+		"human": []
 	},
 	"yarn-out.right": {
-		"machine": "; Complete\n",
-		"human": {}
+		"machine": ["; Complete\n"],
+		"human": []
 	},
 	"yarn-out.left": {
-		"machine": "; Complete\n",
-		"human": {}
+		"machine": ["; Complete\n"],
+		"human": []
 	}
 }
