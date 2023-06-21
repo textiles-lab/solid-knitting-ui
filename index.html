@@ -3714,204 +3714,7 @@ document.getElementById("darkmode-checkbox").addEventListener("change", function
 setDarkMode(document.getElementById("darkmode-checkbox").checked);
 
 // To change the displayed knitout, set knitoutCode.text to a different value and call knitoutDirty() to request a refresh
-const knitoutCode = {text: `;;!solid-knitout-VERSION
-;;Machine details 
-;;Carriers: 1
-
-; 3x3x3.block solid knitout
-
-; =============================
-;          First Layer      
-; =============================
-
-; cast on / first row
-tuck + hf1,4 1
-tuck + hf2,4 1
-tuck + hf3,4 1
-
-roll hf*,9 hb*,9
-pause Please set up caston on machine
-
-knit b3 hf3,4 1
-knit b2 hf2,4 1
-knit b1 hf1,4 1
-
-release f
-
-; second row
-tuck + hf1,5 1    ; block 1
-xfer b1 hf1,5     ; block 1
-knit b1 hf1,5 1 ; block 1
-
-tuck + hf2,5 1    ; block 2
-xfer b2 hf2,5     ; block 2
-knit b2 hf2,5 1 ; block 2
-
-tuck + hf3,5 1    ; block 3
-xfer b3 hf3,5     ; block 3
-knit b3 hf3,5 1 ; block 3
-
-release f
-
-; third row
-tuck - hf3,6 1
-xfer b3 hf3,6
-knit b3 hf3,6 1
-
-tuck - hf2,6 1
-xfer b2 hf2,6
-knit b2 hf2,6 1
-
-tuck - hf1,6 1
-xfer b1 hf1,6
-knit b1 hf1,6 1
-
-release f
-
-; xfer the final row
-
-xfer b1 hf1,7
-xfer b2 hf2,7
-xfer b3 hf3,7
-
-; =============================
-;          Second Layer      
-; =============================
-
-xfer hf1,7 f1
-xfer hf2,7 f2
-xfer hf3,7 f3
-
-; first row
-tuck + hb1,4 1
-xfer f1 hb1,4 
-xfer hf1,6 f1
-knit f1 hb1,4 1
-
-tuck + hb2,4 1
-xfer f2 hb2,4
-xfer hf2,6 f2
-knit f2 hb2,4 1
-
-tuck + hb3,4 1
-xfer f3 hb3,4 
-xfer hf3,6 f3
-knit f3 hb3,4 1
-
-release b
-
-; second row
-tuck - hb3,5 1
-xfer f3 hb3,5
-xfer hf3,5 f3
-knit f3 hb3,5 1
-
-tuck - hb2,5 1
-xfer f2 hb2,5
-xfer hf2,5 f2
-knit f2 hb2,5 1
-
-tuck - hb1,5 1
-xfer f1 hb1,5
-xfer hf1,5 f1
-knit f1 hb1,5 1
-
-release b
-
-; third row
-tuck + hb1,6 1
-xfer f1 hb1,6 
-xfer hf1,4 f1
-knit f1 hb1,6 1
-
-tuck + hb2,6 1
-xfer f2 hb2,6 
-xfer hf2,4 f2
-knit f2 hb2,6 1
-
-tuck + hb3,6 1
-xfer f3 hb3,6
-xfer hf3,4 f3
-knit f3 hb3,6 1
-
-release b
-
-;xfer the final row
-xfer f3 hb3,7
-xfer f2 hb2,7
-xfer f1 hb1,7
-
-
-; ============================
-;          Third Layer      
-; ============================
-
-xfer hb3,7 b3
-xfer hb2,7 b2
-xfer hb1,7 b1
-
-; first row
-tuck - hf3,4 1
-xfer b3 hf3,4 
-xfer hb3,6 b3
-knit b3 hf3,4 1
-
-tuck - hf2,4 1
-xfer b2 hf2,4 
-xfer hb2,6 b2
-knit b2 hf2,4 1
-
-tuck - hf1,4 1
-xfer b1 hf1,4 
-xfer hb1,6 b1
-knit b1 hf1,4 1
-
-release f
-
-; second row
-tuck + hf1,5 1
-xfer b1 hf1,5 
-xfer hb1,5 b1
-knit b1 hf1,5 1
-
-tuck + hf2,5 1
-xfer b2 hf2,5 
-xfer hb3,5 b3
-knit b2 hf2,5 1
-
-tuck + hf3,5 1
-xfer b3 hf3,5 
-xfer hb2,5 b2
-knit b3 hf3,5 1
-
-release f
-
-; third row
-tuck - hf3,6 1
-xfer b3 hf3,6 
-xfer hb3,4 b3
-knit b3 hf3,6 1
-
-tuck - hf2,6 1
-xfer b2 hf2,6 
-xfer hb2,4 b2
-knit b2 hf2,6 1
-
-tuck - hf1,6 1
-xfer b1 hf1,6 
-xfer hb1,4 b1
-knit b1 hf1,6 1
-
-release f
-
-;; xfer the final row
-
-xfer b1 hf1,7 
-xfer b2 hf2,7 
-xfer b3 hf3,7
-
-roll hf*,9 hb*,9
-pause Please bind off the final row` };
+const knitoutCode = {fragments: [] };
 
 
 const groupKnitoutPassesCheckbox = document.getElementById('group-knitout-passes-form').children[1];
@@ -3920,16 +3723,18 @@ groupKnitoutPassesCheckbox.addEventListener('click', function() {
 	writeHighlightedCode(knitoutCode.fragments, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
 });
 
+function regenerateCode() {
+	allocateSpots();
+	knitoutCode.fragments = exportSolidKnitout(body);
+	writeHighlightedCode(knitoutCode.fragments, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
+}
+
 // export machine code 
 document.getElementById("regenerate-code").addEventListener('click', function(evt){
-	allocateSpots();
-	console.log("Exporting...");
-	knitoutCode.fragments = exportSolidKnitout(body);
-
+	regenerateCode();
 	// .solidknitout, .sk, .solidk -- As a reference to the original knitout extension?
 	//console.log(text);
 		// fileSave(text, "solid-knitting.sk");
-	writeHighlightedCode(knitoutCode.fragments, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
 });
 
 // Returns an ordered list of code fragments from the cells in body.
@@ -4002,8 +3807,26 @@ function exportSolidKnitout(body) {
 			}
 		}
 
+		// HACK: special treatment of blocks adjacent to a cast-on block, which are themselves really part of the cast-on
+		// These should probably be treated as separate blocks
+		let isCastOnKnit = false;
+		if (cell.template.name.startsWith("knit")) {
+			// check to see if any neighboring block is a cast-on
+			for (let currFace = 0; currFace < currCell.connections.length; currFace++){
+				if (currCell.connections[currFace]!= null){
+					if (currCell.connections[currFace].cell.template.name.startsWith("cast-on")) {
+						isCastOnKnit = true;
+						break;
+					}
+				}
+			}
+		}
+
 		let concreteInstructions = [];
 		for (const instructionTemplate of cell.template.machine) {
+			// skip xfers for cast on knit blocks
+			if (isCastOnKnit && instructionTemplate.startsWith("xfer")) continue;
+
 			concreteInstructions.push(fillInStitchLocation(instructionTemplate, cell, comment));
 		}
 		return {"id": id, "instructions": concreteInstructions };
@@ -4021,7 +3844,7 @@ function exportSolidKnitout(body) {
 	// for grouping purposes. 
 	// toVisit[0] -> P1 (almost everything)
 	// toVisit[1] -> P2 (loop-next-layer)
-	// toVisit[2] -> P3 (drop)
+	// toVisit[2] -> P3 (drop) [stored as a stack rather than a queue]
 	// toVisit[3] -> P4 (yarn-next-layer)
 	var toVisit = [[start], [], [], []]
 	var visited = []
@@ -4095,7 +3918,7 @@ function exportSolidKnitout(body) {
 						toVisit[1].push(adjCell); 
 						visited.push(currCell);
 					} else if (adjCell.template.name === "drop") {
-						toVisit[2].push(adjCell);
+						toVisit[2].unshift(adjCell);
 						visited.push(currCell);
 					} else if (adjCell.template.faces[adjCellFace].type[1] == 'y'){
 						// "Pushed cell! -y -> y+ connection."
@@ -4780,7 +4603,7 @@ async function init() {
 		console.log(`  got ${arrayBuffer.byteLength} bytes.`);
 
 		window.body = sv.Body.fromArrayBuffer(arrayBuffer, library);
-		allocateSpots();
+		regenerateCode();
 	}
 
 	{
