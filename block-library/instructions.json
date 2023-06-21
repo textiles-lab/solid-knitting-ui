@@ -1,158 +1,158 @@
 {
 	"bind-off-through-down.left": {
-		"machine": ["roll [HFxy] [HBxy]\npause Please bind off the final row\n"],
+		"machine": ["roll [HFxy] [HBxy]", "pause Please bind off the final row"],
 		"human": []
 	},
 	"bind-off-through-down.right": {
-		"machine": ["roll [HFxy] [HBxy]\npause Please bind off the final row\n"],
+		"machine": ["roll [HFxy] [HBxy]", "pause Please bind off the final row"],
 		"human": []
 	},
 	"bind-off-through-up.left.001": {
-		"machine": ["roll [HFxy] [HBxy]\npause Please bind off the final row\n"],
+		"machine": ["roll [HFxy] [HBxy]", "pause Please bind off the final row"],
 		"human": []
 	},
 	"bind-off-through-up.right.001": {
-		"machine": ["roll [HFxy] [HBxy]\npause Please bind off the final row\n"],
+		"machine": ["roll [HFxy] [HBxy]", "pause Please bind off the final row"],
 		"human": []
 	},
 	"cast-on.left": {
-		"machine": ["pause Please manually set up cast-on on machine.\n"],
+		"machine": ["pause Please manually set up cast-on on machine."],
 		"human": []
 	},
 	"cast-on.right": {
-		"machine": ["pause Please manually set up cast-on on machine.\n"],
+		"machine": ["pause Please manually set up cast-on on machine."],
 		"human": []
 	},
 	"chain.right": {
-		"machine": ["; No current Solid Knitout sequence for chain.right.\n"],
+		"machine": ["; No current Solid Knitout sequence for chain.right."],
 		"human": []
 	},
 	"chain-turn.right": {
-		"machine": ["; No current Solid Knitout sequence for chain-turn.right.\n"],
+		"machine": ["; No current Solid Knitout sequence for chain-turn.right."],
 		"human": []
 	},
 	"chain-yarn.right": {
-		"machine": ["; No current Solid Knitout sequence for chain-yarn.right.\n"],
+		"machine": ["; No current Solid Knitout sequence for chain-yarn.right."],
 		"human": []
 	},
 	"drop": {
-		"machine": [";!check needle collision!\n","xfer [Hxy] [Nx];\n", "drop [Nx]\n"],
+		"machine": [";!check needle collision!", "xfer [Hxy] [Nx]", "drop [Nx]"],
 		"human": []
 	},
 	"knit.left.same": {
-		"machine": ["tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n"],
+		"machine": ["tuck [D] [Hxy] [CS]", "xfer [Nx] [Hxy]", "xfer [Hopxy] [Nx]", "knit [Nx] [Hxy]"],
 		"human": []
 	},
 	"knit.over-empty.left.same": {
-		"machine": ["tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nknit [Nx] [Hxy]\n"],
+		"machine": ["tuck [D] [Hxy] [CS]","xfer [Nx] [Hxy]", "knit [Nx] [Hxy]"],
 		"human": []
 	},
 	"knit.right.same": {
-		"machine": ["tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n"],
+		"machine": ["tuck [D] [Hxy] [CS]", "xfer [Nx] [Hxy]", "xfer [Hopxy] [Nx]", "knit [Nx] [Hxy]"],
 		"human": []
 	},
 	"knit.over-empty.right.same": {
-		"machine": ["tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nknit [Nx] [Hxy]\n"],
+		"machine": ["tuck [D] [Hxy] [CS]","xfer [Nx] [Hxy]", "knit [Nx] [Hxy]"],
 		"human": []
 	},
 	"knit.left.alt": {
-		"machine": ["tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n"],
+		"machine": ["tuck [D] [Hxy] [CS]", "xfer [Nx] [Hxy]", "xfer [Hopxy] [Nx]", "knit [Nx] [Hxy]"],
 		"human": []
 	},
 	"knit.over-empty.left.alt": {
-		"machine": ["tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nknit [Nx] [Hxy]\n"],
+		"machine": ["tuck [D] [Hxy] [CS]","xfer [Nx] [Hxy]", "knit [Nx] [Hxy]"],
 		"human": []
 	},
 	"knit.right.alt": {
-		"machine": ["tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n"],
+		"machine": ["tuck [D] [Hxy] [CS]", "xfer [Nx] [Hxy]", "xfer [Hopxy] [Nx]", "knit [Nx] [Hxy]"],
 		"human": []
 	},
 	"knit.over-empty.right.alt": {
-		"machine": ["tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nknit [Nx] [Hxy]\n"],
+		"machine": ["tuck [D] [Hxy] [CS]","xfer [Nx] [Hxy]", "knit [Nx] [Hxy]"],
 		"human": []
 	},
 	"knit.under-empty.left": {
-		"machine": ["tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n"], // TODO: add drop
+		"machine": ["tuck [D] [Hxy] [CS]", "xfer [Nx] [Hxy]", "xfer [Hopxy] [Nx]", "knit [Nx] [Hxy]"], // TODO: add drop
 		"human": []
 	},
 	"knit.under-empty.right": {
-		"machine": ["tuck [D] [Hxy] [CS]\nxfer [Nx] [Hxy]\nxfer [Hopxy] [Nx]\nknit [Nx] [Hxy]\n"], // TODO: add drop
+		"machine": ["tuck [D] [Hxy] [CS]", "xfer [Nx] [Hxy]", "xfer [Hopxy] [Nx]", "knit [Nx] [Hxy]"], // TODO: add drop
 		"human": []
 	},
 	"loop-next-layer": {
-		"machine": ["xfer [Nx] [Hxy]\nxfer [Hxy] [Nopx]\n"], //CONFIRM: Is this the right xfer direction for next layer?
+		"machine": ["xfer [Nx] [Hxy]", "xfer [Hxy] [Nopx]"], //CONFIRM: Is this the right xfer direction for next layer?
 		"human": []
 	},
 	"yarn-in.left": {
-		"machine": ["; No current Solid Knitout sequence for yarn-in.left.\n"],
+		"machine": ["; No current Solid Knitout sequence for yarn-in.left."],
 		"human": []
 	},
 	"yarn-in.right": {
-		"machine": ["; No current Solid Knitout sequence for yarn-in.right.\n"],
+		"machine": ["; No current Solid Knitout sequence for yarn-in.right."],
 		"human": []
 	},
 	"yarn-next-layer-opposite.right": {
-		"machine": ["release [f/b]\n"],
+		"machine": ["release [f/b]"],
 		"human": []
 	},
 	"yarn-next-layer-opposite.left": {
-		"machine": ["release [f/b]\n"],
+		"machine": ["release [f/b]"],
 		"human": []
 	},
 	"yarn-next-layer-same.right": {
-		"machine": ["release [f/b]\n"],
+		"machine": ["release [f/b]"],
 		"human": []
 	},
 	"yarn-next-layer-same.left": {
-		"machine": ["release [f/b]\n"],
+		"machine": ["release [f/b]"],
 		"human": []
 	},
 	"yarn-next-layer-next-row-same.right": {
-		"machine": ["release [f/b]\n"],
+		"machine": ["release [f/b]"],
 		"human": []
 	},
 	"yarn-next-layer-next-row-alt.right": {
-		"machine": ["release [f/b]\n"],
+		"machine": ["release [f/b]"],
 		"human": []
 	},
 	"yarn-next-layer-next-row-same.left": {
-		"machine": ["release [f/b]\n"],
+		"machine": ["release [f/b]"],
 		"human": []
 	},
 	"yarn-next-layer-next-row-alt.left": {
-		"machine": ["release [f/b]\n"],
+		"machine": ["release [f/b]"],
 		"human": []
 	},
 	"yarn-next-layer-prev-row-same.right": {
-		"machine": ["release [f/b]\n"],
+		"machine": ["release [f/b]"],
 		"human": []
 	},
 	"yarn-next-layer-prev-row-alt.right": {
-		"machine": ["release [f/b]\n"],
+		"machine": ["release [f/b]"],
 		"human": []
 	},
 	"yarn-next-layer-prev-row-same.left": {
-		"machine": ["release [f/b]\n"],
+		"machine": ["release [f/b]"],
 		"human": []
 	},
 	"yarn-next-layer-prev-row-alt.left": {
-		"machine": ["release [f/b]\n"],
+		"machine": ["release [f/b]"],
 		"human": []
 	},
 	"yarn-next-row.right": {
-		"machine": ["release [f/b]\n"],
+		"machine": ["release [f/b]"],
 		"human": []
 	},
 	"yarn-next-row.left": {
-		"machine": ["release [f/b]\n"],
+		"machine": ["release [f/b]"],
 		"human": []
 	},
 	"yarn-out.right": {
-		"machine": ["; Complete\n"],
+		"machine": ["; Complete"],
 		"human": []
 	},
 	"yarn-out.left": {
-		"machine": ["; Complete\n"],
+		"machine": ["; Complete"],
 		"human": []
 	}
 }

@@ -3970,9 +3970,9 @@ function exportSolidKnitout(body) {
 
 		// skimp comment if instruction include pause (which would eat the comments)
 		if (comment != null && !tmp.includes("pause")) {
-			tmp = tmp.replaceAll('\n', ' ; ' + comment + '\n')
+			tmp += ' ; ' + comment;
 		}
-		return tmp;
+		return tmp + "\n";
 	}
 	const cells = body.cells;
 
