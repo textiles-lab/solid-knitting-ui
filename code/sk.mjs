@@ -104,6 +104,7 @@ export function groupBlocks(code) {
 	return code;
 }
 
+// Take all instructions in a list of program fragments and emit them in order
 export function noPassGrouping(fragmentList) {
 	if (!fragmentList) return "error: no fragment list";
 	let solidk = "";
@@ -115,6 +116,8 @@ export function noPassGrouping(fragmentList) {
 	return solidk;
 }
 
+// Take a list of program fragments and group them into passes before emitting the resulting code
+// Consecutive fragments with the same id have their instructions interleaved into unified passes
 export function groupPasses(fragmentList) {
 	let solidk = "";
 	let iF = 0;
@@ -125,14 +128,17 @@ export function groupPasses(fragmentList) {
 		// accumulate all following fragments with the same id
 		while (iF + lookahead < fragmentList.length
 			   && fragmentList[iF + lookahead]["id"] === currID) {
-			passFragments.push(fragmentList[iF + lookahead]);
+			passFragments.push(fragmentList[iF + lookahead]["instructions"]);
 			lookahead++;
 		}
 
 		// interleave fragments
-		for (let iI = 0; iI < passFragments[0]["instructions"].length; ++iI) {
-			for (const fragmentInstructions of passFragments) {
-				solidk += fragmentInstructions["instructions"][iI] + "\n";
+		for (let iI = 0; iI < passFragments[0].length; ++iI) {
+			for (let iF = 0; iF < passFragments.length; ++iF) {
+				// dedupe pause messages
+				if (iF > 0 && passFragments[iF][iI].startsWith("pause") && passFragments[iF][iI] === passFragments[0][iI]) continue;
+
+				solidk += passFragments[iF][iI] + "\n";
 			}
 			solidk += "\n";
 		}

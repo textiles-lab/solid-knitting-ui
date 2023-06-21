@@ -3944,8 +3944,8 @@ document.getElementById("regenerate-code").addEventListener('click', function(ev
 //     xfer2
 //     knit2
 //     drop2
+// This reordering is done by the groupPasses function in code/sk.mjs
 function exportSolidKnitout(body) {
-
 
 	// Solid knitout functions for parsing. 
 	// Subroutines for string processing. 
@@ -3994,16 +3994,14 @@ function exportSolidKnitout(body) {
 		// by default, give every block a unique id so that instructions are not merged
 		let id = cell.template.name + "." + cell.schedulingData.cellID;
 
-		// name knits by layer and row so that their instructions will be grouped into passes
-		if (cell.template.name.startsWith("knit")) {
-			id = "knit." + cell.schedulingData.embedding[1] + "." + cell.schedulingData.embedding[2];
-		} else if (cell.template.name === "drop") {
-			id = "drop." + cell.schedulingData.embedding[1] + "." + cell.schedulingData.embedding[2];
-		} else if (cell.template.name.startsWith("cast-on")) {
-			id = "cast-on." + cell.schedulingData.embedding[1] + "." + cell.schedulingData.embedding[2];
-		} else if (cell.template.name.startsWith("loop-next-layer")) {
-			id = "loop-next-layer." + cell.schedulingData.embedding[1] + "." + cell.schedulingData.embedding[2];
+		let instructionGroups = ["knit", "drop", "cast-on", "loop-next-layer", "bind-off"];
+		for (const instructionName of instructionGroups) {
+			if (cell.template.name.startsWith(instructionName)) {
+				id =  instructionName + "." + cell.schedulingData.embedding[1] + "." + cell.schedulingData.embedding[2];
+				break;
+			}
 		}
+
 		let concreteInstructions = [];
 		for (const instructionTemplate of cell.template.machine) {
 			concreteInstructions.push(fillInStitchLocation(instructionTemplate, cell, comment));
