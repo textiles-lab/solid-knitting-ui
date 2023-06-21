@@ -752,13 +752,13 @@ window.template = null;
 window.body = new sv.Body();
 
 import {Geometry, Program, loadTexture} from './code/gl.mjs';
-import {writeHighlightedCode, groupBlocks, groupPasses} from './code/sk.mjs';
+import {writeHighlightedCode, groupBlocks, groupPasses, noPassGrouping} from './code/sk.mjs';
 
 document.getElementById("save-knitout").addEventListener('click', function(evt){
 	if (groupKnitoutPassesCheckbox.checked) {
-		fileSave(groupPasses(knitoutCode.text), "solid-knitting-pattern.sk");
+		fileSave(groupPasses(knitoutCode.fragments), "solid-knitting-pattern.sk");
 	} else {
-		fileSave(knitoutCode.text, "solid-knitting-pattern.sk");	
+		fileSave(noPassGrouping(knitoutCode.fragments), "solid-knitting-pattern.sk");	
 	}
 });
 
@@ -3915,36 +3915,50 @@ pause Please bind off the final row` };
 
 
 const groupKnitoutPassesCheckbox = document.getElementById('group-knitout-passes-form').children[1];
-writeHighlightedCode(knitoutCode.text, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
+writeHighlightedCode(knitoutCode.fragments, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
 groupKnitoutPassesCheckbox.addEventListener('click', function() {
-	writeHighlightedCode(knitoutCode.text, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
+	writeHighlightedCode(knitoutCode.fragments, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
 });
 
 // export machine code 
 document.getElementById("regenerate-code").addEventListener('click', function(evt){
 	allocateSpots();
 	console.log("Exporting...");
-	knitoutCode.text = exportSolidKnitout(body); 
+	knitoutCode.fragments = exportSolidKnitout(body);
+
 	// .solidknitout, .sk, .solidk -- As a reference to the original knitout extension?
 	//console.log(text);
 		// fileSave(text, "solid-knitting.sk");
-	writeHighlightedCode(knitoutCode.text, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
+	writeHighlightedCode(knitoutCode.fragments, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
 });
 
+// Returns an ordered list of code fragments from the cells in body.
+// Code fragments are represented as objects of the form { id, instructions }
+// Consecutive fragments with the same id should later have their instructions interleaved
+// For example, if we have fragments { fragA, [xfer0, knit0] }, { fragA, [xfer1, knit1] }, { fragB, [xfer2, knit2, drop2] },
+// then we should eventually emit code:
+//     xfer0
+//     xfer1
+//     knit0
+//     knit1
+//     xfer2
+//     knit2
+//     drop2
 function exportSolidKnitout(body) {
+
+
 	// Solid knitout functions for parsing. 
 	// Subroutines for string processing. 
-	function skPause (str) {
-		return "pause " + str + "\n";
+	function skPause(str) {
+		return { "id": "pause", "instructions": ["pause " + str] };
 	}
 	// For things such as carrier info or add layer 
-	function skComment (str) {
-		return "; " + str + "\n";
+	function skComment(str) {
+		return { "id": "comment", "instructions": ["; " + str] };
 	}
 
-	// Add scheduling info to solid knitout text (will eventually stop using a single string to store content). 
-	function skSchedule (str, cell, comment) {
-		var tmp = str;
+	function fillInStitchLocation(str, cell, comment) {
+		let tmp = str;
 		if (cell != null && cell.schedulingData != null) {
 			if (cell.schedulingData.bed == 'b'){
 				tmp = tmp.replaceAll('[Hxy]', cell.schedulingData.HBxy);
@@ -3972,15 +3986,37 @@ function exportSolidKnitout(body) {
 		if (comment != null && !tmp.includes("pause")) {
 			tmp += ' ; ' + comment;
 		}
-		return tmp + "\n";
+		return tmp;
+	}
+
+	// Add scheduling info to solid knitout text (will eventually stop using a single string to store content). 
+	function skSchedule (instructions, cell, comment) {
+		// by default, give every block a unique id so that instructions are not merged
+		let id = cell.template.name + "." + cell.schedulingData.cellID;
+
+		// name knits by layer and row so that their instructions will be grouped into passes
+		if (cell.template.name.startsWith("knit")) {
+			id = "knit." + cell.schedulingData.embedding[1] + "." + cell.schedulingData.embedding[2];
+		} else if (cell.template.name === "drop") {
+			id = "drop." + cell.schedulingData.embedding[1] + "." + cell.schedulingData.embedding[2];
+		} else if (cell.template.name.startsWith("cast-on")) {
+			id = "cast-on." + cell.schedulingData.embedding[1] + "." + cell.schedulingData.embedding[2];
+		} else if (cell.template.name.startsWith("loop-next-layer")) {
+			id = "loop-next-layer." + cell.schedulingData.embedding[1] + "." + cell.schedulingData.embedding[2];
+		}
+		let concreteInstructions = [];
+		for (const instructionTemplate of cell.template.machine) {
+			concreteInstructions.push(fillInStitchLocation(instructionTemplate, cell, comment));
+		}
+		return {"id": id, "instructions": concreteInstructions };
 	}
 	const cells = body.cells;
 
 	// Consider writing each line into a document as we go? It could get rather lengthy.
 	// Creating Solid knitout for "starting" object. I.e. beginning at block type containing 'yarn-in'? 
 	var start = cells.find(cell => (cell != null)&&(cell.template.name == "yarn-in"));
-	var initialComments = skComment("Autogenerated Solid Knitout code block.") + skComment("Carrier 1");
-	var solidk = initialComments;
+	const fragments = [];
+	fragments.push(skComment("Autogenerated Solid Knitout code block."), skComment("Carrier 1"));
 
 	// toVisit is an array of two queues, each containing cells of a specific priority.
 	// Depending on the type of block, certain blocks will be enqued in a specific order
@@ -4019,29 +4055,27 @@ function exportSolidKnitout(body) {
 
 		// annotate instructions with cell ID,
 		let comment = 'cell ' + currCell.schedulingData.cellID;
-		for (const machineInstruction of currCell.template.machine) {
-			let schedule = skSchedule(machineInstruction, currCell, comment);
-			solidk = solidk + schedule;	
-		}
+		fragments.push(skSchedule(currCell.template.machine, currCell, comment));	
+
 		// Processing of strings and related information goes here. 
 
 		if (currCell.template.name.startsWith("yarn-next-row")) {
 			iRow++;
-			solidk = solidk + skComment("row " + iRow);
+			fragments.push(skComment("row " + iRow));
 		} else if (currCell.template.name.startsWith("yarn-next-layer")) {
 			iLayer++;
 			iRow = 0;
-			solidk = solidk + skComment("=============================");
-			solidk = solidk + skComment("         Layer " + iLayer);
-			solidk = solidk + skComment("=============================");
-			solidk = solidk + skComment("row " + iRow);
+			fragments.push(skComment("============================="));
+			fragments.push(skComment("         Layer " + iLayer));
+			fragments.push(skComment("============================="));
+			fragments.push(skComment("row " + iRow));
 		} else if (currCell.template.name.startsWith("yarn-in")) {
 			iLayer = 0;
 			iRow = -1;
-			solidk = solidk + skComment("=============================");
-			solidk = solidk + skComment("         Layer " + iLayer);
-			solidk = solidk + skComment("=============================");
-			solidk = solidk + skComment("row " + iRow);
+			fragments.push(skComment("============================="));
+			fragments.push(skComment("         Layer " + iLayer));
+			fragments.push(skComment("============================="));
+			fragments.push(skComment("row " + iRow));
 		}
 
 		/* face */
@@ -4085,9 +4119,10 @@ function exportSolidKnitout(body) {
 	}
 
 	// Consider writing this into a 
-	solidk = solidk + skPause("knitting complete, please remove object from machine.");  // Assuming theres no dropping mechanism?
+	fragments.push(skPause("knitting complete, please remove object from machine."));  // Assuming theres no dropping mechanism?
 	// writeHighlightedCode(solidk, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
-	return solidk;
+
+	return fragments;
 }
 
 function displayHoveredBlockInfo(over) {
@@ -4568,7 +4603,7 @@ function redraw() {
 	// Update displayed knitout code if necessary
 	// TODO: this should probably happen somewhere else
 	if (knitoutCode.dirty) {
-		writeHighlightedCode(knitoutCode.text, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
+		writeHighlightedCode(knitoutCode.fragments, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
 		delete knitoutCode.dirty;
 	}
 

@@ -60,10 +60,10 @@ function tokenize(line) {
 	return tokens;
 }
 
-export function writeHighlightedCode(code, target, consolidate=true) {
+export function writeHighlightedCode(fragmentList, target, consolidate=true) {
 	target.textContent = ''; // clear anything currently in target
 
-	const orderedCode = consolidate ? groupPasses(code) : code;
+	const orderedCode = consolidate ? groupPasses(fragmentList) : noPassGrouping(fragmentList);
 
 	const lines = orderedCode.split("\n");
 	for (let iL=0; iL<lines.length; ++iL) {
@@ -104,11 +104,49 @@ export function groupBlocks(code) {
 	return code;
 }
 
+export function noPassGrouping(fragmentList) {
+	if (!fragmentList) return "error: no fragment list";
+	let solidk = "";
+	for (const fragment of fragmentList) {
+		for (const instruction of fragment["instructions"]) {
+			solidk += instruction + "\n";
+		}
+	}
+	return solidk;
+}
+
+export function groupPasses(fragmentList) {
+	let solidk = "";
+	let iF = 0;
+	while (iF < fragmentList.length) {
+		let currID = fragmentList[iF]["id"];
+		let passFragments = [];
+		let lookahead = 0;
+		// accumulate all following fragments with the same id
+		while (iF + lookahead < fragmentList.length
+			   && fragmentList[iF + lookahead]["id"] === currID) {
+			passFragments.push(fragmentList[iF + lookahead]);
+			lookahead++;
+		}
+
+		// interleave fragments
+		for (let iI = 0; iI < passFragments[0]["instructions"].length; ++iI) {
+			for (const fragmentInstructions of passFragments) {
+				solidk += fragmentInstructions["instructions"][iI] + "\n";
+			}
+			solidk += "\n";
+		}
+		iF += lookahead;
+	}
+	return solidk;
+}
+
+// DEPRECATED - this code operates directly on solid knitout text. The above version which operates on "code fragments" should be used instead
 // takes in a string of solid knitout code.
 // finds all sequences of tuck, xfer, knit, and drop commands within the code which operate
 // on the same holder rows of the two beds and orders them to first show comments, then tuck,
 // then xfer from needle to holder, then xfer from holder to needle and finally knit and drop
-export function groupPasses(code) {
+export function groupTextPasses(code) {
 	// regular expression to find the row of the holding needle in a string
 	// https://javascript.info/regexp-groups
 	const matchHolder = /h(f|b)[0-9]*,([0-9])*/;
