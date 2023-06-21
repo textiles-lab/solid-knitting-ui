@@ -500,7 +500,7 @@ body.lightmode #darkmode-checkbox-label::after {
 
 <button id="save-yarn-path" class="controlsButton">Save Yarn Path</button>
 <button id="save-knitout" class="controlsButton">Save Knitout</button>
-<button id="reallocate-spots" class="controlsButton">Reallocate Needle Locations</button>
+<!-- <button id="reallocate-spots" class="controlsButton">Reallocate Needle Locations</button> -->
 
 </div>
 
@@ -762,9 +762,9 @@ document.getElementById("save-knitout").addEventListener('click', function(evt){
 	}
 });
 
-document.getElementById("reallocate-spots").addEventListener('click', function(evt){
-	allocateSpots();
-});
+// document.getElementById("reallocate-spots").addEventListener('click', function(evt){
+// 	allocateSpots();
+// });
 
 //-----------------------------------------------------------------------------
 // Adapted from yarn visualizer code (from smobj)
@@ -1968,7 +1968,7 @@ function allocateSpots(x0=1, y0=4) {
 			currBed *= -1;
 		}
 
-		//== locate yarn out and propagate embedding. Leave the embedding of yarn-next-row/yarn-next-layer blocks to be filled in later
+		//== locate yarn out and propagate embedding. Leave the embedding of yarn-next-row/yarn-next-layer/drop blocks to be filled in later
 		let exitFace = null;
 		for (let iF=0; iF<currCell.template.faces.length; ++iF) {
 			const faceType = currCell.template.faces[iF].type;
@@ -2002,7 +2002,13 @@ function allocateSpots(x0=1, y0=4) {
 			}
 
 			const connectionEmbedding = gm.add(currCell.schedulingData.embedding, offset);
-			if (connection.schedulingData.embedding == null) {
+			if (connection.template.name === "drop") {
+				// drop simply copies scheduling data from its neighbor
+				connection.schedulingData.direction     = currCell.schedulingData.direction;
+				connection.schedulingData.waleDirection = currCell.schedulingData.waleDirection;
+				connection.schedulingData.bed           = currCell.schedulingData.bed;
+				connection.schedulingData.embedding     = gm.vec3(currCell.schedulingData.embedding);
+			} else if (connection.schedulingData.embedding == null) {
 				connection.schedulingData.embedding = connectionEmbedding;
 				const name = connection.template.name;
 				if (!(name.startsWith("yarn-out") || name.startsWith("cast-on") || name.startsWith("bind-off"))) { // ignore cast-on, bind-off, yarn-out when computing bounds
@@ -2071,7 +2077,11 @@ function allocateSpots(x0=1, y0=4) {
 		if (cell.schedulingData.embedding != null) {
 			let x = cell.schedulingData.embedding[0], y = cell.schedulingData.embedding[1], z = cell.schedulingData.embedding[2];
 			// somewhat confusingly, bed is the stitch that the bed gets made on, which is opposite to the bed used for the needle
-			const needleBed = (cell.schedulingData.bed === "f") ? "b" : "f";
+			// except for drops, which use the needle on the bed which the stitch is stored on
+			let needleBed = (cell.schedulingData.bed === "f") ? "b" : "f";
+			if (cell.template.name === "drop") {
+				needleBed = cell.schedulingData.bed;
+			}
 			const holders = holderPositions(x, y);
 			cell.schedulingData.HFxy = holders.f;
 			cell.schedulingData.HBxy = holders.b;
@@ -3912,6 +3922,7 @@ groupKnitoutPassesCheckbox.addEventListener('click', function() {
 
 // export machine code 
 document.getElementById("regenerate-code").addEventListener('click', function(evt){
+	allocateSpots();
 	console.log("Exporting...");
 	knitoutCode.text = exportSolidKnitout(body); 
 	// .solidknitout, .sk, .solidk -- As a reference to the original knitout extension?
@@ -3976,8 +3987,9 @@ function exportSolidKnitout(body) {
 	// for grouping purposes. 
 	// toVisit[0] -> P1 (almost everything)
 	// toVisit[1] -> P2 (loop-next-layer)
-	// toVisit[2] -> P3 (yarn-next-layer)
-	var toVisit = [[start], [], []]
+	// toVisit[2] -> P3 (drop)
+	// toVisit[3] -> P4 (yarn-next-layer)
+	var toVisit = [[start], [], [], []]
 	var visited = []
 
 	let iRow = 0;
@@ -3993,14 +4005,16 @@ function exportSolidKnitout(body) {
 	}
 
 	// console.log(start);
-	while (toVisit[0].length != 0 || toVisit[1].length != 0 || toVisit[2].length != 0){
+	while (toVisit[0].length != 0 || toVisit[1].length != 0 || toVisit[2].length != 0 || toVisit[3].length != 0) {
 		if (toVisit[0].length != 0) {
 			// console.log("p1")
 			var currCell = toVisit[0].shift();
 		} else if (toVisit[1].length != 0) {
 			var currCell = toVisit[1].shift();
-		}else if (toVisit[2].length != 0) {
+		} else if (toVisit[2].length != 0) {
 			var currCell = toVisit[2].shift();
+		} else if (toVisit[3].length != 0) {
+			var currCell = toVisit[3].shift();
 		}
 
 		// annotate instructions with cell ID,
@@ -4043,15 +4057,17 @@ function exportSolidKnitout(body) {
 					if (adjCell.topoSort.inFaces > 0) continue; // don't proceed if there are unfulfilled dependencies
 
 					// Edge cases pertaining to loop-next-layer block.
-					if ((adjCell.template.name.startsWith('loop-next-layer'))){
+					if (adjCell.template.name.startsWith('loop-next-layer')){
 						// solidk = solidk + skComment('Next layer')
 						// solidk = solidk + skSchedule(adjCell.template.machine, adjCell);
 						toVisit[1].push(adjCell); 
 						visited.push(currCell);
-					}
-					if (adjCell.template.faces[adjCellFace].type[1] == 'y'){
+					} else if (adjCell.template.name === "drop") {
+						toVisit[2].push(adjCell);
+						visited.push(currCell);
+					} else if (adjCell.template.faces[adjCellFace].type[1] == 'y'){
 						// "Pushed cell! -y -> y+ connection."
-						const priority = adjCell.template.name.startsWith('yarn-next-layer') ? 2 : 0;
+						const priority = adjCell.template.name.startsWith('yarn-next-layer') ? 3 : 0;
 						toVisit[priority].push(adjCell); 
 						visited.push(currCell);
 					}
@@ -4059,8 +4075,7 @@ function exportSolidKnitout(body) {
 			}
 		}
 		if (currCell.template.name == "yarn-out") {
-			console.log(toVisit)
-			toVisit == [[],[]]; 
+			toVisit == [[],[], [], []]; 
 		}
 	}
 

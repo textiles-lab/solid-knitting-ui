@@ -7,22 +7,22 @@ function tokenize(line) {
 
 	const rules = [ {
 			token : "comment",
-			regex : /^;.*$/
+			regex : /^\s*;.*$/
 		}, {
 			token : "pause",
-			regex : /^pause(\s+)(.*)\s*$/ // parentheses capture the whitespace and the string part of the command
+			regex : /^\s*pause(\s+)(.*)\s*$/ // parentheses capture the whitespace and the string part of the command
 		}, {
 			token : "location",
-			regex : /^((h(f|b)[0-9\*]*,[0-9]*)|((f|b)[0-9]*))/
+			regex : /^\s*((h(f|b)[0-9\*]*,[0-9]*)|((f|b)[0-9]*))/
 		}, {
 			token : "string",
-			regex : /^"[^"]*"/
+			regex : /^\s*"[^"]*"/
 		}, {
 			token : "keyword",
-			regex : /^(tuck)|(knit)|(xfer)|(release)|(drop)|(roll)/
+			regex : /^\s*(tuck)|(knit)|(xfer)|(release)|(drop)|(roll)/
 		}, {
 			token : "direction",
-			regex : /^(\+|-)/
+			regex : /^\s*(\+|-)/
 		}, {
 			token : "whitespace",
 			regex : /^\s+/
@@ -105,13 +105,14 @@ export function groupBlocks(code) {
 }
 
 // takes in a string of solid knitout code.
-// finds all sequences of tuck, xfer, and knit commands within the code which operate
-// on the same holder rows of the two beds and orders them to to tuck first,
-// then xfer from needle to holder, then xfer from holder to needle and finally knit
+// finds all sequences of tuck, xfer, knit, and drop commands within the code which operate
+// on the same holder rows of the two beds and orders them to first show comments, then tuck,
+// then xfer from needle to holder, then xfer from holder to needle and finally knit and drop
 export function groupPasses(code) {
 	// regular expression to find the row of the holding needle in a string
 	// https://javascript.info/regexp-groups
 	const matchHolder = /h(f|b)[0-9]*,([0-9])*/;
+	const matchNeedle = /\s(f|b)[0-9]*/;
 	const inputLines = code.split("\n");
 	let resultLines = [];
 
@@ -133,13 +134,17 @@ export function groupPasses(code) {
 			let oppHolderBed = null; // which holders on the opposite bed are used in this pass?
 			let oppHolderRow = null;
 
+			let comments = [];
 			let tucks = [];
 			let xfersToHolder = [];
 			let xfersFromHolder = [];
 			let knits = [];
+			let drops = [];
 
 			const classifyLine = function(line) {
-				if (/^\s*tuck/.test(line)) {
+				if (/^\s*;/.test(line)) {
+					comments.push(line);
+				} else if (/^\s*tuck/.test(line)) {
 					// if line starts with whitespace followed by "tuck", it's a tuck
 					tucks.push(line);
 				} else if (/^\s*knit/.test(line)) {
@@ -149,9 +154,11 @@ export function groupPasses(code) {
 					// if line starts with whitespace followed by xfer h, it's an xfer from a holder
 					// TODO: do we care about xfers between holders?
 					xfersFromHolder.push(line);
-				} else if (/h(f|b)[0-9]*,[0-9]\s*($|;)/.test(line)) {
+				} else if (/h(f|b)[0-9]*,[0-9]\s*;?.*?$/.test(line)) {
 					// if the line ends with a holder location followed by whitespace, it's an xfer to a holder
 					xfersToHolder.push(line);
+				} else if (/^\s*drop/.test(line)) {
+					drops.push(line);
 				} else {
 					console.error("failed to classify line ", line);
 				}
@@ -165,19 +172,28 @@ export function groupPasses(code) {
 					continue;
 				}
 
-				const currMatch = currLine.match(matchHolder);
-				if (currMatch === null || currMatch.length < 3) {
+				// TODO: check compatibility of drop needles w/ needles in other instructions
+				if (/^\s*drop/.test(currLine) || /^\s*;/.test(currLine)) {
+					classifyLine(currLine);
+					++iL;
+					continue;
+				}
+
+				const currHolder = currLine.match(matchHolder);
+
+				
+				if (currHolder === null || currHolder.length < 3) {
 					break; // found line not involving holder. Stop pass
 				}
-				if ((currMatch[1] === startHolderBed && currMatch[2] === startHolderRow)
-					|| (currMatch[1] === oppHolderBed && currMatch[2] === oppHolderRow)) {
+				if ((currHolder[1] === startHolderBed && currHolder[2] === startHolderRow)
+					|| (currHolder[1] === oppHolderBed && currHolder[2] === oppHolderRow)) {
 					// if we're using the same row on the same bed, we can incorporate this line into the pass
 					classifyLine(currLine);
 					++iL;
-				} else if (oppHolderBed === null && currMatch[1] !== startHolderBed) {
+				} else if (oppHolderBed === null && currHolder[1] !== startHolderBed) {
 					// if we've found the first reference to a holder on the opposite bed, take that as the row to use in the pass
-					oppHolderBed = currMatch[1];
-					oppHolderRow = currMatch[2];
+					oppHolderBed = currHolder[1];
+					oppHolderRow = currHolder[2];
 					classifyLine(currLine);
 					++iL;
 				} else {
@@ -185,6 +201,8 @@ export function groupPasses(code) {
 				}
 			}
 
+			resultLines = resultLines.concat(comments);
+			if (comments.length > 0) resultLines.push("");
 			resultLines = resultLines.concat(tucks);
 			if (tucks.length > 0) resultLines.push("");
 			resultLines = resultLines.concat(xfersToHolder);
@@ -193,6 +211,8 @@ export function groupPasses(code) {
 			if (xfersFromHolder.length > 0) resultLines.push("");
 			resultLines = resultLines.concat(knits);
 			if (knits.length > 0) resultLines.push("");
+			resultLines = resultLines.concat(drops);
+			if (drops.length > 0) resultLines.push("");
 		}
 	}
 	return resultLines.join("\n");
