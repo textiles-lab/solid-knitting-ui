@@ -273,6 +273,24 @@ body.lightmode #darkmode-checkbox-label::after {
 	font-family: sans-serif;
 	cursor: pointer;
 }
+#status {
+/*	grid-row: 2 ;*/
+	margin:0;
+	padding: 0.5em 0 0 0.5em; /* top right bottom left */
+	min-height: 0;
+	display:grid; /* set to grid from javascript later too */
+	grid-template-rows: auto 1fr;
+	padding-bottom: 0.5em;
+/*	border-left: 2pt solid var(--separator-color);*/
+	border-radius: 5px 0 0 5px;
+	background-color: var(--background-color);
+	margin-top: -5px;
+	border-top: solid 2pt var(--separator-color);
+}
+#status-text {
+	margin:0;
+	padding: 0 0 0.5em 0; /* top right bottom left */
+}
 #library {
 /*	grid-row: 2 ;*/
 	margin:0;
@@ -572,6 +590,15 @@ body.lightmode #darkmode-checkbox-label::after {
 	<div id="knitout-source"></div>
 </div>
 
+<!-- status of cycle detection-->
+<div id="status">
+	<h2>Knitability Status:</h2>
+	<div id="status-text"></div>
+	<ul id="shortcuts">
+	<li> <button class="controlsButton" id="check-for-cycles">Check for cycles</button> (<span class="key">U</span>)</li>
+	</ul>
+</div>
+
 <!-- see information about highlighted block -->
 <details id="view-block-data" open>
 	<summary> Block Info:</summary>
@@ -590,7 +617,6 @@ body.lightmode #darkmode-checkbox-label::after {
 	<li> <button class="controlsButton" id="extrude">Extrude cell</button> (<span class="key">G</span>)</li>
 	<li> <button class="controlsButton" id="extrude-contiguous">Extrude contiguous faces</button> (<span class="key">W</span>)</li>
 	<li> <button class="controlsButton" id="start-connection">Start/make connection</button> (<span class="key">C</span>)</li>
-	<li> <button class="controlsButton" id="check-for-cycles">Check for cycles</button> (<span class="key">U</span>)</li>
 	<li> <button class="controlsButton" id="prev-template">Prev template</button> (<span class="key">up</span>)</li>
 	<li> <button class="controlsButton" id="next-template">Next template</button> (<span class="key">down</span>)</li>
 	<li> <button class="controlsButton" id="prev-compatible-template">Prev compatible template</button> (<span class="key">K</span>)</li>
@@ -1177,8 +1203,11 @@ document.getElementById("start-connection").onclick = function () {
 document.getElementById("check-for-cycles").onclick = function () {
 	// probably will change keycode. 
 	// Run topological sort. 
-	if (!checkGlobalCellCorrectness()) console.log("Warning: There is exists a cycle in yarn directions!");
-	else console.log("No cycles detected in yarn directions");
+	if (!checkGlobalCellCorrectness()){
+		document.getElementById("status-text").innerHTML = "Warning: There is exists a cycle in yarn directions!";
+	} else {
+		document.getElementById("status-text").innerHTML = "No cycles detected in yarn directions.";
+	}
 };
 document.getElementById("prev-template").onclick = function () {
 	prevTemplate();
