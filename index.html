@@ -275,17 +275,14 @@ body.lightmode #darkmode-checkbox-label::after {
 }
 #status {
 /*	grid-row: 2 ;*/
-	margin:0;
-	padding: 0.5em 0 0 0.5em; /* top right bottom left */
+	margin: 0;
 	min-height: 0;
-	display:grid; /* set to grid from javascript later too */
+	display: grid; /* set to grid from javascript later too */
 	grid-template-rows: auto 1fr;
-	padding-bottom: 0.5em;
-/*	border-left: 2pt solid var(--separator-color);*/
-	border-radius: 5px 0 0 5px;
+
+	padding: 0.5em 0 0 0.25em; /* top right bottom left */
+	border-radius: 5px;
 	background-color: var(--background-color);
-	margin-top: -5px;
-	border-top: solid 2pt var(--separator-color);
 }
 #status-text {
 	margin:0;
@@ -3667,6 +3664,7 @@ function setSidebar(mode) {
 	const designButton = document.getElementById("sidebar-set-design-mode");
 	const codegenButton = document.getElementById("sidebar-set-codegen-mode");
 	const library = document.getElementById("library");
+	const knitability_status = document.getElementById("status");
 	const knitout = document.getElementById("view-knitout");
 	const blockData = document.getElementById("view-block-data");
 	const commands = document.getElementById("view-shortcuts");
@@ -3674,21 +3672,25 @@ function setSidebar(mode) {
 	// clear current mode
 	designButton.classList.remove("active");
 	codegenButton.classList.remove("active");
-	library.style.display="none";
-	knitout.style.display="none";
-	blockData.style.display="none";
+	library.style.display = "none";
+	knitability_status.style.display = "none";
+	knitout.style.display = "none";
+	blockData.style.display ="none";
 	commands.style.display = "none";
 
+	console.log(knitability_status);
+
 	if (mode == "PatternDesign") {
-		library.style.display="grid";
-		knitout.style.display="none";
-		blockData.style.display="none";
+		library.style.display = "grid";
+		knitability_status.style.display = "grid";
+		knitout.style.display = "none";
+		blockData.style.display = "none";
 		commands.style.display = "grid";
 		designButton.classList.add("active");
 	} else if (mode == "CodeGen") {
-		library.style.display="none";
-		knitout.style.display="grid";
-		blockData.style.display="grid";
+		library.style.display = "none";
+		knitout.style.display = "grid";
+		blockData.style.display = "grid";
 		commands.style.display = "none";
 		codegenButton.classList.add("active");
 	} else {
