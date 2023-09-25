@@ -26,7 +26,7 @@ body.darkmode {
 
 body.lightmode {
 	--far-background-color: #d4ccd2;
-	--background-color: #f6f0ee;
+	--background-color: #fbf8f6;
 	--background-color-medium: #f6f0eebb;
 	--background-color-light: #f6f0ee66;
 	--background-color-highlight: #2221;
@@ -80,7 +80,7 @@ body {
 	height:99vh;
 
 	grid-template-columns: 1fr auto ;
-	grid-template-rows: auto 1.0fr;
+	grid-template-rows: auto 1.0fr 2em;
 	overflow: none;
 	grid-gap: 5px;
 
@@ -280,7 +280,7 @@ body.lightmode #darkmode-checkbox-label::after {
 	display: grid; /* set to grid from javascript later too */
 	grid-template-rows: auto 1fr;
 
-	padding: 0.5em 0 0 0.25em; /* top right bottom left */
+	padding: 0.5em 0 0.25em 0.25em; /* top right bottom left */
 	border-radius: 5px;
 	background-color: var(--background-color);
 }
@@ -333,7 +333,7 @@ body.lightmode #darkmode-checkbox-label::after {
 #view-shortcuts {
 	/*border-top: 2px solid var(--separator-color);
 	border-left: 2pt solid var(--separator-color);*/
-	padding: 0.5em 0 0 0.25em; /* top right bottom left */
+	padding: 0.5em 0 0.25em 0.25em; /* top right bottom left */
 	border-radius: 5px;
 	background-color: var(--background-color);
 }
@@ -499,6 +499,16 @@ body.lightmode #darkmode-checkbox-label::after {
 	border-radius: 2pt;
 	border: 1pt var(--separator-color) solid;
 }
+#message-box {
+	grid-column: 1 / 3 ;
+	grid-row: 3 ;
+	margin: 0;
+	min-height: 0;
+
+	padding: 0.5em 0 0.25em 0.25em; /* top right bottom left */
+	border-radius: 5px;
+	background-color: var(--background-color);
+}
 </style>
 </head>
 <body class="lightmode">
@@ -587,15 +597,6 @@ body.lightmode #darkmode-checkbox-label::after {
 	<div id="knitout-source"></div>
 </div>
 
-<!-- status of cycle detection-->
-<div id="status">
-	<h2>Knitability Status:</h2>
-	<div id="status-text"></div>
-	<ul id="shortcuts">
-	<li> <button class="controlsButton" id="check-for-cycles">Check for cycles</button> (<span class="key">U</span>)</li>
-	</ul>
-</div>
-
 <!-- see information about highlighted block -->
 <details id="view-block-data" open>
 	<summary> Block Info:</summary>
@@ -623,6 +624,10 @@ body.lightmode #darkmode-checkbox-label::after {
 	<li> <button class="controlsButton" id="escape-from-action">Escape from grab/connect/selection</button> (<span class="key">esc</span>)</li>
 </ul>
 </details>
+</div>
+
+<div id="message-box">	
+	<div id="status-text"></div>
 </div>
 
 
@@ -1168,6 +1173,20 @@ canvas.addEventListener('mouseup', function(evt){
 	evt.preventDefault();
 });
 
+/**
+ * detectCycles():
+ * Checks pattern for cycles and updates UI with result
+ */
+function detectCycles() {
+	// probably will change keycode. 
+	// Run topological sort. 
+	if (!checkGlobalCellCorrectness()){
+		document.getElementById("status-text").innerHTML = "Warning: There is exists a cycle in yarn directions!";
+	} else {
+		document.getElementById("status-text").innerHTML = "No cycles detected in yarn directions.";
+	}
+}
+
 // set up command buttons
 document.getElementById("relax-shape").onclick = function () { body.relax(); bodyDirty(); };
 document.getElementById("select-hovered-template").onclick = function () {
@@ -1197,15 +1216,6 @@ document.getElementById("start-connection").onclick = function () {
 		startConnectFace();
 	}
 }
-document.getElementById("check-for-cycles").onclick = function () {
-	// probably will change keycode. 
-	// Run topological sort. 
-	if (!checkGlobalCellCorrectness()){
-		document.getElementById("status-text").innerHTML = "Warning: There is exists a cycle in yarn directions!";
-	} else {
-		document.getElementById("status-text").innerHTML = "No cycles detected in yarn directions.";
-	}
-};
 document.getElementById("prev-template").onclick = function () {
 	prevTemplate();
 	requestRedraw();
@@ -1236,7 +1246,10 @@ document.getElementById("escape-from-action").onclick = function () {
 	}
 };
 
-window.addEventListener('keydown', function(evt){
+window.addEventListener('keydown', function(evt) {
+	// ignore keypresses if an input is selected so that we don't interfere with typing
+	if (evt.target.tagName.toLowerCase() === "input") return;
+
 	if (evt.code == 'KeyS') { // selection takes priority over everything since it's helpful during actions
 		selectMouseOver();
 		requestRedraw();
@@ -1628,8 +1641,9 @@ function checkTemplateCompatible(cell, face, template, verbose = false) {
 	return preview;
 }
 
-//return a cell built as if by pressing 'addCell' at this very location:
-// (or 'null' if that wouldn't happen)
+/**
+ * previewCell():
+ * Returns a cell built as if by pressing 'addCell' at this very location, or 'null' if that wouldn't happen. */
 function previewCell() {
 	//can't add a cell if current template is no template:
 	if (template === null) return null;
@@ -1656,8 +1670,10 @@ function previewCell() {
 }
 window.previewCell = previewCell; //DEBUG
 
-// add a cell to the body at a specified index in the cell list
-// does not perform correctness checks or store this action in the undo queue
+/**
+ * unsafeAddCell(cell, index):
+ * Adds a cell to the body at a specified index in the cell list.
+ * Does not perform correctness checks or store this action in the undo queue. */
 function unsafeAddCell(cell, index) {
 	if (cell === null) return;
 
@@ -1838,8 +1854,11 @@ function extrudeContiguous() {
 	pushCommand({type: "addMultipleCells", newCellIndices: newCellIndices, oldCursor: oldCursor});
 }
 
-// Topological sort to check correctness using BFS using Kahn's accross entire implementation.
-// Overall complexity of O(|E| + |V).
+/**
+ * checkGlobalCellCorrectness():
+ * Topological sort to check correctness using BFS using Kahn's accross entire implementation.
+ * Overall complexity of O(|E| + |V).
+ * Print results to #status-text div */
 function checkGlobalCellCorrectness() {
 	// Dictionary of visited cells {cell, visit #}
 	let inDegrees = new Map();
@@ -1917,23 +1936,22 @@ function checkGlobalCellCorrectness() {
 		}
 		count++;
 	}
-	return count == bodyLen; 
-}
-// computes a needle, frontHolder, backHolder, layer, direction, and yarnID for each cell, storing these in cell.schedulingData
-// currently computes locations for knit, next-row, yarn-next-layer, loop-next-layer, cast-on, bind-off
-function allocateSpots(x0=1, y0=4) {
-	// identify extreme stitch
-	// let origin = null;
-	// for (let cell of body.cells) {
-	// 	if (cell.template.name != "knit") continue;
-	// 	if (origin === null) {
-	// 		origin = gm.xformTranslation(cell.xform);
-	// 	} else {
-	// 		const cellPosition = gm.xformTranslation(cell.xform);
-	// 		origin = gm.min(origin, cellPosition);
-	// 	}
-	// }
 
+	let cycleFree = (count == bodyLen);
+
+	if (cycleFree) {
+		document.getElementById("status-text").innerHTML = "No cycles detected in yarn directions.";
+	} else {
+		document.getElementById("status-text").innerHTML = "Warning: There is exists a cycle in yarn directions!";
+	}
+	return cycleFree;
+}
+
+/**
+ * allocateSpots(x0=1, y0=4)
+ * Computes a needle, frontHolder, backHolder, layer, direction, and yarnID for each cell, storing these in cell.schedulingData.
+ * Currently computes locations for knit, next-row, yarn-next-layer, loop-next-layer, cast-on, bind-off. */
+function allocateSpots(x0=1, y0=4) {
 	// follow yarn through body
 	function getYarnExitFace(cell) {
 		for (let iF=0; iF<cell.template.faces.length; ++iF) {
@@ -1942,22 +1960,29 @@ function allocateSpots(x0=1, y0=4) {
 		return null;
 	}
 
-	// clear schedulingData and look for yarn-in to start
+	// set default schedulingData and look for yarn-in to start
 	let currCell = null;
 	for (let cellID = 0; cellID < body.cells.length; ++cellID) {
-		body.cells[cellID].schedulingData = {
-			direction : null,
-			waleDirection : null,
-			bed : null,
-			embedding : null,
-			HFxy : null,
-			HBxy : null,
-			Nx : null, 
-			D : null,
-			CS : null,
-			layer : null,
-			cellID : cellID
-		};
+		if (body.cells[cellID].schedulingData == null) {
+			body.cells[cellID].schedulingData = {
+				direction : null,
+				waleDirection : null,
+				bed : null,
+				embedding : null,
+				HFxy : null,
+				HBxy : null,
+				Nx : null, 
+				D : null,
+				CS : null,
+				layer : null,
+				layerOffset : null,
+				priority : null,
+				cellID : cellID
+			};
+		} else {
+			body.cells[cellID].schedulingData.embedding = null; // always recompute embedding 
+			body.cells[cellID].schedulingData.cellID = cellID; // always update cellID
+		}
 		if (body.cells[cellID].template.name === "yarn-in") {
 			currCell = body.cells[cellID];
 		}
@@ -1980,7 +2005,8 @@ function allocateSpots(x0=1, y0=4) {
 	let currWaleDirection = 1; // TODO: how do you determine this?
 	currCell.schedulingData.embedding = gm.vec3(0, 0, 0);
 
-	//== find directions & beds for all stitches and embeddings for knit stitches (abstract 3d coordinates that we'll use to get needle/holder positions)
+	//== find directions & beds for all stitches and embeddings for knit stitches
+	// (an embedding is an abstract set of 3d coordinates that we'll use later to get needle/holder positions)
 	let xMax=-10, yMax=-10, xMin=10, yMin=10, zMin=10;
 	while (currCell != null) {
 		currCell.schedulingData.direction = (currDirection > 0) ? "+" : "-";
@@ -2068,6 +2094,21 @@ function allocateSpots(x0=1, y0=4) {
 
 	// shift embedding to start at the origin and assign embeddings for loop-next-layer blocks
 	for (let cell of body.cells) {
+		// use default priority and layer offset if nothing else is specified
+		if (cell.template.name.startsWith("loop-next-layer")) {
+			if (cell.schedulingData.priority == null) cell.schedulingData.priority = 1;
+			if (cell.schedulingData.layerOffset == null) cell.schedulingData.layerOffset = 0;
+		} else if (cell.template.name.startsWith("drop")) { // also set for adjacent drops below
+			if (cell.schedulingData.priority == null) cell.schedulingData.priority = 2;
+			if (cell.schedulingData.layerOffset == null) cell.schedulingData.layerOffset = 1;
+		} else if (cell.template.name.startsWith("yarn-next-layer")) {
+			if (cell.schedulingData.priority == null) cell.schedulingData.priority = 3;
+			if (cell.schedulingData.layerOffset == null) cell.schedulingData.layerOffset = 0;
+		} else {
+			if (cell.schedulingData.priority == null) cell.schedulingData.priority = 0;
+			if (cell.schedulingData.layerOffset == null) cell.schedulingData.layerOffset = 0;
+		}
+
 		if (cell.schedulingData.embedding) {
 			cell.schedulingData.embedding[0] -= xMin;
 			cell.schedulingData.embedding[1] -= yMin;
@@ -2123,8 +2164,304 @@ function allocateSpots(x0=1, y0=4) {
 	}
 }
 
-// add a cell to the body at a specified index in the cell list
-// does not perform correctness checks or store this action in the undo queue
+/**
+ * exportSolidKnitout(body):
+ * Returns an ordered list of code fragments from the cells in body.
+ * Code fragments are represented as objects of the form { id, instructions }
+ * Consecutive fragments with the same id should later have their instructions interleaved
+ * For example, if we have fragments { fragA, [xfer0, knit0] }, { fragA, [xfer1, knit1] }, { fragB, [xfer2, knit2, drop2] },
+ * then we should eventually emit code:
+ *     xfer0
+ *     xfer1
+ *     knit0
+ *     knit1
+ *     xfer2
+ *     knit2
+ *     drop2
+ * This reordering is done by the groupPasses function in code/sk.mjs */
+function exportSolidKnitout(body) {
+
+	// Solid knitout functions for parsing. 
+	// Subroutines for string processing. 
+	function skPause(str) {
+		return { "id": "pause", "instructions": ["pause " + str] };
+	}
+	// For things such as carrier info or add layer 
+	function skComment(str) {
+		return { "id": "comment", "instructions": ["; " + str] };
+	}
+
+	// Use the scheduling data associated with `cell` to fill in the placeholder values used in instruction string `str`.
+	// Comment string is appended afterwards to ensure that it is not modified.
+	// If `str` is a `pause` command, then the comment is dropped since `pause` does not respect comments
+	function fillInStitchLocation(str, cell, comment) {
+		let tmp = str;
+		if (cell != null && cell.schedulingData != null) {
+			if (cell.schedulingData.bed == 'b'){
+				tmp = tmp.replaceAll('[Hxy]', cell.schedulingData.HBxy);
+				tmp = tmp.replaceAll('[Hopxy]', cell.schedulingData.HFxy);
+			} else{
+				tmp = tmp.replaceAll('[Hxy]', cell.schedulingData.HFxy);
+				tmp = tmp.replaceAll('[Hopxy]', cell.schedulingData.HBxy);
+			}
+
+			tmp = tmp.replaceAll('[Nx]', cell.schedulingData.Nx);
+			tmp = tmp.replaceAll('[Nopx]', cell.schedulingData.Nopx);
+			tmp = tmp.replaceAll('[CS]', cell.schedulingData.CS);
+			tmp = tmp.replaceAll('[HBxy]', cell.schedulingData.HBxy);
+			tmp = tmp.replaceAll('[HFxy]', cell.schedulingData.HFxy);
+			tmp = tmp.replaceAll('[f/b]', cell.schedulingData.bed);
+			tmp = tmp.replaceAll('[D]', cell.schedulingData.D);
+		} else {
+			console.log("No scheduling data available!")
+		}
+		if (tmp.includes("[Hxy]")){
+			console.log(currCell.schedulingData);
+		}
+
+		// skip comment if instruction include pause (which would eat the comments)
+		if (comment != null && !tmp.includes("pause")) {
+			tmp += ' ; ' + comment;
+		}
+		return tmp;
+	}
+
+	// Create a code fragment from the input instructions
+	function skSchedule(instructions, cell, comment) {
+		// by default, give every block a unique id so that instructions are not merged
+		let id = cell.template.name + "." + cell.schedulingData.cellID;
+
+		// if the block is in the following list of types which should have their instructions merged into passes,
+		// give it a standard id which will by shared by all other blocks of this type in this row
+		let instructionGroups = ["knit", "drop", "cast-on", "loop-next-layer", "bind-off"];
+		for (const instructionName of instructionGroups) {
+			if (cell.template.name.startsWith(instructionName)) {
+				id =  instructionName + "." + cell.schedulingData.embedding[1] + "." + cell.schedulingData.embedding[2];
+				break;
+			}
+		}
+
+		// HACK: special treatment of blocks adjacent to a cast-on block, which are themselves really part of the cast-on
+		// These should probably be treated as separate blocks
+		let isCastOnKnit = false;
+		if (cell.template.name.startsWith("knit")) {
+			// check to see if any neighboring block is a cast-on
+			for (let currFace = 0; currFace < cell.connections.length; currFace++){
+				if (cell.connections[currFace]!= null){
+					if (cell.connections[currFace].cell.template.name.startsWith("cast-on")) {
+						isCastOnKnit = true;
+						break;
+					}
+				}
+			}
+		}
+
+		let concreteInstructions = [];
+		for (const instructionTemplate of cell.template.machine) {
+			// skip xfers for cast on knit blocks
+			if (isCastOnKnit && instructionTemplate.startsWith("xfer")) continue;
+
+			concreteInstructions.push(fillInStitchLocation(instructionTemplate, cell, comment));
+		}
+		return {"id": id, "instructions": concreteInstructions };
+	}
+	const cells = body.cells;
+
+	// Identify starting block (i.e. beginning at block type containing 'yarn-in')
+	let start = cells.find(cell => (cell != null) && (cell.template.name == "yarn-in"));
+	const fragments = [];
+	fragments.push(skComment("Autogenerated Solid Knitout code block."), skComment("Carrier 1"));
+
+	// toVisit is an array of queues, each containing cells of a specific priority.
+	// Depending on the type of block, certain blocks will be enqued in a specific order for grouping purposes. 
+	// toVisit[0] -> P1 (almost everything)
+	// toVisit[1] -> P2 (loop-next-layer)
+	// toVisit[2] -> P3 (drop) [stored as a stack rather than a queue]
+	// toVisit[3] -> P4 (yarn-next-layer)
+	let toVisit = [[start], [], [], []]
+	let layerOffsetCells = [[], [], [], []] // priority queue of cells to be scheduled in later layers based on their `layerOffset` values
+	let visited = []
+
+	let iRow = 0;
+	let iLayer = 0;
+
+	// init data for topological sort
+	for (let cell of cells) {
+		cell.topoSort = {};
+		cell.topoSort.inFaces = 0;
+		for (let iF = 0; iF < template.faces.length; ++iF) {
+			if (cell.template.faces[iF].type.startsWith("-")) cell.topoSort.inFaces++;
+		}
+	}
+
+	// console.log(start);
+	while (toVisit[0].length != 0 || toVisit[1].length != 0 || toVisit[2].length != 0 || toVisit[3].length != 0) {
+		let currCell = null;
+		if (toVisit[0].length != 0) {
+			currCell = toVisit[0].shift();
+		} else if (toVisit[1].length != 0) {
+			currCell = toVisit[1].shift();
+		} else if (toVisit[2].length != 0) {
+			currCell = toVisit[2].shift();
+		} else if (toVisit[3].length != 0) {
+			currCell = toVisit[3].shift();
+		}
+
+		// annotate instructions with cell ID,
+		let comment = 'cell ' + currCell.schedulingData.cellID;
+		fragments.push(skSchedule(currCell.template.machine, currCell, comment));	
+
+		// Processing of strings and related information goes here. 
+
+		if (currCell.template.name.startsWith("yarn-next-row")) {
+			iRow++;
+			fragments.push(skComment("row " + iRow));
+		} else if (currCell.template.name.startsWith("yarn-next-layer")) {
+			iLayer++;
+			iRow = 0;
+			fragments.push(skComment("============================="));
+			fragments.push(skComment("         Layer " + iLayer));
+			fragments.push(skComment("============================="));
+			fragments.push(skComment("row " + iRow));
+
+			// Now that we've gone up a layer, check if it's time to schedule the cells in the layerOffsetCells queue
+			// All layer offsets are decremented, and any cells with zero offset are scheduled for the current layer
+			for (let priority = 0; priority < layerOffsetCells.length; priority++) {
+				for (let i = 0; i < layerOffsetCells[priority].length; i++) {
+					layerOffsetCells[priority][i].offset -= 1;
+					if (layerOffsetCells[priority][i].offset === 0) {
+						// console.log("Scheduling ", layerOffsetCells[priority][i].cell.schedulingData.cellID)
+						toVisit[priority].push(layerOffsetCells[priority][i].cell);
+					} else {
+						// console.log("Deferring ", layerOffsetCells[priority][i].offset, layerOffsetCells[priority][i].cell.schedulingData.cellID)
+					}
+				}
+				layerOffsetCells[priority] = layerOffsetCells[priority].filter((e) => e.offset > 0);
+			}
+		} else if (currCell.template.name.startsWith("yarn-in")) {
+			iLayer = 0;
+			iRow = -1;
+			fragments.push(skComment("============================="));
+			fragments.push(skComment("         Layer " + iLayer));
+			fragments.push(skComment("============================="));
+			fragments.push(skComment("row " + iRow));
+		}
+
+		// face
+		let currCellCon = currCell.connections;
+		let currCellConLen = currCellCon.length; 
+		for (let currFace = 0; currFace < currCellConLen; currFace++){
+			if (currCellCon[currFace]!= null){
+				let adjCell = currCellCon[currFace].cell;
+				let adjCellFace = currCellCon[currFace].face;
+				//if (sv.canConnectFaces(currCell.template.faces[currFace], adjCell.template.faces[adjCellFace])){
+				if (!visited.includes(adjCell) && adjCell.template.faces[adjCellFace].type.startsWith("-")){
+					adjCell.topoSort.inFaces--; // record that we've satisfied a depencency
+					if (adjCell.topoSort.inFaces > 0) continue; // don't proceed if there are unfulfilled dependencies
+
+					if (adjCell.schedulingData.layerOffset === 0) {
+						toVisit[adjCell.schedulingData.priority].push(adjCell);
+					} else {
+						// console.log("Saving ", adjCell.schedulingData.cellID, " at offset ", adjCell.schedulingData.layerOffset);
+						layerOffsetCells[adjCell.schedulingData.priority].push({"offset": adjCell.schedulingData.layerOffset, "cell": adjCell});
+					}
+					visited.push(currCell);
+				}
+			}
+		}
+		if (currCell.template.name == "yarn-out") {
+			toVisit == [[],[], [], []]; 
+		}
+	}
+
+	// clean up data for topological sort
+	for (let cell of cells) {
+		delete cell.topoSort;
+	}
+
+	fragments.push(skPause("knitting complete, please remove object from machine."));  // Assuming theres no dropping mechanism?
+
+	return fragments;
+}
+
+/**
+ * displayHoveredBlockInfo(over)
+ * display the scheduling data associated with block `over` in the `hovered-block-info` area on screen. */
+function displayHoveredBlockInfo(over) {
+	const infoArea = document.getElementById("hovered-block-info");
+	infoArea.innerHTML = "";
+
+	let posString, embString, id, ports, longname, schedulingData;
+	if (over != null) {
+		id = over.cellID;
+		ports = over.cell.template.signature().substr(over.cell.template.name.length + 1);
+		longname = over.cell.template.longname;
+		const pos = gm.xformTranslation(over.cell.xform); // TODO: shift cube coordinates to be integer?
+		posString = "( " + pos[0].toFixed(2) + ", " + pos[1].toFixed(2) + ", " + pos[2].toFixed(2) + " )";
+		schedulingData = over.cell.schedulingData ? over.cell.schedulingData : {};
+
+
+		if (over.cell.schedulingData && over.cell.schedulingData.embedding) {
+			const emb = over.cell.schedulingData.embedding;
+			embString = "( " + emb[0].toFixed(2) + ", " + emb[1].toFixed(2) + ", " + emb[2].toFixed(2) + " )";	
+		}
+	} else {
+		id = null;
+		ports = null;
+		longname = null;
+		posString = null;
+		schedulingData = {};
+	}
+
+	const displayData = function(name, value, variableName) {
+		const nameElem = document.createElement('label');
+		nameElem.innerHTML = name;
+		nameElem.classList.add("field-name");
+		nameElem.for = "input-" + name;
+		infoArea.appendChild(nameElem);
+		const valueElem = document.createElement('div');
+		valueElem.classList.add("field-value");
+		if (variableName == null) {
+			valueElem.innerHTML = value == null ? "&nbsp;" : value; // print space to set line height
+		} else {
+			const textInput = document.createElement('input');
+			textInput.type = "text";
+			textInput.id = "input-"+name;
+			textInput.name = name;
+			textInput.value = value == null ? "" : value; // print space to set line height
+			if (over == null) {
+				textInput.disabled = true;
+			} else {
+				textInput.onchange = function() {
+					pushCommand({type: "editSchedulingData", cell: over.cell, field: variableName, oldValue: over.cell.schedulingData[variableName], newValue: textInput.value});
+					over.cell.schedulingData[variableName] = textInput.value;
+				};
+			}
+			valueElem.appendChild(textInput);
+		}
+		infoArea.appendChild(valueElem);
+	};
+	
+	displayData("ID", id);
+	displayData("Long Name", longname);
+	displayData("Ports", ports);
+	displayData("Position", posString);
+	displayData("Embedding", embString);
+	displayData("Bed", schedulingData.bed, "bed");
+	displayData("Nx", schedulingData.Nx, "Nx");
+	displayData("HFxy", schedulingData.HFxy, "HFxy");
+	displayData("HBxy", schedulingData.HBxy, "HBxy");
+	displayData("D", schedulingData.D, "D");
+	displayData("CS", schedulingData.CS, "CS");
+	displayData("Layer", schedulingData.layer, "layer");
+	displayData("Layer Offset", schedulingData.layerOffset, "layerOffset");
+	displayData("Block Priority", schedulingData.priority, "priority");
+}
+
+/**
+ * unsafeDeleteCell(index)
+ * Adds a cell to the body at a specified index in the cell list.
+ * Does not perform correctness checks or store this action in the undo queue. */
 function unsafeDeleteCell(index) {
 	const cellConnections = body.cells[index].connections;
 
@@ -2215,6 +2552,8 @@ function startConnectFace() {
 		//make the connection:
 		cell.connections[face] = {cell:toCell, face:toFace};
 		toCell.connections[toFace] = {cell:cell, face:face};
+
+		if (!checkGlobalCellCorrectness()) console.log("Warning: There is exists a cycle in yarn directions!");
 
 		cellDirty(cell);
 	}
@@ -3106,7 +3445,7 @@ class VisWireCells extends Geometry {
 					let b = cell.vertices[face.indices[(i+1)%face.indices.length]];
 					a = gm.add(gm.scale(0.9, gm.sub(a, center)), center);
 					b = gm.add(gm.scale(0.9, gm.sub(b, center)), center);
-					let col = css2Uint32(face.color);
+					let col = css2Uint32("#aaaaaa");//css2Uint32(face.color);
 					attrib(a[0],a[1],a[2], col);
 					attrib(b[0],b[1],b[2], col);
 					if (i === 0 && face.type !== 'x') { //show "first edge" (for non-'x' face types)
@@ -3664,7 +4003,6 @@ function setSidebar(mode) {
 	const designButton = document.getElementById("sidebar-set-design-mode");
 	const codegenButton = document.getElementById("sidebar-set-codegen-mode");
 	const library = document.getElementById("library");
-	const knitability_status = document.getElementById("status");
 	const knitout = document.getElementById("view-knitout");
 	const blockData = document.getElementById("view-block-data");
 	const commands = document.getElementById("view-shortcuts");
@@ -3673,16 +4011,12 @@ function setSidebar(mode) {
 	designButton.classList.remove("active");
 	codegenButton.classList.remove("active");
 	library.style.display = "none";
-	knitability_status.style.display = "none";
 	knitout.style.display = "none";
 	blockData.style.display ="none";
 	commands.style.display = "none";
 
-	console.log(knitability_status);
-
 	if (mode == "PatternDesign") {
 		library.style.display = "grid";
-		knitability_status.style.display = "grid";
 		knitout.style.display = "none";
 		blockData.style.display = "none";
 		commands.style.display = "grid";
@@ -3768,283 +4102,6 @@ document.getElementById("regenerate-code").addEventListener('click', function(ev
 		// fileSave(text, "solid-knitting.sk");
 });
 
-// Returns an ordered list of code fragments from the cells in body.
-// Code fragments are represented as objects of the form { id, instructions }
-// Consecutive fragments with the same id should later have their instructions interleaved
-// For example, if we have fragments { fragA, [xfer0, knit0] }, { fragA, [xfer1, knit1] }, { fragB, [xfer2, knit2, drop2] },
-// then we should eventually emit code:
-//     xfer0
-//     xfer1
-//     knit0
-//     knit1
-//     xfer2
-//     knit2
-//     drop2
-// This reordering is done by the groupPasses function in code/sk.mjs
-function exportSolidKnitout(body) {
-
-	// Solid knitout functions for parsing. 
-	// Subroutines for string processing. 
-	function skPause(str) {
-		return { "id": "pause", "instructions": ["pause " + str] };
-	}
-	// For things such as carrier info or add layer 
-	function skComment(str) {
-		return { "id": "comment", "instructions": ["; " + str] };
-	}
-
-	function fillInStitchLocation(str, cell, comment) {
-		let tmp = str;
-		if (cell != null && cell.schedulingData != null) {
-			if (cell.schedulingData.bed == 'b'){
-				tmp = tmp.replaceAll('[Hxy]', cell.schedulingData.HBxy);
-				tmp = tmp.replaceAll('[Hopxy]', cell.schedulingData.HFxy);
-			} else{
-				tmp = tmp.replaceAll('[Hxy]', cell.schedulingData.HFxy);
-				tmp = tmp.replaceAll('[Hopxy]', cell.schedulingData.HBxy);
-			}
-
-			tmp = tmp.replaceAll('[Nx]', cell.schedulingData.Nx);
-			tmp = tmp.replaceAll('[Nopx]', cell.schedulingData.Nopx);
-			tmp = tmp.replaceAll('[CS]', cell.schedulingData.CS);
-			tmp = tmp.replaceAll('[HBxy]', cell.schedulingData.HBxy);
-			tmp = tmp.replaceAll('[HFxy]', cell.schedulingData.HFxy);
-			tmp = tmp.replaceAll('[f/b]', cell.schedulingData.bed);
-			tmp = tmp.replaceAll('[D]', cell.schedulingData.D);
-		} else {
-			console.log("No scheduling data available!")
-		}
-		if (tmp.includes("[Hxy]")){
-			console.log(currCell.schedulingData);
-		}
-
-		// skimp comment if instruction include pause (which would eat the comments)
-		if (comment != null && !tmp.includes("pause")) {
-			tmp += ' ; ' + comment;
-		}
-		return tmp;
-	}
-
-	// Add scheduling info to solid knitout text (will eventually stop using a single string to store content). 
-	function skSchedule (instructions, cell, comment) {
-		// by default, give every block a unique id so that instructions are not merged
-		let id = cell.template.name + "." + cell.schedulingData.cellID;
-
-		let instructionGroups = ["knit", "drop", "cast-on", "loop-next-layer", "bind-off"];
-		for (const instructionName of instructionGroups) {
-			if (cell.template.name.startsWith(instructionName)) {
-				id =  instructionName + "." + cell.schedulingData.embedding[1] + "." + cell.schedulingData.embedding[2];
-				break;
-			}
-		}
-
-		// HACK: special treatment of blocks adjacent to a cast-on block, which are themselves really part of the cast-on
-		// These should probably be treated as separate blocks
-		let isCastOnKnit = false;
-		if (cell.template.name.startsWith("knit")) {
-			// check to see if any neighboring block is a cast-on
-			for (let currFace = 0; currFace < currCell.connections.length; currFace++){
-				if (currCell.connections[currFace]!= null){
-					if (currCell.connections[currFace].cell.template.name.startsWith("cast-on")) {
-						isCastOnKnit = true;
-						break;
-					}
-				}
-			}
-		}
-
-		let concreteInstructions = [];
-		for (const instructionTemplate of cell.template.machine) {
-			// skip xfers for cast on knit blocks
-			if (isCastOnKnit && instructionTemplate.startsWith("xfer")) continue;
-
-			concreteInstructions.push(fillInStitchLocation(instructionTemplate, cell, comment));
-		}
-		return {"id": id, "instructions": concreteInstructions };
-	}
-	const cells = body.cells;
-
-	// Consider writing each line into a document as we go? It could get rather lengthy.
-	// Creating Solid knitout for "starting" object. I.e. beginning at block type containing 'yarn-in'? 
-	var start = cells.find(cell => (cell != null)&&(cell.template.name == "yarn-in"));
-	const fragments = [];
-	fragments.push(skComment("Autogenerated Solid Knitout code block."), skComment("Carrier 1"));
-
-	// toVisit is an array of two queues, each containing cells of a specific priority.
-	// Depending on the type of block, certain blocks will be enqued in a specific order
-	// for grouping purposes. 
-	// toVisit[0] -> P1 (almost everything)
-	// toVisit[1] -> P2 (loop-next-layer)
-	// toVisit[2] -> P3 (drop) [stored as a stack rather than a queue]
-	// toVisit[3] -> P4 (yarn-next-layer)
-	var toVisit = [[start], [], [], []]
-	var visited = []
-
-	let iRow = 0;
-	let iLayer = 0;
-
-	// init data for topological sort
-	for (let cell of cells) {
-		cell.topoSort = {};
-		cell.topoSort.inFaces = 0;
-		for (let iF = 0; iF < template.faces.length; ++iF) {
-			if (cell.template.faces[iF].type.startsWith("-")) cell.topoSort.inFaces++;
-		}
-	}
-
-	// console.log(start);
-	while (toVisit[0].length != 0 || toVisit[1].length != 0 || toVisit[2].length != 0 || toVisit[3].length != 0) {
-		if (toVisit[0].length != 0) {
-			// console.log("p1")
-			var currCell = toVisit[0].shift();
-		} else if (toVisit[1].length != 0) {
-			var currCell = toVisit[1].shift();
-		} else if (toVisit[2].length != 0) {
-			var currCell = toVisit[2].shift();
-		} else if (toVisit[3].length != 0) {
-			var currCell = toVisit[3].shift();
-		}
-
-		// annotate instructions with cell ID,
-		let comment = 'cell ' + currCell.schedulingData.cellID;
-		fragments.push(skSchedule(currCell.template.machine, currCell, comment));	
-
-		// Processing of strings and related information goes here. 
-
-		if (currCell.template.name.startsWith("yarn-next-row")) {
-			iRow++;
-			fragments.push(skComment("row " + iRow));
-		} else if (currCell.template.name.startsWith("yarn-next-layer")) {
-			iLayer++;
-			iRow = 0;
-			fragments.push(skComment("============================="));
-			fragments.push(skComment("         Layer " + iLayer));
-			fragments.push(skComment("============================="));
-			fragments.push(skComment("row " + iRow));
-		} else if (currCell.template.name.startsWith("yarn-in")) {
-			iLayer = 0;
-			iRow = -1;
-			fragments.push(skComment("============================="));
-			fragments.push(skComment("         Layer " + iLayer));
-			fragments.push(skComment("============================="));
-			fragments.push(skComment("row " + iRow));
-		}
-
-		/* face */
-		let currCellCon = currCell.connections;
-		let currCellConLen = currCellCon.length; 
-		for (let currFace = 0; currFace < currCellConLen; currFace++){
-			if (currCellCon[currFace]!= null){
-				let adjCell = currCellCon[currFace].cell;
-				let adjCellFace = currCellCon[currFace].face;
-				//if (sv.canConnectFaces(currCell.template.faces[currFace], adjCell.template.faces[adjCellFace])){
-				if (!visited.includes(adjCell) && adjCell.template.faces[adjCellFace].type.startsWith("-")){
-					adjCell.topoSort.inFaces--; // record that we've satisfied a depencency
-					if (adjCell.topoSort.inFaces > 0) continue; // don't proceed if there are unfulfilled dependencies
-
-					// Edge cases pertaining to loop-next-layer block.
-					if (adjCell.template.name.startsWith('loop-next-layer')){
-						// solidk = solidk + skComment('Next layer')
-						// solidk = solidk + skSchedule(adjCell.template.machine, adjCell);
-						toVisit[1].push(adjCell); 
-						visited.push(currCell);
-					} else if (adjCell.template.name === "drop") {
-						toVisit[2].unshift(adjCell);
-						visited.push(currCell);
-					} else if (adjCell.template.faces[adjCellFace].type[1] == 'y'){
-						// "Pushed cell! -y -> y+ connection."
-						const priority = adjCell.template.name.startsWith('yarn-next-layer') ? 3 : 0;
-						toVisit[priority].push(adjCell); 
-						visited.push(currCell);
-					}
-				}
-			}
-		}
-		if (currCell.template.name == "yarn-out") {
-			toVisit == [[],[], [], []]; 
-		}
-	}
-
-	// clean up data for topological sort
-	for (let cell of cells) {
-		delete cell.topoSort;
-	}
-
-	// Consider writing this into a 
-	fragments.push(skPause("knitting complete, please remove object from machine."));  // Assuming theres no dropping mechanism?
-	// writeHighlightedCode(solidk, document.getElementById("knitout-source"), groupKnitoutPassesCheckbox.checked);
-
-	return fragments;
-}
-
-function displayHoveredBlockInfo(over) {
-	const infoArea = document.getElementById("hovered-block-info");
-	infoArea.innerHTML = "";
-
-	let posString, embString, id, ports, longname, schedulingData;
-	if (over != null) {
-		id = over.cellID;
-		ports = over.cell.template.signature().substr(over.cell.template.name.length + 1);
-		longname = over.cell.template.longname;
-		const pos = gm.xformTranslation(over.cell.xform); // TODO: shift cube coordinates to be integer?
-		posString = "( " + pos[0].toFixed(2) + ", " + pos[1].toFixed(2) + ", " + pos[2].toFixed(2) + " )";
-		schedulingData = over.cell.schedulingData ? over.cell.schedulingData : {};
-
-
-		if (over.cell.schedulingData && over.cell.schedulingData.embedding) {
-			const emb = over.cell.schedulingData.embedding;
-			embString = "( " + emb[0].toFixed(2) + ", " + emb[1].toFixed(2) + ", " + emb[2].toFixed(2) + " )";	
-		}
-	} else {
-		id = null;
-		ports = null;
-		longname = null;
-		posString = null;
-		schedulingData = {};
-	}
-
-	const displayData = function(name, value, variableName) {
-		const nameElem = document.createElement('label');
-		nameElem.innerHTML = name;
-		nameElem.classList.add("field-name");
-		nameElem.for = "input-" + name;
-		infoArea.appendChild(nameElem);
-		const valueElem = document.createElement('div');
-		valueElem.classList.add("field-value");
-		if (variableName == null) {
-			valueElem.innerHTML = value == null ? "&nbsp;" : value; // print space to set line height
-		} else {
-			const textInput = document.createElement('input');
-			textInput.type = "text";
-			textInput.id = "input-"+name;
-			textInput.name = name;
-			textInput.value = value == null ? "" : value; // print space to set line height
-			if (over == null) {
-				textInput.disabled = true;
-			} else {
-				textInput.onchange = function() {
-					pushCommand({type: "editSchedulingData", cell: over.cell, field: variableName, oldValue: over.cell.schedulingData[variableName], newValue: textInput.value});
-					over.cell.schedulingData[variableName] = textInput.value;
-				};
-			}
-			valueElem.appendChild(textInput);
-		}
-		infoArea.appendChild(valueElem);
-	};
-	
-	displayData("ID", id);
-	displayData("Long Name", longname);
-	displayData("Ports", ports);
-	displayData("Position", posString);
-	displayData("Embedding", embString);
-	displayData("Bed", schedulingData.bed, "bed");
-	displayData("Nx", schedulingData.Nx, "Nx");
-	displayData("HFxy", schedulingData.HFxy, "HFxy");
-	displayData("HBxy", schedulingData.HBxy, "HBxy");
-	displayData("D", schedulingData.D, "D");
-	displayData("CS", schedulingData.CS, "CS");
-	displayData("Layer", schedulingData.layer, "layer");
-}
 
 const postprocessProgram = new Program(gl,
 `
@@ -4112,7 +4169,7 @@ const postprocessProgram = new Program(gl,
 window.postprocessProgram = postprocessProgram;
 
 
-//Because lack of gl_VertexID in WEBGL1's GLSL means we can't do the lazy fullscreen-triangle-generated-by-vertex-shader trick:
+// Because lack of gl_VertexID in WEBGL1's GLSL means we can't do the lazy fullscreen-triangle-generated-by-vertex-shader trick:
 class FullscreenTriangle extends Geometry {
 	constructor() {
 		const buffer = gl.createBuffer();
@@ -4131,6 +4188,7 @@ class FullscreenTriangle extends Geometry {
 const fullscreenTriangle = new FullscreenTriangle();
 window.fullscreenTriangle = fullscreenTriangle; //DEBUG
 
+// Applies screenspace depth shading to make crossings easier to interpret
 class Postprocess {
 	constructor() {
 		this.w = 0;
@@ -4271,6 +4329,9 @@ class Postprocess {
 const postprocess = new Postprocess();
 window.postprocess = postprocess; //DEBUG
 
+/**
+ * redrawPatternNonDepthShaded(pixelRatio):
+ * Draws the UI elements associated with the current pattern which we do not wish to depth shade (e.g. outlines, grid lines). */
 function redrawPatternNonDepthShaded(pixelRatio) {
 	visPreviewLines.update();
 
@@ -4334,6 +4395,9 @@ function redrawPatternNonDepthShaded(pixelRatio) {
 	gl.disable(gl.BLEND);
 }
 
+/**
+ * redrawPatternDepthShaded(pixelRatio)
+ * Draws the components of the current pattern which we wish to depth shade (e.g. yarn tubes). */
 function redrawPatternDepthShaded(pixelRatio) {
 
 	const cell = previewCell();
@@ -4352,6 +4416,9 @@ function redrawPatternDepthShaded(pixelRatio) {
 	}
 }
 
+/**
+ * redrawTemplate(pixelRatio):
+ * Draws the currently selected template. */
 function redrawTemplate(pixelRatio) {
 	function getTemplateBody(template) {
 		if (template) {
@@ -4635,6 +4702,7 @@ async function init() {
 
 		window.body = sv.Body.fromArrayBuffer(arrayBuffer, library);
 		regenerateCode();
+		checkGlobalCellCorrectness() 
 	}
 
 	{
