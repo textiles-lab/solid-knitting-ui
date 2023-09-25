@@ -627,7 +627,8 @@ body.lightmode #darkmode-checkbox-label::after {
 </div>
 
 <div id="message-box">	
-	<div id="status-text"></div>
+	<div id="cycle-text"></div>
+	<div id="yarn-count-text"></div>
 </div>
 
 
@@ -1181,9 +1182,9 @@ function detectCycles() {
 	// probably will change keycode. 
 	// Run topological sort. 
 	if (!checkGlobalCellCorrectness()){
-		document.getElementById("status-text").innerHTML = "Warning: There is exists a cycle in yarn directions!";
+		document.getElementById("cycle-text").innerHTML = "Warning: There is exists a cycle in yarn directions!";
 	} else {
-		document.getElementById("status-text").innerHTML = "No cycles detected in yarn directions.";
+		document.getElementById("cycle-text").innerHTML = "No cycles detected in yarn directions.";
 	}
 }
 
@@ -1940,16 +1941,16 @@ function checkGlobalCellCorrectness() {
 	let cycleFree = (count == bodyLen);
 
 	if (cycleFree) {
-		document.getElementById("status-text").innerHTML = "No cycles detected in yarn directions.";
+		document.getElementById("cycle-text").innerHTML = "No cycles detected in yarn directions.";
 	} else {
-		document.getElementById("status-text").innerHTML = "Warning: There is exists a cycle in yarn directions!";
+		document.getElementById("cycle-text").innerHTML = "Warning: There is exists a cycle in yarn directions!";
 	}
 	return cycleFree;
 }
 
 /**
  * allocateSpots(x0=1, y0=4)
- * Computes a needle, frontHolder, backHolder, layer, direction, and yarnID for each cell, storing these in cell.schedulingData.
+ * Schedules a needle, frontHolder, backHolder, layer, direction, and yarnID for each cell, storing these in cell.schedulingData.
  * Currently computes locations for knit, next-row, yarn-next-layer, loop-next-layer, cast-on, bind-off. */
 function allocateSpots(x0=1, y0=4) {
 	// follow yarn through body
@@ -1962,6 +1963,7 @@ function allocateSpots(x0=1, y0=4) {
 
 	// set default schedulingData and look for yarn-in to start
 	let currCell = null;
+	let nYarnIn = 0, nYarnOut = 0;
 	for (let cellID = 0; cellID < body.cells.length; ++cellID) {
 		if (body.cells[cellID].schedulingData == null) {
 			body.cells[cellID].schedulingData = {
@@ -1985,11 +1987,20 @@ function allocateSpots(x0=1, y0=4) {
 		}
 		if (body.cells[cellID].template.name === "yarn-in") {
 			currCell = body.cells[cellID];
+			nYarnIn++;
+		} else if (body.cells[cellID].template.name === "yarn-out") {
+			nYarnOut++;
 		}
 	}
 	if (currCell == null) {
 		console.error("spot allocation failed: no yarn-in cell found");
 		return;
+	}
+	if (nYarnIn != 1 || nYarnOut != 1) {
+		document.getElementById("yarn-count-text").innerHTML = "Error: There are " + nYarnIn + " yarn-in blocks and " + nYarnOut + " yarn out blocks, when there should only be one of each";
+		return;
+	} else {
+		document.getElementById("yarn-count-text").innerHTML = "";
 	}
 
 	let exitFace = getYarnExitFace(currCell);
