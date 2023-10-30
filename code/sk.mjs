@@ -118,19 +118,35 @@ export function noPassGrouping(fragmentList) {
 
 // Take a list of program fragments and group them into passes before emitting the resulting code
 // Consecutive fragments with the same id have their instructions interleaved into unified passes
+// Fragments are in the form { "id": "fragName", "instructions": ["list", "of", "instructions"] }
+// Also does the following:
+//    drops any releases that happen at the beginning of the program (artifacts from cast on row)
+//    drops empty fragments
 export function groupPasses(fragmentList) {
+	// console.log(fragmentList)
+
 	let solidk = "";
 	let iF = 0;
+	let atProgramStart = true;
 	while (iF < fragmentList.length) {
 		let currID = fragmentList[iF]["id"];
+
+		// only perform releases associated with yarn-next-row after program has started making stitches
+		if (atProgramStart && currID.startsWith("yarn-next-row")) {
+			iF++;
+			continue;
+		}
+
 		let passFragments = [];
 		let lookahead = 0;
 		// accumulate all following fragments with the same id
 		while (iF + lookahead < fragmentList.length
-			   && fragmentList[iF + lookahead]["id"] === currID) {
-			passFragments.push(fragmentList[iF + lookahead]["instructions"]);
+			   && (fragmentList[iF + lookahead]["id"] === currID || fragmentList[iF + lookahead]["instructions"].length == 0)) {
+			if (fragmentList[iF + lookahead]["instructions"].length > 0) passFragments.push(fragmentList[iF + lookahead]["instructions"]);
 			lookahead++;
 		}
+
+		// console.log(currID, atProgramStart, passFragments);
 
 		// interleave fragments
 		for (let iI = 0; iI < passFragments[0].length; ++iI) {
@@ -143,6 +159,11 @@ export function groupPasses(fragmentList) {
 			solidk += "\n";
 		}
 		iF += lookahead;
+		if ( ! (currID.startsWith("pause")
+			    || currID.startsWith("comment")
+			    || currID.startsWith("yarn-in")
+			    || currID.startsWith("cast-on")
+			 ) ) atProgramStart = false;
 	}
 	return solidk;
 }

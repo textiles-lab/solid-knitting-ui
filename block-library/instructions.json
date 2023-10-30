@@ -1,18 +1,18 @@
 {
 	"bind-off-through-down.left": {
-		"machine": ["roll [HFxy] [HBxy]", "pause Please bind off the final row"],
+		"machine": ["xfer [Nx] [Hxy]", "roll [HFxy] [HBxy]", "pause Please bind off the final row"],
 		"human": []
 	},
 	"bind-off-through-down.right": {
-		"machine": ["roll [HFxy] [HBxy]", "pause Please bind off the final row"],
+		"machine": ["xfer [Nx] [Hxy]", "roll [HFxy] [HBxy]", "pause Please bind off the final row"],
 		"human": []
 	},
 	"bind-off-through-up.left.001": {
-		"machine": ["roll [HFxy] [HBxy]", "pause Please bind off the final row"],
+		"machine": ["xfer [Nx] [Hxy]", "roll [HFxy] [HBxy]", "pause Please bind off the final row"],
 		"human": []
 	},
 	"bind-off-through-up.right.001": {
-		"machine": ["roll [HFxy] [HBxy]", "pause Please bind off the final row"],
+		"machine": ["xfer [Nx] [Hxy]", "roll [HFxy] [HBxy]", "pause Please bind off the final row"],
 		"human": []
 	},
 	"cast-on.left": {
