@@ -120,8 +120,9 @@ export function noPassGrouping(fragmentList) {
 // Consecutive fragments with the same id have their instructions interleaved into unified passes
 // Fragments are in the form { "id": "fragName", "instructions": ["list", "of", "instructions"] }
 // Also does the following:
-//    drops any releases that happen at the beginning of the program (artifacts from cast on row)
-//    drops empty fragments
+//    omits any releases that happen at the beginning of the program (artifacts from cast on row)
+//    omits empty fragments
+//    merges fragments from drops followed immediately by knits
 export function groupPasses(fragmentList) {
 	// console.log(fragmentList)
 
@@ -138,25 +139,88 @@ export function groupPasses(fragmentList) {
 		}
 
 		let passFragments = [];
+		let nextKnitID = null;
+		let subsequentKnitFragments = [];
 		let lookahead = 0;
-		// accumulate all following fragments with the same id
-		while (iF + lookahead < fragmentList.length
-			   && (fragmentList[iF + lookahead]["id"] === currID || fragmentList[iF + lookahead]["instructions"].length == 0)) {
-			if (fragmentList[iF + lookahead]["instructions"].length > 0) passFragments.push(fragmentList[iF + lookahead]["instructions"]);
+		// accumulate all following fragments with the same id, along with some special logic for drops
+		while (iF + lookahead < fragmentList.length) {
+			const fragment = fragmentList[iF + lookahead];
+			if (fragment["id"] === currID) { // contained in same run of instructions
+				passFragments.push(fragment["instructions"]);
+			} else if (fragment["instructions"].length == 0) { // accept empty fragments, but don't do anything with them
+			} else if (currID.startsWith("drop")) { // special case to merge drops with subsequent knits
+				// end pass if instruction is not a knit
+				if (!fragment["id"].startsWith("knit")) break;
+
+				// if we haven't found any knits yet, grab the next knit id
+				if (nextKnitID === null) nextKnitID = fragment["id"];
+
+				// only accept knits with the same id into this pass
+				if (fragment["id"] === nextKnitID) {
+					subsequentKnitFragments.push(fragment["instructions"]);
+				} else {
+					break;
+				}
+
+			} else {
+				break; // end pass
+			}
 			lookahead++;
 		}
 
-		// console.log(currID, atProgramStart, passFragments);
+		console.log(currID, atProgramStart, passFragments);
 
 		// interleave fragments
-		for (let iI = 0; iI < passFragments[0].length; ++iI) {
-			for (let iF = 0; iF < passFragments.length; ++iF) {
-				// dedupe pause messages
-				if (iF > 0 && passFragments[iF][iI].startsWith("pause") && passFragments[iF][iI] === passFragments[0][iI]) continue;
+		if (subsequentKnitFragments.length > 0) {
+			// special case for interleaved drops + knits
+			if (subsequentKnitFragments[0].length == 4) {
+				for (let iI = 0; iI < 2; ++iI) {
+					for (let iF = 0; iF < subsequentKnitFragments.length; ++iF) {
+						solidk += subsequentKnitFragments[iF][iI] + "\n";
+					}
+					solidk += "\n";
+				}
+				for (let iI = 0; iI < passFragments[0].length; ++iI) {
+					for (let iF = 0; iF < passFragments.length; ++iF) {
+						// dedupe pause messages
+						if (iF > 0 && passFragments[iF][iI].startsWith("pause") && passFragments[iF][iI] === passFragments[0][iI]) continue;
 
-				solidk += passFragments[iF][iI] + "\n";
+						solidk += passFragments[iF][iI] + "\n";
+					}
+					solidk += "\n";
+				}
+				for (let iI = 2; iI < 4; ++iI) {
+					for (let iF = 0; iF < subsequentKnitFragments.length; ++iF) {
+						solidk += subsequentKnitFragments[iF][iI] + "\n";
+					}
+					solidk += "\n";
+				}
+
+			} else { // if knits don't have four instructions, just leave in current order for now
+				console.error("Subsequent knit fabric does not have 4 instructions, so drop interleaving is undefined. Passes will be left in the given order");
+				for (let iI = 0; iI < passFragments[0].length; ++iI) {
+					for (let iF = 0; iF < passFragments.length; ++iF) {
+						solidk += passFragments[iF][iI] + "\n";
+					}
+					solidk += "\n";
+				}
+				for (let iI = 0; iI < subsequentKnitFragments[0].length; ++iI) {
+					for (let iF = 0; iF < subsequentKnitFragments.length; ++iF) {
+						solidk += subsequentKnitFragments[iF][iI] + "\n";
+					}
+					solidk += "\n";
+				}
 			}
-			solidk += "\n";
+		} else {	
+			for (let iI = 0; iI < passFragments[0].length; ++iI) {
+				for (let iF = 0; iF < passFragments.length; ++iF) {
+					// dedupe pause messages
+					if (iF > 0 && passFragments[iF][iI].startsWith("pause") && passFragments[iF][iI] === passFragments[0][iI]) continue;
+
+					solidk += passFragments[iF][iI] + "\n";
+				}
+				solidk += "\n";
+			}
 		}
 		iF += lookahead;
 		if ( ! (currID.startsWith("pause")
