@@ -4706,7 +4706,7 @@ async function init() {
 
 	{
 		console.log(`Fetching body...`);
-		const request = await fetch('patterns/cube-3x3-flipped.body');
+		const request = await fetch('patterns/cube-3x3.body');
 		// const request = await fetch('example.body');
 		const arrayBuffer = await request.arrayBuffer();
 		console.log(`  got ${arrayBuffer.byteLength} bytes.`);
