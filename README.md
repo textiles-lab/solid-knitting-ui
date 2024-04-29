@@ -1,19 +1,19 @@
 # Solid Knitting UI
-Tool to build patterns for solid knitting with interactive preview. "[Solid Knitting]()" by [Yuichi Hirose](https://hirose-yuichi.github.io/), [Mark Gillespie](https://www.markjgillespie.com), [Angelica M. Bonilla Fominaya](https://abfominaya.com/), and [James McCann](https://www.cs.cmu.edu/~jmccann/) at SIGGRAPH 2024.
+Tool to build patterns for solid knitting with interactive preview from "[Solid Knitting]()" by [Yuichi Hirose](https://hirose-yuichi.github.io/), [Mark Gillespie](https://www.markjgillespie.com), [Angelica M. Bonilla Fominaya](https://abfominaya.com/), and [James McCann](https://www.cs.cmu.edu/~jmccann/) at SIGGRAPH 2024.
 
 ![Screenshot of tool UI, displaying a pattern and some of the generated code for a 3x3x3 solid knit cube](images/screenshot.jpg)
 
 If this code contributes to academic work, please cite as:
 ```bibtex
 @article{Hirose:2024:SK,
-                  author = {Hirose, Yuichi and Gillespie, Mark and Bonilla Fominaya, Angelica M. and McCann, James},
-                  title = {Solid Knitting},
-                  journal = {ACM Trans. Graph.},
-                  volume = {43},
-                  number = {88},
-                  year = {2024},
-                  publisher = {ACM},
-                  address = {New York, NY, USA}
+         author = {Hirose, Yuichi and Gillespie, Mark and Bonilla Fominaya, Angelica M. and McCann, James},
+         title = {Solid Knitting},
+         journal = {ACM Trans. Graph.},
+         volume = {43},
+         number = {88},
+         year = {2024},
+         publisher = {ACM},
+         address = {New York, NY, USA}
 }
 ```
 
