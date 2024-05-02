@@ -14,6 +14,7 @@ body.darkmode {
 	--main-font-color: #C4C0AD;
 	--far-font-color: #E4E0CD;
 	--font-color-highlight: #D4D0CD;
+	--link-color: #D1C6B5;
 
 	/* syntax highlighting */
 	--comment: #74705D;
@@ -34,6 +35,7 @@ body.lightmode {
 	--main-font-color: #222;
 	--far-font-color: #111;
 	--font-color-highlight: #222;
+	--link-color: #181818;
 
 	/* syntax highlighting, from solarized https://en.wikipedia.org/wiki/Solarized */
 	--comment: #839496;
@@ -50,6 +52,10 @@ body {
 
 	background-color: var(--far-background-color);
 	color: var(--far-font-color);
+}
+
+body a {
+	color: var(--link-color);
 }
 
 #dropTarget {
@@ -123,6 +129,15 @@ body {
 
 .controlsButton:active {
 	box-shadow: 0 0 1px 0 #0008;
+}
+
+.controlsInfo {
+	display:block;
+	text-align:right;
+	flex-grow: 1;
+}
+.controlsInfo + .controlsInfo {
+	flex-grow: 0;
 }
 
 .controls-section {
@@ -526,6 +541,8 @@ body.lightmode #darkmode-checkbox-label::after {
 <button id="save-yarn-path" class="controlsButton">Save Yarn Path</button>
 <button id="save-knitout" class="controlsButton">Save Knitout</button>
 <!-- <button id="reallocate-spots" class="controlsButton">Reallocate Needle Locations</button> -->
+<span class="controlsInfo"><a href="https://github.com/textiles-lab/solid-knitting-ui/">github page</a>;</span>
+<span class="controlsInfo"><a href="https://github.com/textiles-lab/solid-knitting-ui/issues">report a bug</a></span>
 
 </div>
 
@@ -4305,7 +4322,7 @@ class Postprocess {
 			]));
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-			// gl.bindTexture(gl.TEXTURE_2D, 0);
+			gl.bindTexture(gl.TEXTURE_2D, null);
 		}
 
 		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -4335,6 +4352,18 @@ class Postprocess {
 		gl.clearColor(0.5,0.5,0.5,1.0);
 		gl.clear(gl.COLOR_BUFFER_BIT);
 		fullscreenTriangle.draw(postprocessProgram);
+
+		gl.activeTexture(gl.TEXTURE3);
+		gl.bindTexture(gl.TEXTURE_2D, null);
+
+		gl.activeTexture(gl.TEXTURE2);
+		gl.bindTexture(gl.TEXTURE_2D, null);
+
+		gl.activeTexture(gl.TEXTURE1);
+		gl.bindTexture(gl.TEXTURE_2D, null);
+
+		gl.activeTexture(gl.TEXTURE0);
+		gl.bindTexture(gl.TEXTURE_2D, null);
 	}
 }
 const postprocess = new Postprocess();
