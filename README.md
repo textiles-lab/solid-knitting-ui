@@ -1,5 +1,5 @@
 # Solid Knitting UI
-Tool to build patterns for solid knitting with interactive preview from "[Solid Knitting]()" by [Yuichi Hirose](https://yuichirose.github.io/), [Mark Gillespie](https://www.markjgillespie.com), [Angelica M. Bonilla Fominaya](https://abfominaya.com/), and [James McCann](https://www.cs.cmu.edu/~jmccann/) at SIGGRAPH 2024.
+Tool to build patterns for solid knitting with interactive preview from "[Solid Knitting](https://textiles-lab.github.io/publications/2024-solid-knitting/)" by [Yuichi Hirose](https://yuichirose.github.io/), [Mark Gillespie](https://www.markjgillespie.com), [Angelica M. Bonilla Fominaya](https://abfominaya.com/), and [James McCann](https://www.cs.cmu.edu/~jmccann/) at SIGGRAPH 2024.
 
 ![Screenshot of tool UI, displaying a pattern and some of the generated code for a 3x3x3 solid knit cube](images/screenshot.jpg)
 
