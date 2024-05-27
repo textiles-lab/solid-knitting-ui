@@ -5,15 +5,20 @@ Tool to build patterns for solid knitting with interactive preview from "[Solid 
 
 If this code contributes to academic work, please cite as:
 ```bibtex
-@article{Hirose:2024:SK,
-         author = {Hirose, Yuichi and Gillespie, Mark and Bonilla Fominaya, Angelica M. and McCann, James},
-         title = {Solid Knitting},
-         journal = {ACM Trans. Graph.},
-         volume = {43},
-         number = {88},
-         year = {2024},
-         publisher = {ACM},
-         address = {New York, NY, USA}
+@article{hirose:2024:solid-knitting,
+author = {Hirose, Yuichi and Gillespie, Mark and Bonilla Fominaya, Angelica M. and McCann, James},
+year = {2024},
+title = {Solid Knitting},
+journal = {ACM Trans. Graph.},
+volume = {43},
+number = {4},
+articleno = {88},
+month = {jul},
+numpages = {15},
+url = {https://doi.org/10.1145/3658123},
+doi = {10.1145/3658123},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
 }
 ```
 
